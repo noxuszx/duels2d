@@ -30,7 +30,8 @@ const { Engine, Runner, Bodies, Body, World, Events } = Matter;
    maxHealth   {number}   Starting HP.
    color       {string}   Fallback fill colour when no sprite is provided.
    glowColor   {string}   Canvas shadow colour for the aura effect.
-   radius      {number}   Matter.js collision circle radius (pixels).
+   radius      {number}   Visual sizing base used by sprites and health bars.
+   hitbox      {object?}  Physics shape. Supports circle or box.
    baseDamage  {number}   HP removed per valid hit.
    speed       {number}   Initial launch speed (px/frame).
 
@@ -73,6 +74,7 @@ class Character {
     this.color         = config.color;
     this.glowColor     = config.glowColor;
     this.radius        = config.radius;
+    this.hitbox        = this._normalizeHitbox(config);
     this.baseDamage    = config.baseDamage;
     this.baseSpeed     = Math.sqrt(velX * velX + velY * velY); // lock speed to launch velocity
 
@@ -84,7 +86,7 @@ class Character {
     this._lastHitTime = 0;    // ms timestamp of last valid hit received
 
     /* -- Matter.js physics body -------------------------------------------- */
-    this.body = Bodies.circle(spawnX, spawnY, this.radius, {
+    const bodyOptions = {
       restitution:    1.0,   // perfect elastic bounce
       friction:       0,
       frictionAir:    0,
@@ -93,7 +95,11 @@ class Character {
       inverseInertia: 0,
       label:          this.id,
       collisionFilter: { category: 0x0001, mask: 0x0001 | 0x0002 },
-    });
+    };
+
+    this.body = this.hitbox.type === 'box'
+      ? Bodies.rectangle(spawnX, spawnY, this.hitbox.width, this.hitbox.height, bodyOptions)
+      : Bodies.circle(spawnX, spawnY, this.hitbox.radius, bodyOptions);
     Body.setVelocity(this.body, { x: velX, y: velY });
 
     /* -- PLAN 2: Sprite / image assets ------------------------------------- */
@@ -109,6 +115,10 @@ class Character {
     this.weaponAttack = null;
     if (config.weaponIdle)   this._loadImage('weaponIdle',   config.weaponIdle);
     if (config.weaponAttack) this._loadImage('weaponAttack', config.weaponAttack);
+
+    /* -- UI Offsets -------------------------------------------------------- */
+    this.healthBarOffset = config.healthBarOffset ?? { x: 0, y: 0 };
+    this.nameOffset      = config.nameOffset      ?? { x: 0, y: 0 };
 
     /* -- PLAN 3: Howler.js audio ------------------------------------------- */
     /*
@@ -147,6 +157,31 @@ class Character {
     img.onload = () => { this[key] = img; };
     img.onerror = () => { console.warn(`[Duels2D] Could not load image: ${src}`); };
     img.src = src;
+  }
+
+  _normalizeHitbox(config) {
+    const fallbackRadius = config.radius ?? 30;
+    const hitbox = config.hitbox ?? {};
+
+    if (hitbox.type === 'box') {
+      const width = hitbox.width ?? fallbackRadius * 1.4;
+      const height = hitbox.height ?? fallbackRadius * 2.6;
+      return {
+        type: 'box',
+        width,
+        height,
+        halfWidth: width / 2,
+        halfHeight: height / 2,
+      };
+    }
+
+    const radius = hitbox.radius ?? fallbackRadius;
+    return {
+      type: 'circle',
+      radius,
+      halfWidth: radius,
+      halfHeight: radius,
+    };
   }
 
   /**
@@ -260,7 +295,6 @@ class GameManager {
     document.body.style.background = cfg.arena.backgroundColor;
     this.container.style.background = cfg.arena.containerColor;
     
-    document.getElementById('hud-title').innerHTML = `${cfg.text.titleMain} <span class="accent">${cfg.text.titleAccent}</span>`;
     this.hudEls.status.textContent = cfg.text.statusFight;
     document.getElementById('game-footer').textContent = cfg.text.footer;
     document.getElementById('winner-label').textContent = cfg.text.winPrefix;
@@ -309,6 +343,10 @@ class GameManager {
       World.add(this.world, c.body);
       return c;
     });
+
+    if (this.characters.length >= 2) {
+      document.getElementById('hud-title').innerHTML = `${this.characters[0].name} <span class="accent">VS</span> ${this.characters[1].name}`;
+    }
   }
 
   /* -------------------------------------------------------------------------
@@ -348,11 +386,10 @@ class GameManager {
         let pos = char.body.position;
         let vel = { ...char.body.velocity };
         
-        const r = char.radius;
-        const minX = ax + r + bPadding;
-        const maxX = ax + aw - r - bPadding;
-        const minY = ay + r + bPadding;
-        const maxY = ay + ah - r - bPadding;
+        const minX = ax + char.hitbox.halfWidth + bPadding;
+        const maxX = ax + aw - char.hitbox.halfWidth - bPadding;
+        const minY = ay + char.hitbox.halfHeight + bPadding;
+        const maxY = ay + ah - char.hitbox.halfHeight - bPadding;
         
         let hitWall = false;
         let hitLeftRight = false;
@@ -586,17 +623,6 @@ class GameManager {
         ctx.restore();
       }
 
-      /* -- Name label ------------------------------------------------------- */
-      ctx.save();
-      ctx.font         = `bold 11px sans-serif`;
-      ctx.fillStyle    = '#1a1a2e';
-      ctx.textAlign    = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.shadowColor  = 'rgba(255,255,255,0.7)';
-      ctx.shadowBlur   = 3;
-      ctx.fillText(char.name, pos.x, pos.y - r - 28);
-      ctx.restore();
-
       /* -- Inline health bar ------------------------------------------------ */
       this._drawInlineHealthBar(ctx, char, pos, r);
     });
@@ -608,8 +634,8 @@ class GameManager {
   _drawInlineHealthBar(ctx, char, pos, r) {
     const barW  = r * 2.4;
     const barH  = 7;
-    const barX  = pos.x - barW / 2;
-    const barY  = pos.y - r - 20;
+    const barX  = pos.x - barW / 2 + char.healthBarOffset.x;
+    const barY  = pos.y - r - 20 + char.healthBarOffset.y;
     const ratio = char.healthRatio;
 
     ctx.save();

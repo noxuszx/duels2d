@@ -103,6 +103,13 @@ class CommandLineController {
         // Keeps command line open so user can see status
         break;
 
+      case 'studio':
+        this.status.textContent = 'Opening Character Studio...';
+        setTimeout(() => {
+          window.location.href = 'tools/character-studio/index.html';
+        }, 300);
+        break;
+
       default:
         this.status.textContent = `Unknown command: ${command}`;
         break;

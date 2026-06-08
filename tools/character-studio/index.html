@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Duels2D Character Studio</title>
+  <link rel="stylesheet" href="character-studio.css" />
+</head>
+<body>
+  <div id="studio-layout">
+    <!-- Left panel: Canvas Preview -->
+    <div id="preview-panel">
+      <canvas id="studio-canvas" width="512" height="512"></canvas>
+    </div>
+
+    <!-- Right panel: Controls -->
+    <div id="control-panel">
+      <a href="../../index.html" style="color: #00d4ff; text-decoration: none; font-size: 0.9rem; margin-bottom: 10px; display: inline-block;">&larr; Back to Arena</a>
+      <h1>Character Studio</h1>
+      
+      <div class="control-group">
+        <label for="char-select">Select Character</label>
+        <select id="char-select"></select>
+      </div>
+
+      <div class="control-group">
+        <label for="hitboxType">Hitbox Type</label>
+        <select id="hitboxType">
+          <option value="box">Box</option>
+          <option value="circle">Circle</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label>Hitbox Width: <span id="val-hitboxWidth"></span></label>
+        <input type="range" id="hitboxWidth" min="10" max="180" step="1" />
+      </div>
+
+      <div class="control-group">
+        <label>Hitbox Height: <span id="val-hitboxHeight"></span></label>
+        <input type="range" id="hitboxHeight" min="10" max="220" step="1" />
+      </div>
+
+      <div class="control-group">
+        <label>Hitbox Radius: <span id="val-hitboxRadius"></span></label>
+        <input type="range" id="hitboxRadius" min="5" max="120" step="1" />
+      </div>
+
+      <div class="control-group">
+        <label>Image Scale: <span id="val-imageScale"></span></label>
+        <input type="range" id="imageScale" min="0.1" max="5" step="0.1" />
+      </div>
+
+      <div class="control-group">
+        <label>Image Offset X: <span id="val-imageOffsetX"></span></label>
+        <input type="range" id="imageOffsetX" min="-200" max="200" step="1" />
+      </div>
+
+      <div class="control-group">
+        <label>Image Offset Y: <span id="val-imageOffsetY"></span></label>
+        <input type="range" id="imageOffsetY" min="-200" max="200" step="1" />
+      </div>
+
+      <div class="control-group">
+        <label>Health Bar Offset X: <span id="val-healthBarOffsetX"></span></label>
+        <input type="range" id="healthBarOffsetX" min="-100" max="100" step="1" />
+      </div>
+
+      <div class="control-group">
+        <label>Health Bar Offset Y: <span id="val-healthBarOffsetY"></span></label>
+        <input type="range" id="healthBarOffsetY" min="-150" max="150" step="1" />
+      </div>
+
+      <div class="control-group">
+        <label>Weapon Scale: <span id="val-weaponScale"></span></label>
+        <input type="range" id="weaponScale" min="0.1" max="5" step="0.1" />
+      </div>
+
+      <div class="control-group">
+        <label>Weapon Offset X: <span id="val-weaponOffsetX"></span></label>
+        <input type="range" id="weaponOffsetX" min="-200" max="200" step="1" />
+      </div>
+
+      <div class="control-group">
+        <label>Weapon Offset Y: <span id="val-weaponOffsetY"></span></label>
+        <input type="range" id="weaponOffsetY" min="-200" max="200" step="1" />
+      </div>
+
+      <div class="control-actions">
+        <button id="save-config-btn">Link config/characters.js</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../config/characters.js"></script>
+  <script src="character-studio.js"></script>
+</body>
+</html>

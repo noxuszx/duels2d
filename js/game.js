@@ -210,9 +210,12 @@ class GameManager {
     this.ARENA_BORDER       = cfg.arena.borderWidth;    // border width (px)
 
     /* -- State ------------------------------------------------------------- */
+    this.started    = true;
+    this.paused     = false;
     this.characters = [];
     this.particles  = [];
     this.gameOver   = false;
+    this.selectedCharacterIds = ['womanguy', 'chefguy']; // Default based on config index
     this._animId    = null;
 
     /* -- Matter.js --------------------------------------------------------- */
@@ -453,7 +456,10 @@ class GameManager {
     const ctx  = this.ctx;
     const loop = () => {
       this._animId = requestAnimationFrame(loop);
-      Runner.tick(this.runner, this.engine, performance.now());
+      if (!this.paused) {
+        Runner.tick(this.runner, this.engine, performance.now());
+        this._updateParticles();
+      }
 
       const W = this.W, H = this.H;
 
@@ -465,7 +471,6 @@ class GameManager {
       this._drawArenaBorder(ctx, W, H);
 
       /* Particles */
-      this._updateParticles();
       this._drawParticles(ctx);
 
       /* Characters (bodies + weapons + health bars) */
@@ -515,8 +520,10 @@ class GameManager {
       const ang = char.body.angle;
 
       /* Decrement timers */
-      if (char.hitFlashTimer > 0) char.hitFlashTimer--;
-      if (char.attackTimer   > 0) char.attackTimer--;
+      if (!this.paused) {
+        if (char.hitFlashTimer > 0) char.hitFlashTimer--;
+        if (char.attackTimer   > 0) char.attackTimer--;
+      }
 
       const isFlashing = char.hitFlashTimer > 0;
       const drawColor  = isFlashing ? '#ffffff'              : char.color;
@@ -653,6 +660,8 @@ class GameManager {
     this.hudEls.winScreen.classList.add('hidden');
     this.hudEls.status.textContent = window.GameConfig.text.statusFight;
     this.gameOver = false;
+    this.started  = true;
+    this.paused   = false;
 
     if (this._animId) cancelAnimationFrame(this._animId);
 
@@ -663,6 +672,29 @@ class GameManager {
     this.particles = [];
     this._spawnCharacters();
     this._startRenderLoop();
+  }
+
+  /* =========================================================================
+     PUBLIC API (For Command Line)
+     ========================================================================= */
+  start() {
+    if (this.gameOver) return;
+    this.started = true;
+    this.paused = false;
+  }
+
+  pause() {
+    if (this.gameOver) return;
+    this.paused = true;
+  }
+
+  restart() {
+    this._restart();
+  }
+
+  openCharacterSelect() {
+    // Placeholder for future phase
+    console.log('[Duels2D] Character select opened.');
   }
 
   /* -------------------------------------------------------------------------

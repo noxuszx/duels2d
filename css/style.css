@@ -220,3 +220,49 @@ html, body {
   from { opacity: 0; transform: scale(0.7); }
   to   { opacity: 1; transform: scale(1); }
 }
+
+/* ---- Command Line -------------------------------------------------------- */
+#command-line {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(920px, calc(100vw - 24px));
+  height: 48px;
+  background: #000;
+  border: none;
+  border-radius: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+#command-line.hidden {
+  display: none;
+}
+
+.command-prompt {
+  color: var(--clr-gold);
+  font-family: monospace;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+#command-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-family: monospace;
+  font-size: 1.1rem;
+  outline: none;
+}
+
+#command-status {
+  color: #888;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}

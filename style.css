@@ -1,0 +1,222 @@
+/* ============================================================================
+   style.css -- Duels2D Global Styles
+   ============================================================================ */
+
+/* ---- CSS Custom Properties (Design Tokens) ------------------------------ */
+:root {
+  --clr-bg:        #ffffff;
+  --clr-surface:   #f1f1f1;
+  --clr-border:    rgba(0, 0, 0, 0.12);
+
+  --clr-p1:        #00d4ff;   /* Player 1 accent - cyan */
+  --clr-p2:        #ff4d6d;   /* Player 2 accent - rose */
+  --clr-p1-glow:   rgba(0, 212, 255, 0.35);
+  --clr-p2-glow:   rgba(255, 77, 109, 0.35);
+
+  --clr-gold:      #d4a000;
+  --clr-red:       #cc0000;
+  --clr-text:      #1a1a2e;
+  --clr-muted:     #555;
+
+  /* Basic system fonts, no imported web fonts */
+  --font-hud:      sans-serif;
+  --font-body:     sans-serif;
+
+  --radius-sm:     6px;
+  --radius-md:     12px;
+  --radius-full:   9999px;
+
+  --hud-h:         56px;
+  --transition:    0.2s ease;
+}
+
+/* ---- Reset --------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #ffffff;   /* Changed background color to white */
+  font-family: var(--font-body);
+  color: var(--clr-text);
+  display: flex;
+  flex-direction: column; /* Stack layout components vertically */
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* ============================================================================
+   PLAN 1: 9:16 Game Container
+   Locks the simulator to a YouTube-Shorts / TikTok-ready aspect ratio.
+   The container shrinks to fit the viewport while preserving the ratio.
+   Physics walls in game.js are built against this container's dimensions.
+   ============================================================================ */
+#game-container {
+  position: relative;
+  background: #ffffff;
+
+  /*
+   * Constrain width, let height follow aspect ratio, accounting for top/bottom margins.
+   * On very wide screens the game won't stretch beyond 1080px wide.
+   * On tall/narrow screens it leaves a 40px vertical safety margin (20px top + 20px bottom).
+   */
+  width:  min(100vw, calc((100vh - 40px) * 9 / 16));
+  height: min(100vh - 400px, calc(100vw * 16 / 9));
+  max-width:  1080px;
+  max-height: calc(1080px * 16 / 9);
+
+  /* Rounded corners and shadow for premium feel since it's now detached from edges */
+  border-radius: 2px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+
+  /* Ensure nothing escapes the container */
+  overflow: hidden;
+}
+
+/* ---- Arena Canvas -------------------------------------------------------- */
+#arena-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width:  100%;
+  height: 100%;
+  display: block;
+  /*
+   * NOTE: the canvas *pixel* dimensions are set by JS (_resizeCanvas).
+   * CSS width/height here just maps the pixel buffer to the container box.
+   */
+}
+
+/* ---- Header & Footer (Above and Below Arena) ----------------------------- */
+#game-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  color: #ffffff; /* Contrast against red body background */
+}
+
+#hud-title {
+  font-family: var(--font-hud);
+  font-size: 2rem;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+#hud-title .accent {
+  color: #ffff00; /* Yellow accent for 2D */
+}
+
+#hud-status {
+  font-family: var(--font-hud);
+  font-size: 1rem;
+  font-weight: bold;
+  letter-spacing: 0.2em;
+  color: #ffff00;
+  text-transform: uppercase;
+  animation: pulse-gold 1.4s ease-in-out infinite;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+#game-footer {
+  font-family: var(--font-hud);
+  font-size: 1.2rem;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  margin-top: 5px;
+}
+
+@keyframes pulse-gold {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+/* ---- Winner Screen ------------------------------------------------------- */
+#winner-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.80);
+  backdrop-filter: blur(10px);
+  animation: fade-in 0.5s ease forwards;
+}
+
+#winner-screen.hidden {
+  display: none;
+}
+
+#winner-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 52px 64px;
+  background: #ffffff;
+  border: 2px solid rgba(0,0,0,0.10);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 60px rgba(0,0,0,0.15);
+  animation: winner-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+
+#winner-label {
+  font-family: var(--font-hud);
+  font-size: 0.75rem;
+  letter-spacing: 0.35em;
+  color: var(--clr-gold);
+  text-transform: uppercase;
+}
+
+#winner-name {
+  font-family: var(--font-hud);
+  font-size: 2.8rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #1a1a2e;
+}
+
+#restart-btn {
+  pointer-events: all;
+  cursor: pointer;
+  margin-top: 8px;
+  padding: 12px 36px;
+  font-family: var(--font-hud);
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  color: #fff;
+  background: var(--clr-red);
+  border: none;
+  border-radius: var(--radius-full);
+  transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+  box-shadow: 0 4px 20px rgba(200,0,0,0.3);
+}
+
+#restart-btn:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 8px 30px rgba(200,0,0,0.4);
+  background: #ff1a1a;
+}
+
+#restart-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ---- Animations ---------------------------------------------------------- */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes winner-pop {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}

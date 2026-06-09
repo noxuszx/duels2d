@@ -217,21 +217,12 @@ Recommended distinction:
 
 - Public methods represent user actions.
 - Private methods continue to handle implementation details like spawning characters, rebuilding walls, and rendering.
+- Keep runtime state minimal; avoid adding flags like `started` or direct selection arrays unless they are read by gameplay logic.
 
 ### Game State
 
-The command feature will be easier if `GameManager` has explicit state flags.
-
-Recommended fields:
-
-```js
-this.started = false;
-this.paused = false;
-this.gameOver = false;
-this.selectedCharacterIds = ['nova', 'ember'];
-```
-
-The current code already has `gameOver`; `started` and `paused` would make command behavior clearer.
+The command feature should rely on the existing `paused` and `gameOver` state in `GameManager`.
+Avoid adding unused selection arrays or extra status flags unless gameplay logic reads them.
 
 ## Command Parsing
 

@@ -5,7 +5,7 @@ This document outlines the step-by-step plan for bringing the MVP to the next le
 ## 1. Container & Aspect Ratio (YT Shorts/TikTok Ready)
 **Goal:** Lock the simulator to a `9:16` aspect ratio instead of letting it fill arbitrary wide screens.
 *   **CSS Update:** Add a `.game-container` with `max-width: 1080px` and `aspect-ratio: 9/16`, centered on the screen.
-*   **Game.js Update:** Update `_resizeCanvas()` and `_rebuildWalls()` in the `GameManager` to build the Matter.js physics walls around this new container's dimensions rather than `window.innerWidth/innerHeight`.
+*   **Game.js Update:** Update `_resizeCanvas()` in the `GameManager` to size the playfield around the container dimensions rather than `window.innerWidth/innerHeight`.
 
 ## 2. Decoupling Hitboxes & Image Rendering
 **Goal:** Allow artwork to be larger or smaller than the physical Matter.js bouncing body.

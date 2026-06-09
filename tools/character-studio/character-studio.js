@@ -415,7 +415,7 @@ class CharacterStudio {
       ctx.restore();
     }
 
-    const plusSize = radius * 1.65;
+    const plusSize = radius * 2;
     const plusX = centerX - plusSize / 2 + config.healthBarOffset.x;
     const plusY = centerY - radius - 20 + config.healthBarOffset.y;
 

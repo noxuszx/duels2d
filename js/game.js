@@ -29,8 +29,7 @@ const { Engine, Runner, Bodies, Body, World, Events } = Matter;
    name        {string}   Display name rendered above the ball.
    maxHealth   {number}   Starting HP.
    color       {string}   Fallback fill colour when no sprite is provided.
-   glowColor   {string}   Canvas shadow colour for the aura effect.
-   radius      {number}   Visual sizing base used by sprites and health bars.
+    radius      {number}   Visual sizing base used by sprites and health bars.
    hitbox      {object?}  Physics shape. Supports circle or box.
    baseDamage  {number}   HP removed per valid hit.
    speed       {number}   Initial launch speed (px/frame).
@@ -72,7 +71,6 @@ class Character {
     this.maxHealth     = config.maxHealth;
     this.currentHealth = config.maxHealth;
     this.color         = config.color;
-    this.glowColor     = config.glowColor;
     this.radius        = config.radius;
     this.hitbox        = this._normalizeHitbox(config);
     this.baseDamage    = config.baseDamage;
@@ -118,8 +116,6 @@ class Character {
 
     /* -- UI Offsets -------------------------------------------------------- */
     this.healthBarOffset = config.healthBarOffset ?? { x: 0, y: 0 };
-    this.nameOffset      = config.nameOffset      ?? { x: 0, y: 0 };
-
     /* -- PLAN 3: Howler.js audio ------------------------------------------- */
     /*
      * Howl instances prevent audio clipping via dedicated channels.
@@ -239,18 +235,15 @@ class GameManager {
   constructor() {
     /* -- Constants --------------------------------------------------------- */
     const cfg = window.GameConfig;
-    this.WALL_THICKNESS     = cfg.physics.wallThickness;
     this.COLLISION_COOLDOWN = cfg.physics.collisionCooldownMs;  // ms
     this.ARENA_BORDER       = cfg.arena.borderWidth;    // border width (px)
     this.VISUAL_OVERFLOW    = cfg.arena.visualOverflow ?? 160;
 
     /* -- State ------------------------------------------------------------- */
-    this.started    = true;
     this.paused     = false;
     this.characters = [];
     this.damageIndicators = [];
     this.gameOver   = false;
-    this.selectedCharacterIds = ['womanguy', 'chefguy']; // Default based on config index
     this._animId    = null;
 
     /* -- Matter.js --------------------------------------------------------- */
@@ -275,7 +268,6 @@ class GameManager {
      */
     const ro = new ResizeObserver(() => {
       this._resizeCanvas();
-      this._rebuildWalls();
     });
     ro.observe(this.container);
 
@@ -287,7 +279,6 @@ class GameManager {
   _applyConfigDOM() {
     const cfg = window.GameConfig;
     document.body.style.background = cfg.arena.backgroundColor;
-    this.container.style.background = cfg.arena.containerColor;
     
     this.hudEls.status.textContent = cfg.text.statusFight;
     document.getElementById('game-footer').textContent = cfg.text.footer;
@@ -319,15 +310,6 @@ class GameManager {
       aw: this.arenaW,
       ah: this.arenaH,
     };
-  }
-
-  /* -------------------------------------------------------------------------
-     Walls sit flush with the container edges
-     ------------------------------------------------------------------------- */
-  _rebuildWalls() {
-    const old = this.world.bodies.filter(b => b.isStatic && b.label === 'wall');
-    World.remove(this.world, old);
-    // Removed Matter.js wall bodies per Plan step 6.
   }
 
   /* -------------------------------------------------------------------------
@@ -567,8 +549,6 @@ class GameManager {
       }
 
       const isFlashing = char.hitFlashTimer > 0;
-      const drawColor  = isFlashing ? '#ffffff'              : char.color;
-      const glowColor  = isFlashing ? 'rgba(255,255,255,0.8)' : char.glowColor;
 
       /* -- Glow aura removed per request -------------------------------------------------------- */
 
@@ -719,14 +699,11 @@ class GameManager {
   _restart() {
     this.hudEls.status.textContent = window.GameConfig.text.statusFight;
     this.gameOver = false;
-    this.started  = true;
     this.paused   = false;
 
     if (this._animId) cancelAnimationFrame(this._animId);
 
-    const walls = this.world.bodies.filter(b => b.isStatic && b.label === 'wall');
     World.clear(this.world, false);
-    World.add(this.world, walls);
 
     this.damageIndicators = [];
     this._spawnCharacters();
@@ -738,7 +715,6 @@ class GameManager {
      ========================================================================= */
   start() {
     if (this.gameOver) return;
-    this.started = true;
     this.paused = false;
   }
 
@@ -760,7 +736,6 @@ class GameManager {
      Init
      ------------------------------------------------------------------------- */
   _init() {
-    this._rebuildWalls();
     this._spawnCharacters();
     this._registerCollisionEvents();
     this._startRenderLoop();

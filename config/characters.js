@@ -4,7 +4,6 @@ window.CharacterConfigs = [
     "name": "WOMANGUY",
     "maxHealth": 200,
     "color": "#00d4ff",
-    "glowColor": "rgba(0, 212, 255, 0.6)",
     "radius": 30,
     "hitbox": {
       "type": "box",
@@ -34,7 +33,6 @@ window.CharacterConfigs = [
     "name": "CHEFGUY",
     "maxHealth": 200,
     "color": "#ff4d6d",
-    "glowColor": "rgba(255, 77, 109, 0.6)",
     "radius": 30,
     "hitbox": {
       "type": "box",

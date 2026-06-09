@@ -77,7 +77,7 @@ class CommandLineController {
 
     switch (command) {
       case 'start':
-        this.game.restart();
+        this.game.start();
         this.close();
         break;
 

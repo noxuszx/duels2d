@@ -2,8 +2,7 @@ window.GameConfig = {
   physics: {
     globalSpeedMultiplier: 0.15, // Multiplies the base speed of all characters
     wallThickness: 60,
-    collisionCooldownMs: 300,
-    particleCount: 18
+    collisionCooldownMs: 300
   },
   arena: {
     borderWidth: 15,

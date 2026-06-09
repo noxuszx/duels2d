@@ -437,11 +437,21 @@ class CharacterStudio {
     ctx.lineJoin = "round";
     ctx.stroke();
 
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `bold ${Math.max(12, plusSize * 0.28)}px sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(String(config.maxHealth ?? 100), plusX + plusSize / 2, plusY + plusSize / 2);
+    const indicatorCfg = window.IndicatorConfig;
+    const textCfg = indicatorCfg.text;
+    const fontSize = Math.max(
+      indicatorCfg.health.minFontSize,
+      plusSize * indicatorCfg.health.sizeMultiplier,
+    );
+    const healthText = String(config.maxHealth ?? 100);
+    ctx.fillStyle = textCfg.fillColor;
+    ctx.strokeStyle = textCfg.strokeColor;
+    ctx.lineWidth = textCfg.strokeWidth;
+    ctx.font = `${textCfg.weight} ${fontSize}px ${textCfg.family}`;
+    ctx.textAlign = textCfg.align;
+    ctx.textBaseline = textCfg.baseline;
+    ctx.strokeText(healthText, plusX + plusSize / 2, plusY + plusSize / 2);
+    ctx.fillText(healthText, plusX + plusSize / 2, plusY + plusSize / 2);
     ctx.restore();
   }
 }

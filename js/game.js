@@ -241,14 +241,13 @@ class GameManager {
     const cfg = window.GameConfig;
     this.WALL_THICKNESS     = cfg.physics.wallThickness;
     this.COLLISION_COOLDOWN = cfg.physics.collisionCooldownMs;  // ms
-    this.PARTICLE_COUNT     = cfg.physics.particleCount;
     this.ARENA_BORDER       = cfg.arena.borderWidth;    // border width (px)
 
     /* -- State ------------------------------------------------------------- */
     this.started    = true;
     this.paused     = false;
     this.characters = [];
-    this.particles  = [];
+    this.damageIndicators = [];
     this.gameOver   = false;
     this.selectedCharacterIds = ['womanguy', 'chefguy']; // Default based on config index
     this._animId    = null;
@@ -365,11 +364,8 @@ class GameManager {
         const hitA = charA.takeDamage(charB.baseDamage, now, this.COLLISION_COOLDOWN);
         const hitB = charB.takeDamage(charA.baseDamage, now, this.COLLISION_COOLDOWN);
 
-        if (hitA || hitB) {
-          const mx = (charA.body.position.x + charB.body.position.x) / 2;
-          const my = (charA.body.position.y + charB.body.position.y) / 2;
-          this._spawnParticles(mx, my, charA.color, charB.color);
-        }
+        if (hitA) this._spawnDamageIndicator(charA, charB.baseDamage);
+        if (hitB) this._spawnDamageIndicator(charB, charA.baseDamage);
       });
     });
 
@@ -459,30 +455,30 @@ class GameManager {
   }
 
   /* -------------------------------------------------------------------------
-     Particles
+     Damage indicators
      ------------------------------------------------------------------------- */
-  _spawnParticles(x, y, colorA, colorB) {
-    for (let i = 0; i < this.PARTICLE_COUNT; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 2 + Math.random() * 5;
-      this.particles.push({
-        x, y,
-        vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-        life:  1.0,
-        decay: 0.04 + Math.random() * 0.04,
-        size:  1.5 + Math.random() * 2.5,
-        color: Math.random() < 0.5 ? colorA : colorB,
-      });
-    }
+  _spawnDamageIndicator(char, amount) {
+    const pos = char.body.position;
+    const cfg = window.IndicatorConfig.damage;
+    this.damageIndicators.push({
+      text: `-${amount}`,
+      x: pos.x + (Math.random() - 0.5) * char.radius,
+      y: pos.y - char.hitbox.halfHeight * 0.35,
+      vy: cfg.driftY,
+      life: 1,
+      decay: cfg.fadeRate,
+      color: cfg.color,
+      fontSize: Math.max(cfg.minFontSize, char.radius * cfg.sizeMultiplier),
+    });
   }
 
-  _updateParticles() {
-    for (let i = this.particles.length - 1; i >= 0; i--) {
-      const p = this.particles[i];
-      p.x += p.vx; p.y += p.vy;
-      p.vx *= 0.92; p.vy *= 0.92;
-      p.life -= p.decay;
-      if (p.life <= 0) this.particles.splice(i, 1);
+  _updateDamageIndicators() {
+    for (let i = this.damageIndicators.length - 1; i >= 0; i--) {
+      const indicator = this.damageIndicators[i];
+      indicator.y += indicator.vy;
+      indicator.vy *= window.IndicatorConfig.damage.velocityDamping;
+      indicator.life -= indicator.decay;
+      if (indicator.life <= 0) this.damageIndicators.splice(i, 1);
     }
   }
 
@@ -495,7 +491,7 @@ class GameManager {
       this._animId = requestAnimationFrame(loop);
       if (!this.paused) {
         Runner.tick(this.runner, this.engine, performance.now());
-        this._updateParticles();
+        this._updateDamageIndicators();
       }
 
       const W = this.W, H = this.H;
@@ -507,11 +503,11 @@ class GameManager {
       /* Red arena border (drawn around the canvas edges) */
       this._drawArenaBorder(ctx, W, H);
 
-      /* Particles */
-      this._drawParticles(ctx);
-
       /* Characters (bodies + weapons + health bars) */
       this._drawCharacters(ctx);
+
+      /* Floating damage numbers */
+      this._drawDamageIndicators(ctx);
 
       /* Win check */
       if (!this.gameOver) this._checkWinCondition();
@@ -529,16 +525,19 @@ class GameManager {
     ctx.restore();
   }
 
-  _drawParticles(ctx) {
-    this.particles.forEach(p => {
+  _drawDamageIndicators(ctx) {
+    const textCfg = window.IndicatorConfig.text;
+    this.damageIndicators.forEach(indicator => {
       ctx.save();
-      ctx.globalAlpha = Math.max(0, p.life);
-      ctx.fillStyle   = p.color;
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur  = 6;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.globalAlpha = Math.max(0, indicator.life);
+      ctx.fillStyle = indicator.color;
+      ctx.strokeStyle = textCfg.strokeColor;
+      ctx.lineWidth = textCfg.strokeWidth;
+      ctx.font = `${textCfg.weight} ${indicator.fontSize}px ${textCfg.family}`;
+      ctx.textAlign = textCfg.align;
+      ctx.textBaseline = textCfg.baseline;
+      ctx.strokeText(indicator.text, indicator.x, indicator.y);
+      ctx.fillText(indicator.text, indicator.x, indicator.y);
       ctx.restore();
     });
   }
@@ -650,8 +649,9 @@ class GameManager {
      Plus-shaped health indicator rendered above each character
      ------------------------------------------------------------------------- */
   _drawInlineHealthBar(ctx, char, pos, r) {
+    const indicatorCfg = window.IndicatorConfig;
     const ratio = char.healthRatio;
-    const size = r * 1.65;
+    const size = r * 2;
     const x = pos.x - size / 2 + char.healthBarOffset.x;
     const y = pos.y - r - 20 + char.healthBarOffset.y;
     const hue = ratio > 0.5 ? 120 : ratio > 0.25 ? 50 : 0;
@@ -676,10 +676,18 @@ class GameManager {
     ctx.lineJoin = 'round';
     ctx.stroke();
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${Math.max(12, size * 0.28)}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    const textCfg = indicatorCfg.text;
+    const fontSize = Math.max(
+      indicatorCfg.health.minFontSize,
+      size * indicatorCfg.health.sizeMultiplier,
+    );
+    ctx.fillStyle = textCfg.fillColor;
+    ctx.strokeStyle = textCfg.strokeColor;
+    ctx.lineWidth = textCfg.strokeWidth;
+    ctx.font = `${textCfg.weight} ${fontSize}px ${textCfg.family}`;
+    ctx.textAlign = textCfg.align;
+    ctx.textBaseline = textCfg.baseline;
+    ctx.strokeText(String(Math.ceil(char.currentHealth)), x + size / 2, y + size / 2);
     ctx.fillText(String(Math.ceil(char.currentHealth)), x + size / 2, y + size / 2);
     ctx.restore();
   }
@@ -723,7 +731,7 @@ class GameManager {
     World.clear(this.world, false);
     World.add(this.world, walls);
 
-    this.particles = [];
+    this.damageIndicators = [];
     this._spawnCharacters();
     this._startRenderLoop();
   }

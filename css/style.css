@@ -55,7 +55,7 @@ html, body {
    ============================================================================ */
 #game-container {
   position: relative;
-  background: transparent;
+  background: #ffffff;
 
   /*
    * Constrain width, let height follow aspect ratio, accounting for top/bottom margins.

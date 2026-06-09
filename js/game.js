@@ -12,7 +12,7 @@
    PLANS IMPLEMENTED
    [1] 9:16 Container  -- _resizeCanvas() reads #game-container, not window
    [2] Decoupled Hitboxes -- drawImage() with imageScale / imageOffset support
-   [3] Howler.js Audio    -- Howl instances per character for clash sounds
+   [3] Sound Manifest     -- Howl instances from config/sounds.js, with shared fallbacks
    [4] 2-Pose Weapons     -- weaponIdle / weaponAttack image swap on hit
    ============================================================================ */
 
@@ -40,9 +40,9 @@ const { Engine, Runner, Bodies, Body, World, Events } = Matter;
                           Set > 1 to make the art larger than the hitbox.
    imageOffset {object?}  { x, y } pixel nudge applied after centering. Default {x:0,y:0}.
 
-   PLAN 3 -- Howler.js audio
-   sfxClash    {string?}  Path to clash / hit sound. e.g. 'assets/sfx/nova_clash.mp3'
-   sfxDeath    {string?}  Path to KO / death sound.
+   PLAN 3 -- Sound manifest audio
+   Sounds are loaded from config/sounds.js by character ID and sound type.
+   Shared sounds live under window.SoundManifest.shared and are reused by all characters.
 
    PLAN 4 -- 2-Pose Weapons
    weaponIdle   {string?} Path to weapon-idle overlay image.
@@ -53,7 +53,7 @@ const { Engine, Runner, Bodies, Body, World, Events } = Matter;
 /* CharacterConfigs is now loaded globally from config/characters.js */
 /* ============================================================================
    S2  CHARACTER CLASS
-   Wraps a Matter.js Body, game state, image assets, and Howl audio.
+   Wraps a Matter.js Body, game state, image assets, and sound pools.
    ============================================================================ */
 
 class Character {
@@ -118,35 +118,10 @@ class Character {
 
     /* -- UI Offsets -------------------------------------------------------- */
     this.healthBarOffset = config.healthBarOffset ?? { x: 0, y: 0 };
-    /* -- PLAN 3: Howler.js audio ------------------------------------------- */
-    /*
-     * Howl instances prevent audio clipping via dedicated channels.
-     * Each character carries its own sounds so the right voice plays.
-     *
-     * To activate: uncomment sfxClash / sfxDeath in CharacterConfigs above
-     * and drop the audio files into assets/sfx/.
-     *
-     * Howler auto-unlocks the AudioContext on first user gesture, so sounds
-     * will work correctly even on mobile browsers.
-     */
-    this.sfxClash = null;
-    this.sfxDeath = null;
-    if (typeof Howl !== 'undefined') {
-      if (config.sfxClash) {
-        this.sfxClash = new Howl({
-          src:    [config.sfxClash],
-          volume: 0.7,
-          /*
-           * PLAN 3 extension: use Howler sprite sheets for multiple
-           * clash variations. Example:
-           * sprite: { hit1: [0, 300], hit2: [400, 300] }
-           */
-        });
-      }
-      if (config.sfxDeath) {
-        this.sfxDeath = new Howl({ src: [config.sfxDeath], volume: 0.9 });
-      }
-    }
+    /* -- PLAN 3: Sound manifest audio -------------------------------------- */
+    this.soundPools = this._createSoundPools();
+    this.sharedSoundPools = Character._getSharedSoundPools();
+    this.soundCooldowns = {};
   }
 
   /* Private: generic image loader (sets this[key] on load) */
@@ -221,6 +196,71 @@ class Character {
     return { x, y, width, height };
   }
 
+  _createSoundPools() {
+    if (typeof Howl === 'undefined') return {};
+
+    const manifest = window.SoundManifest?.characters?.[this.id] ?? {};
+    const pools = {};
+
+    Object.entries(manifest).forEach(([type, paths]) => {
+      if (!Array.isArray(paths) || paths.length === 0) return;
+
+      pools[type] = paths.map(src => new Howl({
+        src: [src],
+        volume: Character._volumeForSoundType(type),
+      }));
+    });
+
+    return pools;
+  }
+
+  static _getSharedSoundPools() {
+    if (typeof Howl === 'undefined') return {};
+    if (Character._sharedSoundPoolCache) return Character._sharedSoundPoolCache;
+
+    Character._sharedSoundPoolCache = Character._buildSoundPools(window.SoundManifest?.shared ?? {});
+    return Character._sharedSoundPoolCache;
+  }
+
+  static _buildSoundPools(manifest) {
+    const pools = {};
+
+    Object.entries(manifest).forEach(([type, paths]) => {
+      if (!Array.isArray(paths) || paths.length === 0) return;
+
+      pools[type] = paths.map(src => new Howl({
+        src: [src],
+        volume: Character._volumeForSoundType(type),
+      }));
+    });
+
+    return pools;
+  }
+
+  static _volumeForSoundType(type) {
+    const audioConfig = window.GameConfig.audio ?? {};
+    const volumes = audioConfig.volumes ?? {};
+
+    if (volumes[type] != null) return volumes[type];
+    if (type === 'body-bounce') return audioConfig.bounceVolume ?? 0.55;
+    if (type === 'death') return 0.9;
+    return 0.65;
+  }
+
+  playSound(type, cooldownMs = null) {
+    const pool = this.soundPools[type] ?? this.sharedSoundPools[type];
+    if (!pool || pool.length === 0) return;
+
+    const audioConfig = window.GameConfig.audio ?? {};
+    const resolvedCooldown = cooldownMs ?? audioConfig.defaultCooldownMs ?? audioConfig.bounceCooldownMs ?? 80;
+    const now = performance.now();
+    const lastPlayed = this.soundCooldowns[type] ?? 0;
+    if (resolvedCooldown > 0 && now - lastPlayed < resolvedCooldown) return;
+
+    this.soundCooldowns[type] = now;
+    pool[Math.floor(Math.random() * pool.length)].play();
+  }
+
   /**
    * Apply damage, respecting collision cooldown.
    * @param {number} amount     HP to subtract.
@@ -233,11 +273,8 @@ class Character {
 
     this._lastHitTime  = nowMs;
     this.currentHealth = Math.max(0, this.currentHealth - amount);
-    this.hitFlashTimer = 8;   // 8-frame body flash
+    this.hitFlashTimer = 8;   // brief visible hit flash
     this.attackTimer   = 12;  // PLAN 4: show weaponAttack pose for 12 frames
-
-    /* PLAN 3: play clash sound via Howler (non-clipping) */
-    if (this.sfxClash) this.sfxClash.play();
 
     /*
      * UNIQUE ATTACK HOOK -- extend per-character here:
@@ -251,8 +288,7 @@ class Character {
 
   /** Called when this character dies. */
   onDeath() {
-    /* PLAN 3: play death sound */
-    if (this.sfxDeath) this.sfxDeath.play();
+    this.playSound('death', 0);
 
     /*
      * FUTURE VOICELINE HOOK:
@@ -284,6 +320,7 @@ class GameManager {
     this.paused     = false;
     this.characters = [];
     this.damageIndicators = [];
+    this.hitSparks = [];
     this.gameOver   = false;
     this._animId    = null;
 
@@ -394,8 +431,16 @@ class GameManager {
         const hitA = charA.takeDamage(charB.baseDamage, now, this.COLLISION_COOLDOWN);
         const hitB = charB.takeDamage(charA.baseDamage, now, this.COLLISION_COOLDOWN);
 
-        if (hitA) this._spawnDamageIndicator(charA, charB.baseDamage);
-        if (hitB) this._spawnDamageIndicator(charB, charA.baseDamage);
+        if (hitA) {
+          charA.playSound('body-bounce');
+          this._spawnDamageIndicator(charA, charB.baseDamage);
+          this._spawnHitSpark(charA.body.position, charA.color);
+        }
+        if (hitB) {
+          charB.playSound('body-bounce');
+          this._spawnDamageIndicator(charB, charA.baseDamage);
+          this._spawnHitSpark(charB.body.position, charB.color);
+        }
       });
     });
 
@@ -457,6 +502,7 @@ class GameManager {
         
         // 4. Add tiny random deflection
         if (hitWall) {
+           char.playSound('body-bounce');
            const currentAngle = Math.atan2(vel.y, vel.x);
            const jitter = (Math.random() - 0.5) * (16 * Math.PI / 180);
            const newAngle = currentAngle + jitter;
@@ -500,6 +546,25 @@ class GameManager {
     });
   }
 
+  _spawnHitSpark(pos, color) {
+    if (window.GameConfig.effects?.hitSpark === false) return;
+
+    const count = 6;
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+      const speed = 2 + Math.random() * 2;
+      this.hitSparks.push({
+        x: pos.x,
+        y: pos.y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        decay: 0.12 + Math.random() * 0.04,
+        color,
+      });
+    }
+  }
+
   _updateDamageIndicators() {
     for (let i = this.damageIndicators.length - 1; i >= 0; i--) {
       const indicator = this.damageIndicators[i];
@@ -507,6 +572,18 @@ class GameManager {
       indicator.vy *= window.IndicatorConfig.damage.velocityDamping;
       indicator.life -= indicator.decay;
       if (indicator.life <= 0) this.damageIndicators.splice(i, 1);
+    }
+  }
+
+  _updateHitSparks() {
+    for (let i = this.hitSparks.length - 1; i >= 0; i--) {
+      const spark = this.hitSparks[i];
+      spark.x += spark.vx;
+      spark.y += spark.vy;
+      spark.vx *= 0.92;
+      spark.vy *= 0.92;
+      spark.life -= spark.decay;
+      if (spark.life <= 0) this.hitSparks.splice(i, 1);
     }
   }
 
@@ -520,6 +597,7 @@ class GameManager {
       if (!this.paused) {
         Runner.tick(this.runner, this.engine, performance.now());
         this._updateDamageIndicators();
+        this._updateHitSparks();
       }
 
       const W = this.W, H = this.H;
@@ -535,6 +613,9 @@ class GameManager {
 
       /* Floating damage numbers */
       this._drawDamageIndicators(ctx);
+
+      /* Hit sparks */
+      this._drawHitSparks(ctx);
 
       /* Win check */
       if (!this.gameOver) this._checkWinCondition();
@@ -566,6 +647,20 @@ class GameManager {
       ctx.textBaseline = textCfg.baseline;
       ctx.strokeText(indicator.text, indicator.x, indicator.y);
       ctx.fillText(indicator.text, indicator.x, indicator.y);
+      ctx.restore();
+    });
+  }
+
+  _drawHitSparks(ctx) {
+    this.hitSparks.forEach(spark => {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, spark.life);
+      ctx.strokeStyle = spark.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(spark.x, spark.y);
+      ctx.lineTo(spark.x - spark.vx * 2, spark.y - spark.vy * 2);
+      ctx.stroke();
       ctx.restore();
     });
   }
@@ -611,6 +706,12 @@ class GameManager {
           crop.x, crop.y, crop.width, crop.height,
           dx, dy, dw, dh
         );
+
+        if (isFlashing) {
+          ctx.globalCompositeOperation = 'source-atop';
+          ctx.fillStyle = 'rgba(255, 0, 0, 0.55)';
+          ctx.fillRect(dx, dy, dw, dh);
+        }
         ctx.restore();
       } else {
         /* Fallback: coloured circle with radial highlight */
@@ -625,8 +726,13 @@ class GameManager {
         ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
         ctx.fillStyle = grad;
         ctx.fill();
+        if (isFlashing) {
+          ctx.globalCompositeOperation = 'source-atop';
+          ctx.fillStyle = 'rgba(255, 0, 0, 0.55)';
+          ctx.fill();
+        }
         /* Stroke ring */
-        ctx.strokeStyle = isFlashing ? '#fff' : char.color;
+        ctx.strokeStyle = isFlashing ? '#ff4d4d' : char.color;
         ctx.lineWidth   = 2.5;
         ctx.stroke();
         ctx.restore();
@@ -753,6 +859,7 @@ class GameManager {
     World.clear(this.world, false);
 
     this.damageIndicators = [];
+    this.hitSparks = [];
     this._spawnCharacters();
     this._startRenderLoop();
   }

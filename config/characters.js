@@ -1,8 +1,8 @@
 window.CharacterConfigs = [
   {
     "id": "womanguy",
-    "name": "WOMANGUY",
-    "maxHealth": 200,
+    "name": "Woman Guy",
+    "maxHealth": 1000,
     "color": "#00d4ff",
     "radius": 30,
     "hitbox": {
@@ -12,7 +12,7 @@ window.CharacterConfigs = [
     },
     "baseDamage": 18,
     "speed": 10,
-    "image": "assets/characters/nova/womanguy.out.png",
+    "image": "assets/characters/womanguy/womanguy.out.png",
     "imageScale": 2.6,
     "imageOffset": {
       "x": 0,
@@ -40,8 +40,8 @@ window.CharacterConfigs = [
   },
   {
     "id": "chefguy",
-    "name": "CHEFGUY",
-    "maxHealth": 200,
+    "name": "Chef Guy",
+    "maxHealth": 1000,
     "color": "#ff4d6d",
     "radius": 30,
     "hitbox": {
@@ -49,9 +49,9 @@ window.CharacterConfigs = [
       "width": 78,
       "height": 112
     },
-    "baseDamage": 200,
+    "baseDamage": 10,
     "speed": 10,
-    "image": "assets/characters/ember/chefguy.out.png",
+    "image": "assets/characters/chefguy/chefguy.out.png",
     "imageScale": 2.4,
     "imageOffset": {
       "x": 0,

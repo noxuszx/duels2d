@@ -138,87 +138,10 @@ html, body {
   50%       { opacity: 0.5; }
 }
 
-/* ---- Winner Screen ------------------------------------------------------- */
-#winner-screen {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.80);
-  backdrop-filter: blur(10px);
-  animation: fade-in 0.5s ease forwards;
-}
-
-#winner-screen.hidden {
-  display: none;
-}
-
-#winner-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
-  padding: 52px 64px;
-  background: #ffffff;
-  border: 2px solid rgba(0,0,0,0.10);
-  border-radius: var(--radius-md);
-  box-shadow: 0 8px 60px rgba(0,0,0,0.15);
-  animation: winner-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
-}
-
-#winner-label {
-  font-family: var(--font-hud);
-  font-size: 0.75rem;
-  letter-spacing: 0.35em;
-  color: var(--clr-gold);
-  text-transform: uppercase;
-}
-
-#winner-name {
-  font-family: var(--font-hud);
-  font-size: 2.8rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  color: #1a1a2e;
-}
-
-#restart-btn {
-  pointer-events: all;
-  cursor: pointer;
-  margin-top: 8px;
-  padding: 12px 36px;
-  font-family: var(--font-hud);
-  font-size: 0.8rem;
-  letter-spacing: 0.15em;
-  color: #fff;
-  background: var(--clr-red);
-  border: none;
-  border-radius: var(--radius-full);
-  transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
-  box-shadow: 0 4px 20px rgba(200,0,0,0.3);
-}
-
-#restart-btn:hover {
-  transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 8px 30px rgba(200,0,0,0.4);
-  background: #ff1a1a;
-}
-
-#restart-btn:active {
-  transform: translateY(0) scale(0.98);
-}
-
 /* ---- Animations ---------------------------------------------------------- */
 @keyframes fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }
-}
-
-@keyframes winner-pop {
-  from { opacity: 0; transform: scale(0.7); }
-  to   { opacity: 1; transform: scale(1); }
 }
 
 /* ---- Command Line -------------------------------------------------------- */

@@ -266,13 +266,7 @@ class GameManager {
     /* -- HUD refs ---------------------------------------------------------- */
     this.hudEls = {
       status:    document.getElementById('hud-status'),
-      winScreen: document.getElementById('winner-screen'),
-      winName:   document.getElementById('winner-name'),
     };
-
-    /* -- Event listeners --------------------------------------------------- */
-    document.getElementById('restart-btn')
-      .addEventListener('click', () => this._restart());
 
     /*
      * PLAN 1: resize observer watches the container box, not the window,
@@ -296,7 +290,6 @@ class GameManager {
     
     this.hudEls.status.textContent = cfg.text.statusFight;
     document.getElementById('game-footer').textContent = cfg.text.footer;
-    document.getElementById('winner-label').textContent = cfg.text.winPrefix;
   }
 
   /* -------------------------------------------------------------------------
@@ -700,26 +693,18 @@ class GameManager {
     if (dead.length === 0) return;
 
     this.gameOver = true;
-    this.hudEls.status.textContent = window.GameConfig.text.statusKO;
-
-    const winner     = this.characters.find(c => !c.isDead);
-    const winnerName = winner ? winner.name : window.GameConfig.text.drawText;
 
     /* PLAN 3: trigger death audio on the losing character */
     dead.forEach(c => c.onDeath());
 
-    this.hudEls.winName.textContent = winnerName;
-    this.hudEls.winScreen.classList.remove('hidden');
-
     /* FUTURE VOICELINE HOOK:
-     * if (winner) playVoiceline(winner.id, 'victory'); */
+     * play match-end audio here if needed. */
   }
 
   /* -------------------------------------------------------------------------
      Restart
      ------------------------------------------------------------------------- */
   _restart() {
-    this.hudEls.winScreen.classList.add('hidden');
     this.hudEls.status.textContent = window.GameConfig.text.statusFight;
     this.gameOver = false;
     this.started  = true;

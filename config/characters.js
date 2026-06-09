@@ -41,7 +41,7 @@ window.CharacterConfigs = [
       "width": 66,
       "height": 133
     },
-    "baseDamage": 22,
+    "baseDamage": 200,
     "speed": 10,
     "image": "assets/characters/ember/chefguy.out.png",
     "imageScale": 2.4,

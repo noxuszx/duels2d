@@ -77,14 +77,8 @@ class CommandLineController {
 
     switch (command) {
       case 'start':
-        if (this.game.gameOver) {
-          this.status.textContent = 'Use restart to begin a new match';
-        } else if (!this.game.paused && this.game.started) {
-          this.status.textContent = 'Already running';
-        } else {
-          this.game.start();
-          this.close();
-        }
+        this.game.restart();
+        this.close();
         break;
 
       case 'pause':

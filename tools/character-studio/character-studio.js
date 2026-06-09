@@ -329,6 +329,24 @@ class CharacterStudio {
     this.ctx.restore();
   }
 
+  _tracePlusPath(x, y, size) {
+    const unit = size / 3;
+    this.ctx.beginPath();
+    this.ctx.moveTo(x + unit, y);
+    this.ctx.lineTo(x + unit * 2, y);
+    this.ctx.lineTo(x + unit * 2, y + unit);
+    this.ctx.lineTo(x + size, y + unit);
+    this.ctx.lineTo(x + size, y + unit * 2);
+    this.ctx.lineTo(x + unit * 2, y + unit * 2);
+    this.ctx.lineTo(x + unit * 2, y + size);
+    this.ctx.lineTo(x + unit, y + size);
+    this.ctx.lineTo(x + unit, y + unit * 2);
+    this.ctx.lineTo(x, y + unit * 2);
+    this.ctx.lineTo(x, y + unit);
+    this.ctx.lineTo(x + unit, y + unit);
+    this.ctx.closePath();
+  }
+
   _draw() {
     const ctx = this.ctx;
     const config = this._currentConfig();
@@ -397,22 +415,33 @@ class CharacterStudio {
       ctx.restore();
     }
 
-    const barWidth = radius * 2.4;
-    const barHeight = 7;
-    const barX = centerX - barWidth / 2 + config.healthBarOffset.x;
-    const barY = centerY - radius - 20 + config.healthBarOffset.y;
+    const plusSize = radius * 1.65;
+    const plusX = centerX - plusSize / 2 + config.healthBarOffset.x;
+    const plusY = centerY - radius - 20 + config.healthBarOffset.y;
 
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.15)";
-    ctx.beginPath();
-    ctx.roundRect(barX - 1, barY - 1, barWidth + 2, barHeight + 2, 4);
+    this._tracePlusPath(plusX, plusY, plusSize);
+    ctx.fillStyle = "#222222";
     ctx.fill();
+
+    ctx.save();
+    this._tracePlusPath(plusX, plusY, plusSize);
+    ctx.clip();
     ctx.fillStyle = "hsl(120, 90%, 40%)";
-    ctx.shadowColor = ctx.fillStyle;
-    ctx.shadowBlur = 4;
-    ctx.beginPath();
-    ctx.roundRect(barX, barY, barWidth, barHeight, 3);
-    ctx.fill();
+    ctx.fillRect(plusX, plusY, plusSize, plusSize);
+    ctx.restore();
+
+    this._tracePlusPath(plusX, plusY, plusSize);
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.28)";
+    ctx.lineWidth = 1.5;
+    ctx.lineJoin = "round";
+    ctx.stroke();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `bold ${Math.max(12, plusSize * 0.28)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(config.maxHealth ?? 100), plusX + plusSize / 2, plusY + plusSize / 2);
     ctx.restore();
   }
 }

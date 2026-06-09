@@ -628,31 +628,59 @@ class GameManager {
     });
   }
 
+  _tracePlusPath(ctx, x, y, size) {
+    const unit = size / 3;
+    ctx.beginPath();
+    ctx.moveTo(x + unit, y);
+    ctx.lineTo(x + unit * 2, y);
+    ctx.lineTo(x + unit * 2, y + unit);
+    ctx.lineTo(x + size, y + unit);
+    ctx.lineTo(x + size, y + unit * 2);
+    ctx.lineTo(x + unit * 2, y + unit * 2);
+    ctx.lineTo(x + unit * 2, y + size);
+    ctx.lineTo(x + unit, y + size);
+    ctx.lineTo(x + unit, y + unit * 2);
+    ctx.lineTo(x, y + unit * 2);
+    ctx.lineTo(x, y + unit);
+    ctx.lineTo(x + unit, y + unit);
+    ctx.closePath();
+  }
+
   /* -------------------------------------------------------------------------
-     Health bar rendered directly on canvas above each character
+     Plus-shaped health indicator rendered above each character
      ------------------------------------------------------------------------- */
   _drawInlineHealthBar(ctx, char, pos, r) {
-    const barW  = r * 2.4;
-    const barH  = 7;
-    const barX  = pos.x - barW / 2 + char.healthBarOffset.x;
-    const barY  = pos.y - r - 20 + char.healthBarOffset.y;
     const ratio = char.healthRatio;
+    const size = r * 1.65;
+    const x = pos.x - size / 2 + char.healthBarOffset.x;
+    const y = pos.y - r - 20 + char.healthBarOffset.y;
+    const hue = ratio > 0.5 ? 120 : ratio > 0.25 ? 50 : 0;
+    const fill = `hsl(${hue}, 90%, 40%)`;
+    const fillHeight = Math.max(0, Math.round(ratio * size));
 
     ctx.save();
-    /* Track */
-    ctx.fillStyle = 'rgba(0,0,0,0.15)';
-    ctx.beginPath();
-    ctx.roundRect(barX - 1, barY - 1, barW + 2, barH + 2, 4);
+    this._tracePlusPath(ctx, x, y, size);
+    ctx.fillStyle = '#222222';
     ctx.fill();
-    /* Fill: green -> yellow -> red */
-    const hue  = ratio > 0.5 ? 120 : ratio > 0.25 ? 50 : 0;
-    const fill = `hsl(${hue}, 90%, 40%)`;
-    ctx.fillStyle   = fill;
-    ctx.shadowColor = fill;
-    ctx.shadowBlur  = 4;
-    ctx.beginPath();
-    ctx.roundRect(barX, barY, barW * ratio, barH, 3);
-    ctx.fill();
+
+    ctx.save();
+    this._tracePlusPath(ctx, x, y, size);
+    ctx.clip();
+    ctx.fillStyle = fill;
+    ctx.fillRect(x, y + size - fillHeight, size, fillHeight);
+    ctx.restore();
+
+    this._tracePlusPath(ctx, x, y, size);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
+    ctx.lineWidth = 1.5;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${Math.max(12, size * 0.28)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(Math.ceil(char.currentHealth)), x + size / 2, y + size / 2);
     ctx.restore();
   }
 

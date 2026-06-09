@@ -21,7 +21,7 @@ window.CharacterConfigs = [
     },
     "healthBarOffset": {
       "x": 0,
-      "y": -41
+      "y": -76
     },
     "weaponScale": 1,
     "weaponOffset": {
@@ -51,7 +51,7 @@ window.CharacterConfigs = [
     },
     "healthBarOffset": {
       "x": 0,
-      "y": -37
+      "y": -75
     },
     "weaponScale": 1,
     "weaponOffset": {

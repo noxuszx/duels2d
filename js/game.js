@@ -242,6 +242,7 @@ class GameManager {
     this.WALL_THICKNESS     = cfg.physics.wallThickness;
     this.COLLISION_COOLDOWN = cfg.physics.collisionCooldownMs;  // ms
     this.ARENA_BORDER       = cfg.arena.borderWidth;    // border width (px)
+    this.VISUAL_OVERFLOW    = cfg.arena.visualOverflow ?? 160;
 
     /* -- State ------------------------------------------------------------- */
     this.started    = true;
@@ -297,14 +298,27 @@ class GameManager {
      Sizes the canvas pixel buffer to match the #game-container's layout box.
      ------------------------------------------------------------------------- */
   _resizeCanvas() {
-    const rect  = this.container.getBoundingClientRect();
-    this.W      = this.canvas.width  = Math.round(rect.width);
-    this.H      = this.canvas.height = Math.round(rect.height);
+    const rect = this.container.getBoundingClientRect();
+    const overflow = this.VISUAL_OVERFLOW;
+    this.arenaW = Math.round(rect.width);
+    this.arenaH = Math.round(rect.height);
+    this.W = this.canvas.width = this.arenaW + overflow * 2;
+    this.H = this.canvas.height = this.arenaH + overflow * 2;
+
+    this.canvas.style.left = `${-overflow}px`;
+    this.canvas.style.top = `${-overflow}px`;
+    this.canvas.style.width = `${this.W}px`;
+    this.canvas.style.height = `${this.H}px`;
   }
 
   /* Arena fills the full canvas (the container IS the arena now) */
   _getArena() {
-    return { ax: 0, ay: 0, aw: this.W, ah: this.H };
+    return {
+      ax: this.VISUAL_OVERFLOW,
+      ay: this.VISUAL_OVERFLOW,
+      aw: this.arenaW,
+      ah: this.arenaH,
+    };
   }
 
   /* -------------------------------------------------------------------------
@@ -364,8 +378,6 @@ class GameManager {
 
     /* Enforce constant velocity and manual bounds */
     Events.on(this.engine, 'beforeUpdate', () => {
-      if (this.gameOver) return;
-      
       const { ax, ay, aw, ah } = this._getArena();
       const bPadding = this.ARENA_BORDER || 0;
       
@@ -489,12 +501,11 @@ class GameManager {
 
       const W = this.W, H = this.H;
 
-      /* White fill */
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, W, H);
+      /* Clear to the page background so the arena sits on blue */
+      ctx.clearRect(0, 0, W, H);
 
-      /* Red arena border (drawn around the canvas edges) */
-      this._drawArenaBorder(ctx, W, H);
+      /* Arena border marks the logical hitbox bounds inside the overflow canvas. */
+      this._drawArenaBorder(ctx);
 
       /* Characters (bodies + weapons + health bars) */
       this._drawCharacters(ctx);
@@ -509,12 +520,13 @@ class GameManager {
   }
 
   /* Border around the canvas */
-  _drawArenaBorder(ctx, W, H) {
+  _drawArenaBorder(ctx) {
+    const { ax, ay, aw, ah } = this._getArena();
     const b = this.ARENA_BORDER;
     ctx.save();
     ctx.strokeStyle = window.GameConfig.arena.borderColor;
     ctx.lineWidth   = b * 2;   // double so the half inside is visible
-    ctx.strokeRect(0, 0, W, H);
+    ctx.strokeRect(ax, ay, aw, ah);
     ctx.restore();
   }
 

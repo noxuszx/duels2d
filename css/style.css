@@ -55,7 +55,7 @@ html, body {
    ============================================================================ */
 #game-container {
   position: relative;
-  background: #ffffff;
+  background: transparent;
 
   /*
    * Constrain width, let height follow aspect ratio, accounting for top/bottom margins.
@@ -71,8 +71,8 @@ html, body {
   border-radius: 2px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 
-  /* Ensure nothing escapes the container */
-  overflow: hidden;
+  /* The logical arena stays this size, but the canvas may draw UI/art outside. */
+  overflow: visible;
 }
 
 /* ---- Arena Canvas -------------------------------------------------------- */

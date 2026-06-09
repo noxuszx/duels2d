@@ -5,10 +5,11 @@ window.GameConfig = {
     collisionCooldownMs: 300
   },
   arena: {
-    borderWidth: 15,
+    borderWidth: 5,
     borderColor: '#000000',
     backgroundColor: '#006eff',
-    containerColor: '#ffffff'
+    containerColor: '#ffffff',
+    visualOverflow: 160
   },
   text: {
     titleMain: 'BLIND GUY VS GOOD GUY',

@@ -7,8 +7,8 @@ window.CharacterConfigs = [
     "radius": 30,
     "hitbox": {
       "type": "box",
-      "width": 72,
-      "height": 148
+      "width": 78,
+      "height": 112
     },
     "baseDamage": 18,
     "speed": 10,
@@ -22,10 +22,20 @@ window.CharacterConfigs = [
       "x": 0,
       "y": -76
     },
+    "hitboxOffset": {
+      "x": -5.684341886080802e-14,
+      "y": -15.000455989393828
+    },
     "weaponScale": 1,
     "weaponOffset": {
       "x": 0,
       "y": 0
+    },
+    "imageCrop": {
+      "x": 216,
+      "y": 39,
+      "width": 585,
+      "height": 768
     }
   },
   {
@@ -36,8 +46,8 @@ window.CharacterConfigs = [
     "radius": 30,
     "hitbox": {
       "type": "box",
-      "width": 66,
-      "height": 133
+      "width": 78,
+      "height": 112
     },
     "baseDamage": 200,
     "speed": 10,
@@ -51,10 +61,20 @@ window.CharacterConfigs = [
       "x": 0,
       "y": -75
     },
+    "hitboxOffset": {
+      "x": 0,
+      "y": 0
+    },
     "weaponScale": 1,
     "weaponOffset": {
       "x": 0,
       "y": 0
+    },
+    "imageCrop": {
+      "x": 199,
+      "y": 0,
+      "width": 633,
+      "height": 960
     }
   }
 ];

@@ -75,6 +75,7 @@ class Character {
     this.hitbox        = this._normalizeHitbox(config);
     this.baseDamage    = config.baseDamage;
     this.baseSpeed     = Math.sqrt(velX * velX + velY * velY); // lock speed to launch velocity
+    this.hitboxOffset  = config.hitboxOffset ?? { x: 0, y: 0 };
 
     /* -- Visual timers ----------------------------------------------------- */
     this.hitFlashTimer = 0;   // render frames remaining for white-flash
@@ -96,13 +97,14 @@ class Character {
     };
 
     this.body = this.hitbox.type === 'box'
-      ? Bodies.rectangle(spawnX, spawnY, this.hitbox.width, this.hitbox.height, bodyOptions)
-      : Bodies.circle(spawnX, spawnY, this.hitbox.radius, bodyOptions);
+      ? Bodies.rectangle(spawnX + this.hitboxOffset.x, spawnY + this.hitboxOffset.y, this.hitbox.width, this.hitbox.height, bodyOptions)
+      : Bodies.circle(spawnX + this.hitboxOffset.x, spawnY + this.hitboxOffset.y, this.hitbox.radius, bodyOptions);
     Body.setVelocity(this.body, { x: velX, y: velY });
 
     /* -- PLAN 2: Sprite / image assets ------------------------------------- */
     this.imageScale  = config.imageScale  ?? 1.0;
     this.imageOffset = config.imageOffset ?? { x: 0, y: 0 };
+    this.imageCrop   = config.imageCrop   ?? null;
     this.sprite      = null;   // loaded HTMLImageElement (body art)
     if (config.image) this._loadImage('sprite', config.image);
 
@@ -155,6 +157,27 @@ class Character {
     img.src = src;
   }
 
+  get visualPosition() {
+    return {
+      x: this.body.position.x - this.hitboxOffset.x,
+      y: this.body.position.y - this.hitboxOffset.y,
+    };
+  }
+
+  _getCropDrawRect(image, crop, drawR) {
+    const fullW = drawR * 2;
+    const fullH = drawR * 2;
+    const safeCrop = this._getImageCrop(image, crop);
+
+    return {
+      dx: -drawR + (safeCrop.x / image.naturalWidth) * fullW,
+      dy: -drawR + (safeCrop.y / image.naturalHeight) * fullH,
+      dw: (safeCrop.width / image.naturalWidth) * fullW,
+      dh: (safeCrop.height / image.naturalHeight) * fullH,
+      crop: safeCrop,
+    };
+  }
+
   _normalizeHitbox(config) {
     const fallbackRadius = config.radius ?? 30;
     const hitbox = config.hitbox ?? {};
@@ -178,6 +201,24 @@ class Character {
       halfWidth: radius,
       halfHeight: radius,
     };
+  }
+
+  _getImageCrop(image, crop) {
+    const fallback = {
+      x: 0,
+      y: 0,
+      width: image.naturalWidth,
+      height: image.naturalHeight
+    };
+    if (!crop) return fallback;
+
+    const nw = image.naturalWidth || fallback.width || 1;
+    const nh = image.naturalHeight || fallback.height || 1;
+    const x = Math.max(0, Math.min(crop.x ?? 0, nw - 1));
+    const y = Math.max(0, Math.min(crop.y ?? 0, nh - 1));
+    const width = Math.max(1, Math.min(crop.width ?? nw, nw - x));
+    const height = Math.max(1, Math.min(crop.height ?? nh, nh - y));
+    return { x, y, width, height };
   }
 
   /**
@@ -445,7 +486,7 @@ class GameManager {
      Damage indicators
      ------------------------------------------------------------------------- */
   _spawnDamageIndicator(char, amount) {
-    const pos = char.body.position;
+    const pos = char.visualPosition;
     const cfg = window.IndicatorConfig.damage;
     this.damageIndicators.push({
       text: `-${amount}`,
@@ -538,7 +579,8 @@ class GameManager {
     this.characters.forEach(char => {
       if (char.isDead) return;
 
-      const pos = char.body.position;
+      const pos = char.visualPosition;
+      const hitPos = char.body.position;
       const r   = char.radius;
       const ang = char.body.angle;
 
@@ -560,10 +602,15 @@ class GameManager {
          * spins naturally with collisions.
          */
         const drawR = r * char.imageScale;
+        const { crop, dx, dy, dw, dh } = char._getCropDrawRect(char.sprite, char.imageCrop, drawR);
         ctx.save();
         ctx.translate(pos.x + char.imageOffset.x, pos.y + char.imageOffset.y);
         ctx.rotate(ang);
-        ctx.drawImage(char.sprite, -drawR, -drawR, drawR * 2, drawR * 2);
+        ctx.drawImage(
+          char.sprite,
+          crop.x, crop.y, crop.width, crop.height,
+          dx, dy, dw, dh
+        );
         ctx.restore();
       } else {
         /* Fallback: coloured circle with radial highlight */

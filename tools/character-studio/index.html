@@ -31,6 +31,17 @@
         </select>
       </div>
 
+      <div class="control-actions hitbox-actions">
+        <button id="edit-hitbox-btn" type="button">Edit Hitbox</button>
+        <button id="apply-hitbox-btn" type="button" disabled>Apply Hitbox</button>
+        <button id="cancel-hitbox-btn" type="button" disabled>Cancel</button>
+      </div>
+
+      <div class="control-group">
+        <label for="hitbox-output">Hitbox Config</label>
+        <input type="text" id="hitbox-output" autocomplete="off" spellcheck="false" />
+      </div>
+
       <div class="control-group">
         <label>Hitbox Width: <span id="val-hitboxWidth"></span></label>
         <input type="range" id="hitboxWidth" min="10" max="180" step="1" />
@@ -59,6 +70,32 @@
       <div class="control-group">
         <label>Image Offset Y: <span id="val-imageOffsetY"></span></label>
         <input type="range" id="imageOffsetY" min="-200" max="200" step="1" />
+      </div>
+
+      <div class="control-group">
+        <label>Image Crop X: <span id="val-imageCropX"></span></label>
+        <input type="range" id="imageCropX" min="0" max="511" step="1" />
+      </div>
+
+      <div class="control-group">
+        <label>Image Crop Y: <span id="val-imageCropY"></span></label>
+        <input type="range" id="imageCropY" min="0" max="511" step="1" />
+      </div>
+
+      <div class="control-group">
+        <label>Image Crop Width: <span id="val-imageCropWidth"></span></label>
+        <input type="range" id="imageCropWidth" min="1" max="512" step="1" />
+      </div>
+
+      <div class="control-group">
+        <label>Image Crop Height: <span id="val-imageCropHeight"></span></label>
+        <input type="range" id="imageCropHeight" min="1" max="512" step="1" />
+      </div>
+
+      <div class="control-actions crop-actions">
+        <button id="crop-btn" type="button">Crop</button>
+        <button id="apply-crop-btn" type="button" disabled>Apply Crop</button>
+        <button id="cancel-crop-btn" type="button" disabled>Cancel</button>
       </div>
 
       <div class="control-group">

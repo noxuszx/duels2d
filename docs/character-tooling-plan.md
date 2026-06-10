@@ -1,5 +1,9 @@
 # Character Tooling Plan
 
+> [!NOTE]
+> **Status: Fully Implemented**
+> The Character Studio tool is located at `tools/character-studio/index.html` and is fully functional. It operates as a local utility to tune character hitboxes, offsets, health bar positions, and image crops.
+
 ## Goal
 
 Build a local-only Character Studio for authoring and tuning Duels2D fighters before they appear in the arena.

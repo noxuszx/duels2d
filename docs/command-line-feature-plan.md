@@ -1,5 +1,9 @@
 # Command Line Feature Plan
 
+> [!NOTE]
+> **Status: Implemented with Modifications**
+> The command line console is fully implemented under `js/command-line.js`. Note that the global toggle shortcut was changed from `Ctrl + Space` to the `/` key for quicker developer access.
+
 ## Goal
 
 Add an in-game command line that opens with `Ctrl + Space` and lets the user control the simulator without adding permanent buttons to the main UI.

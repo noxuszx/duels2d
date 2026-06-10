@@ -5,6 +5,7 @@ class CharacterStudio {
 
     this.configs = window.CharacterConfigs;
     this.activeConfigIndex = 0;
+    this.activePoseKey = "base";
     this.history = [];
     this.historyIndex = -1;
     this.isRestoring = false;
@@ -13,8 +14,12 @@ class CharacterStudio {
     this.cropDraft = null;
     this.hitboxDraft = null;
     this.dragState = null;
+    this.pendingBodyImageRequest = 0;
 
     this.select = document.getElementById("char-select");
+    this.poseSelect = document.getElementById("pose-select");
+    this.resetPoseBtn = document.getElementById("reset-pose-btn");
+    this.imageOutput = document.getElementById("image-output");
     this.hitboxType = document.getElementById("hitboxType");
     this.editHitboxBtn = document.getElementById("edit-hitbox-btn");
     this.applyHitboxBtn = document.getElementById("apply-hitbox-btn");
@@ -29,6 +34,8 @@ class CharacterStudio {
       hitboxWidth: document.getElementById("hitboxWidth"),
       hitboxHeight: document.getElementById("hitboxHeight"),
       hitboxRadius: document.getElementById("hitboxRadius"),
+      hitboxOffsetX: document.getElementById("hitboxOffsetX"),
+      hitboxOffsetY: document.getElementById("hitboxOffsetY"),
       imageScale: document.getElementById("imageScale"),
       imageOffsetX: document.getElementById("imageOffsetX"),
       imageOffsetY: document.getElementById("imageOffsetY"),
@@ -47,6 +54,8 @@ class CharacterStudio {
       hitboxWidth: document.getElementById("val-hitboxWidth"),
       hitboxHeight: document.getElementById("val-hitboxHeight"),
       hitboxRadius: document.getElementById("val-hitboxRadius"),
+      hitboxOffsetX: document.getElementById("val-hitboxOffsetX"),
+      hitboxOffsetY: document.getElementById("val-hitboxOffsetY"),
       imageScale: document.getElementById("val-imageScale"),
       imageOffsetX: document.getElementById("val-imageOffsetX"),
       imageOffsetY: document.getElementById("val-imageOffsetY"),
@@ -81,6 +90,23 @@ class CharacterStudio {
     this.select.addEventListener("change", (event) => {
       this.activeConfigIndex = Number.parseInt(event.target.value, 10);
       this._loadCurrentConfig();
+    });
+
+    this.poseSelect.addEventListener("change", (event) => {
+      this.activePoseKey = event.target.value;
+      this._onPoseChanged();
+    });
+
+    this.resetPoseBtn.addEventListener("click", () => this._resetCurrentPose());
+    this.imageOutput.addEventListener("change", () => this._applyImageOutput());
+    this.imageOutput.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      this._applyImageOutput();
+      this.imageOutput.select();
+    });
+    this.imageOutput.addEventListener("paste", () => {
+      setTimeout(() => this._applyImageOutput(), 0);
     });
 
     this.hitboxType.addEventListener("change", () => {
@@ -153,14 +179,6 @@ class CharacterStudio {
     this.canvas.addEventListener("pointerleave", (event) => this._onCanvasPointerUp(event));
     this.hitboxOutput.addEventListener("change", () => this._applyHitboxOutput());
 
-    this.images.body.onload = () => {
-      const config = this.images.body._configRef ?? this._currentConfig();
-      this._initCropFromImage(config);
-      this._updateCropRanges();
-      this._syncCropControls(config);
-      this._refreshLabels();
-      this._draw();
-    };
     this.images.weaponIdle.onload = () => this._draw();
     this.images.weaponAttack.onload = () => this._draw();
 
@@ -170,6 +188,137 @@ class CharacterStudio {
   _currentConfig() {
     return this.configs[this.activeConfigIndex];
   }
+
+  // ── Pose helpers ──────────────────────────────────────────────────
+
+  /**
+   * Return the raw value stored in config.poses[poseKey].
+   * Returns undefined when the key does not exist.
+   */
+  _getPoseConfig(config, poseKey) {
+    if (poseKey === "base") return null;
+    return config.poses?.[poseKey];
+  }
+
+  /** Return the image path for a given pose key. */
+  _getPoseImagePath(config, poseKey) {
+    if (poseKey === "base") return config.image ?? "";
+    const poseVal = config.poses?.[poseKey];
+    if (!poseVal) return config.image ?? "";
+    if (typeof poseVal === "string") return poseVal;
+    return poseVal.image ?? config.image ?? "";
+  }
+
+  /**
+   * Return the visual overrides (imageScale, imageOffset, imageCrop) for a pose,
+   * falling back to top-level config values when the pose doesn't override them.
+   */
+  _getPoseVisual(config, poseKey) {
+    if (poseKey === "base") {
+      return {
+        imageScale: config.imageScale ?? 1,
+        imageOffset: config.imageOffset ?? { x: 0, y: 0 },
+        imageCrop: config.imageCrop ?? null,
+      };
+    }
+    const poseVal = config.poses?.[poseKey];
+    const poseObj = (poseVal && typeof poseVal === "object") ? poseVal : {};
+    return {
+      imageScale: poseObj.imageScale ?? config.imageScale ?? 1,
+      imageOffset: poseObj.imageOffset ?? config.imageOffset ?? { x: 0, y: 0 },
+      imageCrop: poseObj.imageCrop ?? config.imageCrop ?? null,
+    };
+  }
+
+  /**
+   * Patch visual fields onto a non-base pose object.
+   * If the pose was a string, upgrades it to an object first.
+   */
+  _setPoseVisual(config, poseKey, patch) {
+    if (poseKey === "base") {
+      if ("imageScale" in patch) config.imageScale = patch.imageScale;
+      if ("imageOffset" in patch) config.imageOffset = { ...patch.imageOffset };
+      if ("imageCrop" in patch) config.imageCrop = patch.imageCrop ? { ...patch.imageCrop } : null;
+      return;
+    }
+    config.poses ??= {};
+    const existing = config.poses[poseKey];
+    const poseObj = (existing && typeof existing === "object")
+      ? existing
+      : { image: typeof existing === "string" ? existing : this._getPoseImagePath(config, poseKey) };
+    if ("imageScale" in patch) poseObj.imageScale = patch.imageScale;
+    if ("imageOffset" in patch) poseObj.imageOffset = { ...patch.imageOffset };
+    if ("imageCrop" in patch) poseObj.imageCrop = patch.imageCrop ? { ...patch.imageCrop } : null;
+    config.poses[poseKey] = poseObj;
+  }
+
+  /** Populate the pose <select> from base + config.poses keys. */
+  _populatePoseSelect(config) {
+    if (!this.poseSelect) return;
+    this.poseSelect.innerHTML = "";
+    const addOpt = (value, label) => {
+      const opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = label;
+      this.poseSelect.appendChild(opt);
+    };
+    addOpt("base", "Base");
+    const poses = config.poses ?? {};
+    for (const key of Object.keys(poses)) {
+      addOpt(key, key);
+    }
+    // Keep or reset activePoseKey to something valid
+    const validKeys = ["base", ...Object.keys(poses)];
+    if (!validKeys.includes(this.activePoseKey)) {
+      this.activePoseKey = "base";
+    }
+    this.poseSelect.value = this.activePoseKey;
+    this._updatePoseActionButtons();
+  }
+
+  _updatePoseActionButtons() {
+    if (!this.resetPoseBtn) return;
+    const isBase = this.activePoseKey === "base";
+    this.resetPoseBtn.disabled = isBase;
+  }
+
+  /** Called when the pose selector changes. Load new image and sync controls. */
+  _onPoseChanged() {
+    this._updatePoseActionButtons();
+    const config = this._currentConfig();
+    const imagePath = this._getPoseImagePath(config, this.activePoseKey);
+    this._loadBodyImage(imagePath, this.activePoseKey);
+  }
+
+  /** Remove pose-specific visual overrides so it falls back to base. */
+  _resetCurrentPose() {
+    if (this.activePoseKey === "base") return;
+    const config = this._currentConfig();
+    const poseVal = config.poses?.[this.activePoseKey];
+    if (poseVal && typeof poseVal === "object") {
+      // Keep only the image path, strip visual overrides
+      const imagePath = poseVal.image ?? this._getPoseImagePath(config, this.activePoseKey);
+      config.poses[this.activePoseKey] = imagePath;
+    }
+    this._syncImageControls();
+    this._refreshLabels();
+    this._saveState();
+    this._draw();
+  }
+
+  /** Sync image tab controls from the currently active pose. */
+  _syncImageControls() {
+    const config = this._currentConfig();
+    const visual = this._getPoseVisual(config, this.activePoseKey);
+    this.controls.imageScale.value = visual.imageScale;
+    this.controls.imageOffsetX.value = visual.imageOffset.x;
+    this.controls.imageOffsetY.value = visual.imageOffset.y;
+    if (visual.imageCrop) {
+      this._syncCropControls({ imageCrop: visual.imageCrop });
+    }
+  }
+
+  // ── End pose helpers ──────────────────────────────────────────────
 
   _ensureConfigShape(config) {
     config.imageScale ??= 1;
@@ -198,17 +347,66 @@ class CharacterStudio {
     }
   }
 
+  _initPoseCropFromImage(config, poseKey) {
+    if (poseKey === "base") {
+      this._initCropFromImage(config);
+      return;
+    }
+    const poseVal = config.poses?.[poseKey];
+    const poseObj = (poseVal && typeof poseVal === "object") ? poseVal : null;
+    if (poseObj?.imageCrop) return;
+    const img = this.images.body;
+    if (img.complete && img.naturalWidth > 0) {
+      this._setPoseVisual(config, poseKey, {
+        imageCrop: { x: 0, y: 0, width: img.naturalWidth, height: img.naturalHeight },
+      });
+    }
+  }
+
   _clampCrop() {
     const config = this._currentConfig();
-    const crop = config.imageCrop;
-    if (!crop) return;
     const img = this.images.body;
+    const visual = this._getPoseVisual(config, this.activePoseKey);
+    const crop = visual.imageCrop;
+    if (!crop) return;
     const nw = img.complete ? img.naturalWidth : Infinity;
     const nh = img.complete ? img.naturalHeight : Infinity;
-    crop.x = Math.max(0, Math.min(crop.x, nw - 1));
-    crop.y = Math.max(0, Math.min(crop.y, nh - 1));
-    crop.width = Math.max(1, Math.min(crop.width, nw - crop.x));
-    crop.height = Math.max(1, Math.min(crop.height, nh - crop.y));
+    const clamped = {
+      x: Math.max(0, Math.min(crop.x, nw - 1)),
+      y: Math.max(0, Math.min(crop.y, nh - 1)),
+      width: Math.max(1, Math.min(crop.width, nw - Math.max(0, Math.min(crop.x, nw - 1)))),
+      height: Math.max(1, Math.min(crop.height, nh - Math.max(0, Math.min(crop.y, nh - 1)))),
+    };
+    // Write clamped crop back
+    this._setPoseVisual(config, this.activePoseKey, { imageCrop: clamped });
+  }
+
+  _loadBodyImage(imagePath, poseKey) {
+    const requestToken = ++this.pendingBodyImageRequest;
+    const nextSrc = "../../" + imagePath;
+    const previousSrc = this.images.body.src;
+    this.images.body.onload = () => {
+      if (requestToken !== this.pendingBodyImageRequest) return;
+      this._onBodyImageLoaded(this._currentConfig(), poseKey);
+    };
+    this.images.body.src = nextSrc;
+    if (previousSrc === nextSrc && this.images.body.complete && this.images.body.naturalWidth > 0) {
+      this._onBodyImageLoaded(this._currentConfig(), poseKey);
+    }
+  }
+
+  _onBodyImageLoaded(config, poseKey) {
+    if (poseKey === "base") {
+      this._initCropFromImage(config);
+    } else {
+      this._initPoseCropFromImage(config, poseKey);
+    }
+    if (poseKey === this.activePoseKey) {
+      this._updateCropRanges();
+      this._syncImageControls();
+      this._refreshLabels();
+      this._draw();
+    }
   }
 
   _updateCropRanges() {
@@ -242,6 +440,7 @@ class CharacterStudio {
   }
 
   _syncCropControls(config) {
+    // Accept either a config object or a plain {imageCrop} wrapper
     const crop = config.imageCrop;
     if (!crop) return;
     this.controls.imageCropX.value = crop.x;
@@ -267,8 +466,9 @@ class CharacterStudio {
     this._ensureConfigShape(config);
     if (!this.images.body.complete || this.images.body.naturalWidth === 0) return;
 
-    this.cropDraft = config.imageCrop
-      ? { ...config.imageCrop }
+    const visual = this._getPoseVisual(config, this.activePoseKey);
+    this.cropDraft = visual.imageCrop
+      ? { ...visual.imageCrop }
       : { x: 0, y: 0, width: this.images.body.naturalWidth, height: this.images.body.naturalHeight };
     this.mode = "crop";
     this.dragState = null;
@@ -290,8 +490,9 @@ class CharacterStudio {
   _applyCrop() {
     if (!this.cropDraft) return;
     const config = this._currentConfig();
-    config.imageCrop = { ...this.cropDraft };
-    this._syncCropControls(config);
+    this._setPoseVisual(config, this.activePoseKey, { imageCrop: { ...this.cropDraft } });
+    const visual = this._getPoseVisual(config, this.activePoseKey);
+    this._syncCropControls({ imageCrop: visual.imageCrop });
     this._refreshLabels();
     this._saveState();
     this.mode = "default";
@@ -337,10 +538,11 @@ class CharacterStudio {
     const centerX = this.canvas.width / 2;
     const centerY = this.canvas.height / 2;
     const radius = config.radius ?? 30;
-    const drawR = radius * config.imageScale;
+    const visual = this._getPoseVisual(config, this.activePoseKey);
+    const drawR = radius * visual.imageScale;
     return {
-      x: centerX + config.imageOffset.x - drawR,
-      y: centerY + config.imageOffset.y - drawR,
+      x: centerX + visual.imageOffset.x - drawR,
+      y: centerY + visual.imageOffset.y - drawR,
       width: drawR * 2,
       height: drawR * 2,
     };
@@ -428,7 +630,13 @@ class CharacterStudio {
     this.controls.hitboxWidth.value = config.hitbox.width ?? 44;
     this.controls.hitboxHeight.value = config.hitbox.height ?? 88;
     this.controls.hitboxRadius.value = config.hitbox.radius ?? config.radius ?? 30;
+    this._syncHitboxOffsetControls(config.hitboxOffset ?? { x: 0, y: 0 });
     this._syncHitboxControlState();
+  }
+
+  _syncHitboxOffsetControls(offset) {
+    this.controls.hitboxOffsetX.value = Math.round(offset.x ?? 0);
+    this.controls.hitboxOffsetY.value = Math.round(offset.y ?? 0);
   }
 
   _hitTestRectHandles(px, py, rect) {
@@ -548,14 +756,21 @@ class CharacterStudio {
       } else {
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
-        const radius = Math.max(5, Math.round(Math.hypot(point.x - centerX, point.y - centerY)));
+        const offset = this.dragState.startOffset ?? { x: 0, y: 0 };
+        let radius = this.hitboxDraft.radius;
+        if (handle === "move") {
+          this.hitboxDraftOffset = this._clampHitboxOffset(this._currentConfig(), {
+            x: offset.x + deltaX,
+            y: offset.y + deltaY,
+          });
+        } else {
+          radius = Math.max(5, Math.round(Math.hypot(point.x - centerX - offset.x, point.y - centerY - offset.y)));
+          this.hitboxDraftOffset = this._clampHitboxOffset(this._currentConfig(), offset);
+        }
         this.hitboxDraft = { type: "circle", radius };
-        this.hitboxDraftOffset = this._clampHitboxOffset(this._currentConfig(), {
-          x: (this.dragState.startOffset?.x ?? 0) + deltaX,
-          y: (this.dragState.startOffset?.y ?? 0) + deltaY,
-        });
         this.controls.hitboxRadius.value = radius;
       }
+      this._syncHitboxOffsetControls(this.hitboxDraftOffset ?? { x: 0, y: 0 });
       this._refreshLabels();
     }
     this._refreshLabels();
@@ -585,28 +800,32 @@ class CharacterStudio {
     this.cropDraft = null;
     this.hitboxDraft = null;
     this.hitboxDraftOffset = null;
+    // Reset pose selector to base when switching characters
+    this.activePoseKey = "base";
     const config = this._currentConfig();
     this._ensureConfigShape(config);
+
+    this._populatePoseSelect(config);
 
     this.hitboxType.value = config.hitbox.type;
     this.controls.hitboxWidth.value = config.hitbox.width ?? 44;
     this.controls.hitboxHeight.value = config.hitbox.height ?? 88;
     this.controls.hitboxRadius.value =
       config.hitbox.radius ?? config.radius ?? 30;
-    this.controls.imageScale.value = config.imageScale;
-    this.controls.imageOffsetX.value = config.imageOffset.x;
-    this.controls.imageOffsetY.value = config.imageOffset.y;
+    this._syncHitboxOffsetControls(config.hitboxOffset);
     this.controls.healthBarOffsetX.value = config.healthBarOffset.x;
     this.controls.healthBarOffsetY.value = config.healthBarOffset.y;
     this.controls.weaponScale.value = config.weaponScale;
     this.controls.weaponOffsetX.value = config.weaponOffset.x;
     this.controls.weaponOffsetY.value = config.weaponOffset.y;
 
-    this.images.body._configRef = config;
-    this.images.body.src = "../../" + (config.image || "");
+    // Load base image (activePoseKey == "base" at this point)
+    const imagePath = this._getPoseImagePath(config, "base");
+    this._loadBodyImage(imagePath, "base");
     this.images.weaponIdle.src = "../../" + (config.weaponIdle || "");
     this.images.weaponAttack.src = "../../" + (config.weaponAttack || "");
 
+    this._syncImageControls();
     this._syncHitboxControlState();
     this._refreshLabels();
     this._updateCropButtons();
@@ -630,6 +849,7 @@ class CharacterStudio {
       this.labels[key].textContent = this.controls[key].value;
     });
     this._refreshHitboxOutput();
+    this._refreshImageOutput();
   }
 
   _refreshHitboxOutput() {
@@ -638,9 +858,57 @@ class CharacterStudio {
     const hitbox = this.mode === "hitbox" && this.hitboxDraft
       ? this.hitboxDraft
       : config.hitbox;
+    const offset = this.mode === "hitbox" && this.hitboxDraftOffset
+      ? this.hitboxDraftOffset
+      : (config.hitboxOffset ?? { x: 0, y: 0 });
     this.hitboxOutput.value = hitbox.type === "box"
-      ? `${Math.round(hitbox.width)} ${Math.round(hitbox.height)}`
-      : `${Math.round(hitbox.radius)}`;
+      ? `${Math.round(hitbox.width)} ${Math.round(hitbox.height)} ${Math.round(offset.x)} ${Math.round(offset.y)}`
+      : `${Math.round(hitbox.radius)} ${Math.round(offset.x)} ${Math.round(offset.y)}`;
+  }
+
+  _refreshImageOutput() {
+    if (!this.imageOutput) return;
+    const config = this._currentConfig();
+    const visual = this._getPoseVisual(config, this.activePoseKey);
+    const s = visual.imageScale ?? 1;
+    const ox = visual.imageOffset?.x ?? 0;
+    const oy = visual.imageOffset?.y ?? 0;
+    const crop = visual.imageCrop;
+    if (crop) {
+      this.imageOutput.value = `${s} ${ox} ${oy} ${crop.x} ${crop.y} ${crop.width} ${crop.height}`;
+    } else {
+      this.imageOutput.value = `${s} ${ox} ${oy}`;
+    }
+  }
+
+  _applyImageOutput() {
+    const config = this._currentConfig();
+    const numbers = this.imageOutput.value
+      .match(/-?\d+(\.\d+)?/g)
+      ?.map(Number) ?? [];
+    if (numbers.length < 1) { this._refreshImageOutput(); return; }
+
+    const patch = {};
+    if (numbers.length >= 1) patch.imageScale = Math.max(0.1, numbers[0]);
+    if (numbers.length >= 3) patch.imageOffset = { x: numbers[1], y: numbers[2] };
+    if (numbers.length >= 7) {
+      patch.imageCrop = {
+        x: Math.round(numbers[3]),
+        y: Math.round(numbers[4]),
+        width: Math.max(1, Math.round(numbers[5])),
+        height: Math.max(1, Math.round(numbers[6])),
+      };
+    }
+
+    this._setPoseVisual(config, this.activePoseKey, patch);
+    if ("imageCrop" in patch) {
+      this._clampCrop();
+    }
+    this._syncImageControls();
+    this._saveState();
+    this._draw();
+    this._syncImageControls();
+    this._refreshLabels();
   }
 
   _applyHitboxOutput() {
@@ -651,6 +919,9 @@ class CharacterStudio {
     const target = this.mode === "hitbox" && this.hitboxDraft
       ? this.hitboxDraft
       : config.hitbox;
+    const offsetTarget = this.mode === "hitbox"
+      ? (this.hitboxDraftOffset ?? { ...(config.hitboxOffset ?? { x: 0, y: 0 }) })
+      : { ...(config.hitboxOffset ?? { x: 0, y: 0 }) };
 
     if (target.type === "box") {
       if (numbers.length < 2) {
@@ -663,6 +934,10 @@ class CharacterStudio {
       this.controls.hitboxWidth.value = target.width;
       this.controls.hitboxHeight.value = target.height;
       this.controls.hitboxRadius.value = Math.round(Math.max(target.width, target.height) / 2);
+      if (numbers.length >= 4) {
+        offsetTarget.x = Math.round(numbers[2]);
+        offsetTarget.y = Math.round(numbers[3]);
+      }
     } else {
       if (numbers.length < 1) {
         this._refreshHitboxOutput();
@@ -671,19 +946,33 @@ class CharacterStudio {
 
       target.radius = Math.max(5, Math.round(numbers[0]));
       this.controls.hitboxRadius.value = target.radius;
+      if (numbers.length >= 3) {
+        offsetTarget.x = Math.round(numbers[1]);
+        offsetTarget.y = Math.round(numbers[2]);
+      }
     }
 
     if (this.mode !== "hitbox") {
       config.hitbox = { ...target };
+      config.hitboxOffset = this._clampHitboxOffset(config, offsetTarget);
       this._saveState();
+    } else {
+      this.hitboxDraftOffset = this._clampHitboxOffset(config, offsetTarget);
     }
 
+    this._syncHitboxOffsetControls(this.mode === "hitbox" ? this.hitboxDraftOffset : config.hitboxOffset);
     this._refreshLabels();
     this._draw();
   }
 
   _snapshotCurrentState() {
     const config = this._currentConfig();
+    // Deep-clone poses so undo history never shares nested objects
+    const posesSnapshot = {};
+    const poses = config.poses ?? {};
+    for (const [k, v] of Object.entries(poses)) {
+      posesSnapshot[k] = typeof v === "string" ? v : JSON.parse(JSON.stringify(v));
+    }
     return JSON.stringify({
       hitbox: { ...config.hitbox },
       hitboxOffset: { ...(config.hitboxOffset ?? { x: 0, y: 0 }) },
@@ -693,6 +982,8 @@ class CharacterStudio {
       healthBarOffset: { ...config.healthBarOffset },
       weaponScale: config.weaponScale,
       weaponOffset: { ...config.weaponOffset },
+      poses: posesSnapshot,
+      activePoseKey: this.activePoseKey,
     });
   }
 
@@ -744,29 +1035,47 @@ class CharacterStudio {
     config.weaponScale = state.weaponScale;
     config.weaponOffset = { ...state.weaponOffset };
 
+    // Restore poses with deep copies
+    if (state.poses) {
+      const restoredPoses = {};
+      for (const [k, v] of Object.entries(state.poses)) {
+        restoredPoses[k] = typeof v === "string" ? v : JSON.parse(JSON.stringify(v));
+      }
+      config.poses = restoredPoses;
+    }
+    if (state.activePoseKey !== undefined) {
+      this.activePoseKey = state.activePoseKey;
+    }
+    this._populatePoseSelect(config);
+
     this.hitboxType.value = config.hitbox.type;
     this.controls.hitboxWidth.value = config.hitbox.width ?? 44;
     this.controls.hitboxHeight.value = config.hitbox.height ?? 88;
     this.controls.hitboxRadius.value =
       config.hitbox.radius ?? config.radius ?? 30;
-    this.controls.imageScale.value = config.imageScale;
-    this.controls.imageOffsetX.value = config.imageOffset.x;
-    this.controls.imageOffsetY.value = config.imageOffset.y;
+    this._syncHitboxOffsetControls(config.hitboxOffset);
     this.controls.healthBarOffsetX.value = config.healthBarOffset.x;
     this.controls.healthBarOffsetY.value = config.healthBarOffset.y;
     this.controls.weaponScale.value = config.weaponScale;
     this.controls.weaponOffsetX.value = config.weaponOffset.x;
     this.controls.weaponOffsetY.value = config.weaponOffset.y;
 
-    this._clampCrop();
+    // Update body image if pose changed
+    const imagePath = this._getPoseImagePath(config, this.activePoseKey);
+    const newSrc = "../../" + imagePath;
+    if (this.images.body.src !== newSrc) {
+      this._loadBodyImage(imagePath, this.activePoseKey);
+    }
+
+    this._syncImageControls();
     this._updateCropRanges();
-    this._syncCropControls(config);
+    const visual = this._getPoseVisual(config, this.activePoseKey);
+    this._syncCropControls({ imageCrop: visual.imageCrop });
 
     this._syncHitboxControlState();
     this._refreshLabels();
     this._updateCropButtons();
     this._updateHitboxButtons();
-    this._draw();
     this.isRestoring = false;
   }
 
@@ -774,7 +1083,7 @@ class CharacterStudio {
     const config = this._currentConfig();
     const hitboxType = this.hitboxType.value;
 
-    config.hitbox =
+    const nextHitbox =
       hitboxType === "box"
         ? {
             type: "box",
@@ -785,15 +1094,33 @@ class CharacterStudio {
             type: "circle",
             radius: Number.parseInt(this.controls.hitboxRadius.value, 10),
           };
+    const currentHitboxOffset = this.mode === "hitbox" && this.hitboxDraftOffset
+      ? this.hitboxDraftOffset
+      : (config.hitboxOffset ?? { x: 0, y: 0 });
+    const hitboxOffsetX = Number.parseInt(this.controls.hitboxOffsetX.value, 10);
+    const hitboxOffsetY = Number.parseInt(this.controls.hitboxOffsetY.value, 10);
+    const nextHitboxOffset = this._clampHitboxOffset(config, {
+      x: Number.isFinite(hitboxOffsetX) ? hitboxOffsetX : currentHitboxOffset.x,
+      y: Number.isFinite(hitboxOffsetY) ? hitboxOffsetY : currentHitboxOffset.y,
+    });
 
-    config.imageScale = Number.parseFloat(this.controls.imageScale.value);
-    config.imageOffset = {
+    if (this.mode === "hitbox") {
+      this.hitboxDraft = nextHitbox;
+      this.hitboxDraftOffset = nextHitboxOffset;
+    } else {
+      config.hitbox = nextHitbox;
+      config.hitboxOffset = nextHitboxOffset;
+    }
+    this._syncHitboxOffsetControls(nextHitboxOffset);
+
+    // Image scale / offset: pose-aware
+    const newScale = Number.parseFloat(this.controls.imageScale.value);
+    const newOffset = {
       x: Number.parseInt(this.controls.imageOffsetX.value, 10),
       y: Number.parseInt(this.controls.imageOffsetY.value, 10),
     };
-    config.hitboxOffset = this.mode === "hitbox" && this.hitboxDraftOffset
-      ? { ...this.hitboxDraftOffset }
-      : (config.hitboxOffset ?? { x: 0, y: 0 });
+    this._setPoseVisual(config, this.activePoseKey, { imageScale: newScale, imageOffset: newOffset });
+
     config.healthBarOffset = {
       x: Number.parseInt(this.controls.healthBarOffsetX.value, 10),
       y: Number.parseInt(this.controls.healthBarOffsetY.value, 10),
@@ -804,13 +1131,19 @@ class CharacterStudio {
       y: Number.parseInt(this.controls.weaponOffsetY.value, 10),
     };
 
-    if (config.imageCrop) {
-      config.imageCrop.x = Number.parseInt(this.controls.imageCropX.value, 10);
-      config.imageCrop.y = Number.parseInt(this.controls.imageCropY.value, 10);
-      config.imageCrop.width = Number.parseInt(this.controls.imageCropWidth.value, 10);
-      config.imageCrop.height = Number.parseInt(this.controls.imageCropHeight.value, 10);
+    // Crop: pose-aware
+    const visual = this._getPoseVisual(config, this.activePoseKey);
+    if (visual.imageCrop) {
+      const newCrop = {
+        x: Number.parseInt(this.controls.imageCropX.value, 10),
+        y: Number.parseInt(this.controls.imageCropY.value, 10),
+        width: Number.parseInt(this.controls.imageCropWidth.value, 10),
+        height: Number.parseInt(this.controls.imageCropHeight.value, 10),
+      };
+      this._setPoseVisual(config, this.activePoseKey, { imageCrop: newCrop });
       this._clampCrop();
-      this._syncCropControls(config);
+      const updatedVisual = this._getPoseVisual(config, this.activePoseKey);
+      this._syncCropControls({ imageCrop: updatedVisual.imageCrop });
     }
 
     this._refreshLabels();
@@ -938,17 +1271,18 @@ class CharacterStudio {
 
     if (this.images.body.complete && this.images.body.naturalWidth > 0) {
       this._clampCrop();
-      const drawRadius = radius * config.imageScale;
+      const visual = this._getPoseVisual(config, this.activePoseKey);
+      const drawRadius = radius * visual.imageScale;
       const { crop, dx, dy, dw, dh } = this._getCropDrawRect(
         this.images.body,
-        config.imageCrop,
+        visual.imageCrop,
         drawRadius,
       );
 
       ctx.save();
       ctx.translate(
-        centerX + config.imageOffset.x,
-        centerY + config.imageOffset.y,
+        centerX + visual.imageOffset.x,
+        centerY + visual.imageOffset.y,
       );
       ctx.drawImage(
         this.images.body,
@@ -1068,5 +1402,5 @@ class CharacterStudio {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  new CharacterStudio();
+  window.__studioInstance = new CharacterStudio();
 });

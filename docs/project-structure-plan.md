@@ -1,5 +1,9 @@
 # Project Structure Plan
 
+> [!NOTE]
+> **Status: Fully Implemented**
+> The project structure reorganizations detailed in this plan have been successfully executed. Scripts and styles reside under `js/`, `css/`, `config/`, and `tools/` respectively.
+
 ## Goal
 
 Move Duels2D toward a cleaner layout without introducing a build system, ES modules, or a large refactor.

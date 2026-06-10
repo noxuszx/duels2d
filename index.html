@@ -15,6 +15,29 @@
     <div id="command-status"></div>
   </div>
 
+  <aside id="character-select-panel" class="character-select-panel hidden" aria-label="Character selection">
+    <div class="character-select-header">
+      <div>
+        <div class="character-select-kicker">Roster</div>
+        <h2>Character Select</h2>
+      </div>
+      <button type="button" id="character-select-close" aria-label="Close character selection">x</button>
+    </div>
+
+    <input
+      type="search"
+      id="character-select-search"
+      class="character-select-search"
+      placeholder="Search characters"
+      autocomplete="off"
+      spellcheck="false"
+    />
+
+    <div id="character-select-grid" class="character-select-grid"></div>
+
+    <div class="character-select-help">Click cards to assign P1, then P2. Two selected characters restart the fight.</div>
+  </aside>
+
 
   <!-- Game Header (Title and status display on top of/above the arena) -->
   <div id="game-header">
@@ -53,7 +76,11 @@
   <script src="config/sounds.js"></script>
   <script src="config/characters.js"></script>
 
-  <!-- GAME SCRIPT -->
+  <!-- GAME SCRIPTS -->
+  <script src="js/character.js"></script>
+  <script src="js/projectile.js"></script>
+  <script src="js/character-select.js"></script>
+  <script src="js/game-manager.js"></script>
   <script src="js/game.js"></script>
   <script src="js/command-line.js"></script>
 

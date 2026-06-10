@@ -1,42 +1,127 @@
 # Duels2D — Bouncing Battle Simulator
 
-## 🎯 Goal
-Duels2D is a modular, zero-player 2D physics simulator designed specifically to be recorded for high-retention YouTube Shorts and TikToks. Characters (represented as bouncing entities) clash in a confined arena, exchange damage, and eventually use unique abilities. To maximize visual engagement, the arena is constrained to a mobile-friendly 9:16 aspect ratio, and the engine supports dynamic hit flashes, particle sparks, optional 2-pose weapons, and character-specific sound effects.
+Duels2D is a modular, zero-player 2D physics simulator designed for recording high-retention YouTube Shorts and TikTok content. Characters clash inside a mobile-friendly 9:16 aspect ratio arena, bouncing off walls with perfect elasticity, exchanging damage, and deploying unique weaponry. The simulator features dynamic hit flashes, visual particle sparks, custom sprite crops, character-specific sound pools, and an in-game command developer console.
 
-## 🏗️ Architecture & Design Principles
+---
 
-*   **Frontend**: Vanilla HTML & CSS.
-*   **Game Logic & Render**: Vanilla JavaScript utilizing the HTML5 Canvas API.
-*   **Physics Engine**: Matter.js (loaded via CDN) for pure elastic collisions (restitution: 1.0, zero friction).
-*   **Audio**: Howler.js (planned) for seamless overlapping sound effects.
+## 🚀 How to Run Locally
 
-### Core Systems
-1.  **Object-Oriented Modularity (`GameManager` & `Character`)**:
-    *   `GameManager` handles the Matter.js Engine, World boundaries, the custom `requestAnimationFrame` render loop, and resolving collision events.
-    *   `Character` acts as a wrapper around a Matter.js body, storing mutable state (health, hit flashes, timers).
-2.  **Data-Driven Design (`CharacterConfigs`)**:
-    *   New fighters are added by simply extending a JSON-like configuration array. Characters load their stats, sprites, and specific audio assets completely independent of the underlying physics logic.
-3.  **Disconnected Hitboxes & Art**:
-    *   The visual sprites are decoupled from the strict Matter.js collision radii. This allows characters to have large cosmetic features (auras, hair, weapons) that overlap naturally without falsely triggering damage calculations.
-4.  **Custom Render Loop**:
-    *   Matter.js's built-in debugger is bypassed. A highly customized HTML5 Canvas loop reads physics coordinates every frame and draws layered sprites, particle effects, and floating health bars perfectly synced to the action.
+Because Duels2D is browser-native and has no build step, you can run it using any simple static file server:
 
-## 📂 Folder Tree
+### Option 1: Live Server (VS Code / CLI)
+Run a quick HTTP server from the root of the project:
+```bash
+# Using Python
+python3 -m http.server 8000
+
+# Using Node.js / npx
+npx serve .
+```
+Then open `http://localhost:8000` (or `http://localhost:3000`) in your browser.
+
+### Option 2: Local File Loading
+You can also open [index.html](file:///mnt/c/Users/uhabc/Documents/Web-dev/Duels2D/index.html) directly in your browser. Note that some browsers restrict loading local ES modules or assets via the `file://` protocol due to CORS policy, so running a local server is highly recommended.
+
+---
+
+## 📂 Project Structure
 
 ```text
 Duels2D/
-├── index.html            # Entry point, loads HUD, Canvas, and CDN scripts
-├── style.css             # HUD styling and 9:16 constraints
-├── game.js               # Core simulator logic (GameManager, Characters)
-├── README.md             # Project documentation
-├── PLAN.md               # Upcoming features and roadmap
-└── assets/               # Local asset storage
-    ├── audio/            # Generic/UI sound effects
-    ├── images/           # Generic/UI images
-    └── characters/       # Character-specific asset modules
-        └── <character_id>/         
-            ├── base.png
-            ├── weapon_idle.png (optional)
-            ├── weapon_attack.png (optional)
-            └── clash.mp3
+├── index.html                        # Entry point, loads CDNs, HUD UI, and scripts
+├── README.md                         # Main project overview (this file)
+├── PLAN.md                           # Project roadmap and upcoming tasks
+├── assets/                           # Media assets
+│   ├── characters/                   # Character-specific sprite sheets and audio
+│   │   └── <character_id>/           
+│   │       ├── <character_id>.out.png# Base sprite (idle pose)
+│   │       ├── sounds/               # Character-specific sound effects folders
+│   │       │   ├── body-bounce/      # Sound files played on boundary/character bounce
+│   │       │   ├── hurt/             # Sound files played when taking damage
+│   │       │   └── death/            # Sound files played on death
+│   │       └── ... (pose sprites, e.g., weapon windup, active slap)
+│   └── sfx/                          # Shared/generic sound effects
+│       └── body-bounce/              # Fallback bounce sound effects
+├── css/
+│   └── style.css                     # Main styling and mobile-friendly 9:16 layout
+├── config/                           # Declarative configurations
+│   ├── game.js                       # Physics parameters, volume controls, and arena settings
+│   ├── characters.js                 # Character statistics, hitbox offsets, scale, crops, and weapons
+│   ├── indicators.js                 # Visual damage indicators and health text parameters
+│   └── sounds.js                     # Autogenerated audio assets manifest (do not edit manually)
+├── js/                               # Core engine scripts
+│   ├── game.js                       # Engine instantiator (DOMContentLoaded hook)
+│   ├── game-manager.js               # Central GameManager, loops, physics boundaries, rendering
+│   ├── character.js                  # Character entity wrapper around Matter.js bodies
+│   ├── projectile.js                 # Projectile class representing fired bullets
+│   ├── character-select.js           # Roster sidebar UI selector for P1 and P2
+│   └── command-line.js               # In-game command developer console controller
+├── tools/                            # Development tools
+│   ├── character-studio/             # Local web interface for tuning visual offsets and cropping sprites
+│   │   ├── index.html
+│   │   ├── character-studio.css
+│   │   └── character-studio.js
+│   └── generate-sound-manifest.js    # Node.js developer script to scan audio files and compile config/sounds.js
+└── docs/                             # Technical deep-dives and development planning files
+    └── current-architecture.md       # Explains initialization flow and module design
 ```
+
+---
+
+## 🕹️ Controls & Console Commands
+
+### Global Hotkeys
+* **`Space`**: Pauses or resumes the simulator (only when the command input console is closed/defocused).
+* **`/`**: Toggles the developer command-line input box.
+* **`Escape`**: Closes/defocuses the command line.
+* **`Enter`**: Executes the command typed in the command input box.
+
+### Command Console Commands
+Type these into the command bar and press `Enter` to run:
+* **`start`**: Resumes or starts the current match.
+* **`pause`**: Pauses the simulator loop.
+* **`restart`**: Resets the physics world and re-spawns characters.
+* **`select`**: Opens the sidebar Character Selection roster panel.
+* **`studio`**: Navigates the browser to the Character Studio tool.
+
+---
+
+## ⚙️ Roster & Configuration Model
+
+All gameplay parameters and character statistics are entirely data-driven, located under [config/](file:///mnt/c/Users/uhabc/Documents/Web-dev/Duels2D/config/):
+
+* **Game configuration** ([config/game.js](file:///mnt/c/Users/uhabc/Documents/Web-dev/Duels2D/config/game.js)): Controls physics multipliers, collision cooldowns, generic volume levels, and arena border styles.
+* **Character definitions** ([config/characters.js](file:///mnt/c/Users/uhabc/Documents/Web-dev/Duels2D/config/characters.js)): Registers stats, radius, visual scales, offsets, crop coordinates, and weapon specs.
+
+---
+
+## 🛠️ Tooling & Asset Pipelines
+
+### Character Studio
+Tune sprite sizes and layouts without image editor programs. Open the developer console with `/`, type `studio`, and press `Enter` (or open [tools/character-studio/index.html](file:///mnt/c/Users/uhabc/Documents/Web-dev/Duels2D/tools/character-studio/index.html) directly).
+* Load the character configuration.
+* Adjust **Image Scale**, **Image Offset (X, Y)**, **Health Bar Offset**, and **Hitbox Width/Height** using sliders.
+* Define custom **Image Crops** non-destructively to remove transparent paddings.
+* Copy the generated configuration snippet directly into `config/characters.js`.
+
+### Sound Manifest Generation
+To avoid hardcoding sound paths in character configs, we compile a sound directory structure manifest. Run the generator script whenever you add or modify sound files:
+```bash
+node tools/generate-sound-manifest.js
+```
+This updates [config/sounds.js](file:///mnt/c/Users/uhabc/Documents/Web-dev/Duels2D/config/sounds.js) automatically with both character-specific and shared sound groups.
+
+---
+
+## 🎨 Asset Conventions (How to Add a Character)
+
+1. Create a new directory: `assets/characters/<character_id>/`.
+2. Add your base idle sprite: `assets/characters/<character_id>/<character_id>.out.png`.
+3. (Optional) Add weapon pose sprites: e.g. `<character_id>-windup.png`, `<character_id>-slap.png`.
+4. Create a `sounds/` subfolder structure:
+   * `assets/characters/<character_id>/sounds/body-bounce/`
+   * `assets/characters/<character_id>/sounds/hurt/`
+   * `assets/characters/<character_id>/sounds/death/`
+5. Place audio files (`.mp3`, `.wav`, or `.ogg`) inside those folders.
+6. Run the sound manifest generator: `node tools/generate-sound-manifest.js`.
+7. Add the character configuration dictionary to the `CharacterConfigs` list in [config/characters.js](file:///mnt/c/Users/uhabc/Documents/Web-dev/Duels2D/config/characters.js). Use Character Studio to tune its display parameters!

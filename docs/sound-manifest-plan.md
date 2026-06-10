@@ -1,5 +1,9 @@
 # Sound Manifest Plan
 
+> [!NOTE]
+> **Status: Fully Implemented**
+> The dynamic sound manifest generation system is fully implemented. The script `tools/generate-sound-manifest.js` scans audio assets and outputs `config/sounds.js` dynamically.
+
 ## Goal
 
 Support character-specific sound effects without manually maintaining strict file names in character config.

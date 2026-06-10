@@ -10,10 +10,14 @@ class CommandLineController {
 
   _bindEvents() {
     window.addEventListener('keydown', (e) => {
-      // Toggle on Ctrl + Space
-      if (e.ctrlKey && e.code === 'Space') {
+      // Open on '/' if command line is hidden and user is not typing in an input
+      if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey && this.container.classList.contains('hidden')) {
+        const active = document.activeElement;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) {
+          return;
+        }
         e.preventDefault();
-        this.toggle();
+        this.open();
         return;
       }
 
@@ -93,8 +97,7 @@ class CommandLineController {
 
       case 'select':
         this.game.openCharacterSelect();
-        this.status.textContent = 'Character selection coming soon';
-        // Keeps command line open so user can see status
+        this.close();
         break;
 
       case 'studio':

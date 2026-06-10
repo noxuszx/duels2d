@@ -1,0 +1,16 @@
+.venv/
+graphify-out/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Common Node/Python build artifacts
+node_modules/
+dist/
+build/
+coverage/
+__pycache__/
+*.pyc

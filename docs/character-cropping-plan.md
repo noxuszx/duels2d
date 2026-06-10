@@ -1,5 +1,9 @@
 # Character Cropping Plan
 
+> [!NOTE]
+> **Status: Fully Implemented**
+> Non-destructive cropping is supported. Crop rect definitions reside in `config/characters.js` (`imageCrop` object) and are fully supported in the `GameManager` renderer and the Character Studio tool.
+
 ## Goal
 
 Add non-destructive image cropping to Character Studio so character sprites can be visually adjusted without editing or overwriting the original PNG files.

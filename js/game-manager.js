@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 const { Engine, Runner, Bodies, Body, World, Events } = Matter;
 
@@ -12,21 +12,27 @@ class GameManager {
     this.characters = [];
     this.projectiles = [];
     this.damageIndicators = [];
+    this.dialogueIndicators = [];
     this.hitSparks = [];
     this.gameOver = false;
+    this.victorySoundPlayed = false;
     this._animId = null;
     this.selectedCharacterIds = this._defaultSelectedCharacterIds();
 
-    this.engine = Engine.create({ gravity: { x: 0, y: 0 }, enableSleeping: false });
+    this.engine = Engine.create({
+      gravity: { x: 0, y: 0 },
+      enableSleeping: false,
+    });
     this.world = this.engine.world;
     this.runner = Runner.create({ isFixed: true });
-    this.container = document.getElementById('game-container');
-    this.canvas = document.getElementById('arena-canvas');
-    this.ctx = this.canvas.getContext('2d');
-    this.hudEls = { status: document.getElementById('hud-status') };
-    this.characterSelectPanel = typeof CharacterSelectPanel === 'undefined'
-      ? null
-      : new CharacterSelectPanel(this);
+    this.container = document.getElementById("game-container");
+    this.canvas = document.getElementById("arena-canvas");
+    this.ctx = this.canvas.getContext("2d");
+    this.hudEls = { status: document.getElementById("hud-status") };
+    this.characterSelectPanel =
+      typeof CharacterSelectPanel === "undefined"
+        ? null
+        : new CharacterSelectPanel(this);
 
     this._resizeCanvas();
     const ro = new ResizeObserver(() => this._resizeCanvas());
@@ -43,7 +49,7 @@ class GameManager {
     const cfg = window.GameConfig;
     document.body.style.background = cfg.arena.backgroundColor;
     this.hudEls.status.textContent = cfg.text.statusFight;
-    document.getElementById('game-footer').textContent = cfg.text.footer;
+    document.getElementById("game-footer").textContent = cfg.text.footer;
   }
 
   _resizeCanvas() {
@@ -69,14 +75,29 @@ class GameManager {
   }
 
   _getSelectedCharacterConfigs() {
-    const byId = new Map(window.CharacterConfigs.map((config) => [config.id, config]));
-    const selectedConfigs = this.selectedCharacterIds.map((id) => byId.get(id)).filter(Boolean);
+    const byId = new Map(
+      window.CharacterConfigs.map((config) => [config.id, config]),
+    );
+    const selectedConfigs = this.selectedCharacterIds
+      .map((id) => byId.get(id))
+      .filter(Boolean);
 
     if (selectedConfigs.length >= 2) {
       return selectedConfigs.slice(0, 2);
     }
 
     return window.CharacterConfigs.slice(0, 2);
+  }
+
+  _cleanupCharacters() {
+    this.characters.forEach((c) => c.destroy());
+    this.characters = [];
+  }
+
+  _playSharedSound(type) {
+    const pool = Character._getSharedSoundPools()?.[type];
+    if (!pool || pool.length === 0) return;
+    pool[Math.floor(Math.random() * pool.length)].play();
   }
 
   _spawnCharacters() {
@@ -105,37 +126,53 @@ class GameManager {
       return character;
     });
 
-    document.getElementById('hud-title').innerHTML =
+    document.getElementById("hud-title").innerHTML =
       `${this.characters[0].name} <span class="accent">VS</span> ${this.characters[1].name}`;
   }
 
   _registerCollisionEvents() {
-    Events.on(this.engine, 'collisionStart', (event) => {
+    Events.on(this.engine, "collisionStart", (event) => {
       if (this.gameOver) return;
       const now = Date.now();
 
       event.pairs.forEach(({ bodyA, bodyB }) => {
-        const projectile = this._projectileFromBody(bodyA) ?? this._projectileFromBody(bodyB);
-        const character = this._charFromBody(bodyA) ?? this._charFromBody(bodyB);
+        const projectile =
+          this._projectileFromBody(bodyA) ?? this._projectileFromBody(bodyB);
+        const charA = this._charFromBody(bodyA);
+        const charB = this._charFromBody(bodyB);
+        const character = charA ?? charB;
 
         if (projectile && character) {
           if (projectile.ownerId === character.id) return;
 
-          character.takeDamage(projectile.damage, now, this.COLLISION_COOLDOWN);
-          character.playSound('hurt');
-          this._spawnDamageIndicator(character, projectile.damage);
-          this._spawnHitSpark(character.body.position, character.color);
+          const didDamage = character.takeDamage(
+            projectile.damage,
+            now,
+            this.COLLISION_COOLDOWN,
+          );
+          if (didDamage) {
+            character.playSound("hurt");
+            this._spawnDamageIndicator(character, projectile.damage);
+            this._spawnHitSpark(character.body.position, character.color);
+            const owner = this.characters.find(
+              (c) => c.id === projectile.ownerId,
+            );
+            if (owner) this._spawnCharacterLine(owner, "weaponHit");
+          }
           projectile.dead = true;
           World.remove(this.world, projectile.body);
           this.projectiles = this.projectiles.filter((p) => p !== projectile);
           return;
         }
 
-
+        if (charA && charB && charA !== charB) {
+          this._handleCharacterImpact(charA, charB, now);
+        }
       });
     });
 
-    Events.on(this.engine, 'beforeUpdate', () => {
+    Events.on(this.engine, "beforeUpdate", () => {
+      const now = performance.now();
       const { ax, ay, aw, ah } = this._getArena();
       const bPadding = this.ARENA_BORDER || 0;
 
@@ -144,6 +181,7 @@ class GameManager {
 
         let pos = char.body.position;
         const vel = { ...char.body.velocity };
+        const incomingSpeed = Math.hypot(vel.x, vel.y);
         const minX = ax + char.hitbox.halfWidth + bPadding;
         const maxX = ax + aw - char.hitbox.halfWidth - bPadding;
         const minY = ay + char.hitbox.halfHeight + bPadding;
@@ -179,25 +217,34 @@ class GameManager {
 
         const minWallExitSpeed = char.baseSpeed * 0.2;
         if (hitLeftRight) {
-          vel.x = vel.x > 0 ? Math.max(vel.x, minWallExitSpeed) : Math.min(vel.x, -minWallExitSpeed);
+          vel.x =
+            vel.x > 0
+              ? Math.max(vel.x, minWallExitSpeed)
+              : Math.min(vel.x, -minWallExitSpeed);
         }
         if (hitTopBottom) {
-          vel.y = vel.y > 0 ? Math.max(vel.y, minWallExitSpeed) : Math.min(vel.y, -minWallExitSpeed);
+          vel.y =
+            vel.y > 0
+              ? Math.max(vel.y, minWallExitSpeed)
+              : Math.min(vel.y, -minWallExitSpeed);
         }
 
         if (hitWall) {
-          char.playSound('body-bounce');
+          char.playSound("body-bounce");
+          this._applyImpactDamage(char, incomingSpeed, Date.now());
           const currentAngle = Math.atan2(vel.y, vel.x);
-          const jitter = (Math.random() - 0.5) * (16 * Math.PI / 180);
+          const jitter = (Math.random() - 0.5) * ((16 * Math.PI) / 180);
           const newAngle = currentAngle + jitter;
-          const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y) || char.baseSpeed;
+          const speed =
+            Math.sqrt(vel.x * vel.x + vel.y * vel.y) ||
+            char.getMovementSpeed(now);
           vel.x = Math.cos(newAngle) * speed;
           vel.y = Math.sin(newAngle) * speed;
         }
 
         const currentSpeed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
         if (currentSpeed > 0) {
-          const ratio = char.baseSpeed / currentSpeed;
+          const ratio = char.getMovementSpeed(now) / currentSpeed;
           vel.x *= ratio;
           vel.y *= ratio;
         }
@@ -231,10 +278,30 @@ class GameManager {
       y: pos.y - char.hitbox.halfHeight * 0.35,
       vy: cfg.driftY,
       life: 1,
-      decay: cfg.fadeRate,
-      color: cfg.color,
       fontSize: Math.max(cfg.minFontSize, char.radius * cfg.sizeMultiplier),
     });
+  }
+
+  _spawnDialogueIndicator(character, text) {
+    const pos = character.visualPosition;
+    const cfg = window.IndicatorConfig.dialogue;
+    this.dialogueIndicators.push({
+      text,
+      x: pos.x,
+      y: pos.y - character.hitbox.halfHeight * (cfg.offsetYMultiplier ?? 1),
+      vy: cfg.driftY,
+      life: 1,
+      fontSize: Math.max(
+        cfg.minFontSize,
+        character.radius * cfg.sizeMultiplier,
+      ),
+    });
+  }
+
+  _spawnCharacterLine(character, type) {
+    const line = character.getRandomLine(type);
+    if (!line) return;
+    this._spawnDialogueIndicator(character, line);
   }
 
   _spawnHitSpark(pos, color) {
@@ -256,14 +323,57 @@ class GameManager {
     }
   }
 
-  _updateDamageIndicators() {
-    for (let i = this.damageIndicators.length - 1; i >= 0; i--) {
-      const indicator = this.damageIndicators[i];
+  _applyImpactDamage(character, speed, nowMs) {
+    if (character.isDead) return false;
+
+    const cfg = window.GameConfig.physics.impactDamage ?? {};
+    const minSpeed =
+      cfg.minSpeed ?? character.baseSpeed * (cfg.minSpeedMultiplier ?? 2.8);
+    if (speed < minSpeed) return false;
+
+    const damage = cfg.damage ?? 45;
+    const didDamage = character.takeDamage(
+      damage,
+      nowMs,
+      this.COLLISION_COOLDOWN,
+    );
+    if (!didDamage) return false;
+
+    character.playSound("hurt");
+    this._spawnDamageIndicator(character, damage);
+    this._spawnHitSpark(character.body.position, character.color);
+    return true;
+  }
+
+  _handleCharacterImpact(charA, charB, nowMs) {
+    const speedA = Math.hypot(charA.body.velocity.x, charA.body.velocity.y);
+    const speedB = Math.hypot(charB.body.velocity.x, charB.body.velocity.y);
+    this._applyImpactDamage(charA, speedB, nowMs);
+    this._applyImpactDamage(charB, speedA, nowMs);
+  }
+
+  _updateFloatingIndicators(indicators, config) {
+    for (let i = indicators.length - 1; i >= 0; i--) {
+      const indicator = indicators[i];
       indicator.y += indicator.vy;
-      indicator.vy *= window.IndicatorConfig.damage.velocityDamping;
-      indicator.life -= indicator.decay;
-      if (indicator.life <= 0) this.damageIndicators.splice(i, 1);
+      indicator.vy *= config.velocityDamping;
+      indicator.life -= config.fadeRate;
+      if (indicator.life <= 0) indicators.splice(i, 1);
     }
+  }
+
+  _updateDamageIndicators() {
+    this._updateFloatingIndicators(
+      this.damageIndicators,
+      window.IndicatorConfig.damage,
+    );
+  }
+
+  _updateDialogueIndicators() {
+    this._updateFloatingIndicators(
+      this.dialogueIndicators,
+      window.IndicatorConfig.dialogue,
+    );
   }
 
   _updateHitSparks() {
@@ -296,18 +406,60 @@ class GameManager {
       if (character.isDead || !character.weapon) return;
       if (!character.canUseWeapon(now)) return;
 
-      if (character.weapon.type === 'projectile') {
+      if (character.weapon.type === "projectile") {
         const target = this._findNearestEnemy(character);
         if (!target) return;
         this._fireProjectileWeapon(character, target);
         return;
       }
 
-      if (character.weapon.type === 'proximity-melee') {
+      if (character.weapon.type === "proximity-melee") {
         const target = this._findTargetInMeleeRange(character);
         if (!target) return;
         this._triggerMeleeWeapon(character, target);
       }
+    });
+  }
+
+  _updateFaceTargeting() {
+    this.characters.forEach((character) => {
+      if (character.isDead) return;
+      const mode = character.faceTarget?.mode ?? "never";
+      if (mode === "always") {
+        const target = this._findNearestEnemy(character);
+        character.setFacingToward(target);
+      } else if (mode === "range") {
+        const target = this._findTargetInMeleeRange(character);
+        if (target) {
+          character.setFacingToward(target);
+        } else {
+          character.facing = character.defaultFacing;
+        }
+      } else {
+        character.facing = character.defaultFacing;
+      }
+    });
+  }
+
+  _updateCharacterAudio() {
+    const now = performance.now();
+    this.characters.forEach((character) => {
+      character.updateAudio(now);
+    });
+  }
+
+  _updateCharacterLines() {
+    const now = performance.now();
+    this.characters.forEach((character) => {
+      if (character.isDead) return;
+      const lines = character.lines ?? {};
+      if (!Array.isArray(lines.ambient) || lines.ambient.length === 0) return;
+      const interval = lines.ambientIntervalMs ?? 6000;
+      const chance = lines.ambientChance ?? 0.25;
+      if (now - character.lastAmbientLineTime < interval) return;
+      character.lastAmbientLineTime = now;
+      if (Math.random() > chance) return;
+      this._spawnCharacterLine(character, "ambient");
     });
   }
 
@@ -331,11 +483,14 @@ class GameManager {
 
   _findTargetInMeleeRange(character) {
     const attackBox = this._getMeleeAttackBox(character);
-    return this.characters.find((enemy) => (
-      enemy !== character
-      && !enemy.isDead
-      && this._rectsOverlap(attackBox, this._getCharacterBox(enemy))
-    )) ?? null;
+    return (
+      this.characters.find(
+        (enemy) =>
+          enemy !== character &&
+          !enemy.isDead &&
+          this._rectsOverlap(attackBox, this._getCharacterBox(enemy)),
+      ) ?? null
+    );
   }
 
   _getCharacterBox(character) {
@@ -358,10 +513,12 @@ class GameManager {
   }
 
   _rectsOverlap(a, b) {
-    return a.x < b.x + b.width
-      && a.x + a.width > b.x
-      && a.y < b.y + b.height
-      && a.y + a.height > b.y;
+    return (
+      a.x < b.x + b.width &&
+      a.x + a.width > b.x &&
+      a.y < b.y + b.height &&
+      a.y + a.height > b.y
+    );
   }
 
   _triggerMeleeWeapon(character, target) {
@@ -370,11 +527,33 @@ class GameManager {
 
     const damage = weapon.damage ?? character.baseDamage;
     character.startWeaponAnimation();
-    target.takeDamage(damage, Date.now(), this.COLLISION_COOLDOWN);
-    target.playSound('hurt');
-    character.playSound('weapon-slap');
+    character.playSound("weaponSlap");
+    const didDamage = target.takeDamage(
+      damage,
+      Date.now(),
+      this.COLLISION_COOLDOWN,
+    );
+    if (!didDamage) return;
+
+    target.playSound("hurt");
+    this._applyWeaponKnockback(character, target, weapon);
     this._spawnDamageIndicator(target, damage);
     this._spawnHitSpark(target.body.position, target.color);
+    this._spawnCharacterLine(character, "weaponHit");
+  }
+
+  _applyWeaponKnockback(character, target, weapon) {
+    const knockback = weapon.knockback;
+    if (!knockback) return;
+
+    target.applyVelocityBoost(
+      {
+        x: target.body.position.x - character.body.position.x,
+        y: target.body.position.y - character.body.position.y,
+      },
+      knockback.speedMultiplier,
+      knockback.durationMs,
+    );
   }
 
   _fireProjectileWeapon(character, target) {
@@ -387,12 +566,16 @@ class GameManager {
     const len = Math.hypot(dx, dy) || 1;
     const vx = (dx / len) * projectile.speed;
     const vy = (dy / len) * projectile.speed;
-    const startX = character.body.position.x + (dx / len) * (character.hitbox.halfWidth + projectile.radius + 2);
-    const startY = character.body.position.y + (dy / len) * (character.hitbox.halfHeight + projectile.radius + 2);
+    const startX =
+      character.body.position.x +
+      (dx / len) * (character.hitbox.halfWidth + projectile.radius + 2);
+    const startY =
+      character.body.position.y +
+      (dy / len) * (character.hitbox.halfHeight + projectile.radius + 2);
 
     this._spawnProjectile(projectile, character, startX, startY, vx, vy);
     character.startWeaponAnimation();
-    character.playSound('weapon-fire');
+    character.playSound("weapon-fire");
   }
 
   _startRenderLoop() {
@@ -402,8 +585,12 @@ class GameManager {
 
       if (!this.paused) {
         this._updateWeapons();
+        this._updateFaceTargeting();
+        this._updateCharacterAudio();
+        this._updateCharacterLines();
         Runner.tick(this.runner, this.engine, performance.now());
         this._updateDamageIndicators();
+        this._updateDialogueIndicators();
         this._updateHitSparks();
         this._updateProjectiles();
       }
@@ -413,6 +600,7 @@ class GameManager {
       this._drawProjectiles(ctx);
       this._drawCharacters(ctx);
       this._drawDamageIndicators(ctx);
+      this._drawDialogueIndicators(ctx);
       this._drawHitSparks(ctx);
       if (!this.gameOver) this._checkWinCondition();
     };
@@ -430,21 +618,37 @@ class GameManager {
     ctx.restore();
   }
 
-  _drawDamageIndicators(ctx) {
-    const textCfg = window.IndicatorConfig.text;
-    this.damageIndicators.forEach((indicator) => {
+  _drawFloatingTextIndicators(ctx, indicators, config) {
+    const baseText = window.IndicatorConfig.text;
+    indicators.forEach((indicator) => {
       ctx.save();
       ctx.globalAlpha = Math.max(0, indicator.life);
-      ctx.fillStyle = indicator.color;
-      ctx.strokeStyle = textCfg.strokeColor;
-      ctx.lineWidth = textCfg.strokeWidth;
-      ctx.font = `${textCfg.weight} ${indicator.fontSize}px ${textCfg.family}`;
-      ctx.textAlign = textCfg.align;
-      ctx.textBaseline = textCfg.baseline;
+      ctx.fillStyle = config.fillColor;
+      ctx.strokeStyle = config.strokeColor;
+      ctx.lineWidth = config.strokeWidth;
+      ctx.font = `${baseText.weight} ${indicator.fontSize}px ${baseText.family}`;
+      ctx.textAlign = baseText.align;
+      ctx.textBaseline = baseText.baseline;
       ctx.strokeText(indicator.text, indicator.x, indicator.y);
       ctx.fillText(indicator.text, indicator.x, indicator.y);
       ctx.restore();
     });
+  }
+
+  _drawDamageIndicators(ctx) {
+    this._drawFloatingTextIndicators(
+      ctx,
+      this.damageIndicators,
+      window.IndicatorConfig.damage,
+    );
+  }
+
+  _drawDialogueIndicators(ctx) {
+    this._drawFloatingTextIndicators(
+      ctx,
+      this.dialogueIndicators,
+      window.IndicatorConfig.dialogue,
+    );
   }
 
   _drawHitSparks(ctx) {
@@ -470,7 +674,7 @@ class GameManager {
       if (projectile.image) {
         ctx.drawImage(projectile.image, pos.x - r, pos.y - r, r * 2, r * 2);
       } else {
-        ctx.fillStyle = '#9ad6ff';
+        ctx.fillStyle = "#9ad6ff";
         ctx.beginPath();
         ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
         ctx.fill();
@@ -493,42 +697,65 @@ class GameManager {
         if (char.attackTimer > 0) char.attackTimer--;
       }
 
+      const shouldFlip = char.facing !== char.defaultFacing;
       const isFlashing = char.hitFlashTimer > 0;
       const spriteVisual = char.getCurrentSprite();
 
       if (spriteVisual) {
         const { image, imageScale, imageOffset, imageCrop } = spriteVisual;
         const drawR = r * imageScale;
-        const { crop, dx, dy, dw, dh } = char._getCropDrawRect(image, imageCrop, drawR);
+        const { crop, dx, dy, dw, dh } = char._getCropDrawRect(
+          image,
+          imageCrop,
+          drawR,
+        );
         ctx.save();
         ctx.translate(pos.x + imageOffset.x, pos.y + imageOffset.y);
         ctx.rotate(ang);
-        ctx.drawImage(image, crop.x, crop.y, crop.width, crop.height, dx, dy, dw, dh);
+        ctx.scale(shouldFlip ? -1 : 1, 1);
+        ctx.drawImage(
+          image,
+          crop.x,
+          crop.y,
+          crop.width,
+          crop.height,
+          dx,
+          dy,
+          dw,
+          dh,
+        );
 
         if (isFlashing) {
-          ctx.globalCompositeOperation = 'source-atop';
-          ctx.fillStyle = 'rgba(255, 0, 0, 0.55)';
+          ctx.globalCompositeOperation = "source-atop";
+          ctx.fillStyle = "rgba(255, 0, 0, 0.55)";
           ctx.fillRect(dx, dy, dw, dh);
         }
 
         ctx.restore();
       } else {
         ctx.save();
-        const grad = ctx.createRadialGradient(pos.x - r * 0.3, pos.y - r * 0.3, r * 0.05, pos.x, pos.y, r);
-        grad.addColorStop(0, 'rgba(255,255,255,0.35)');
-        grad.addColorStop(1, 'rgba(0,0,0,0.25)');
+        const grad = ctx.createRadialGradient(
+          pos.x - r * 0.3,
+          pos.y - r * 0.3,
+          r * 0.05,
+          pos.x,
+          pos.y,
+          r,
+        );
+        grad.addColorStop(0, "rgba(255,255,255,0.35)");
+        grad.addColorStop(1, "rgba(0,0,0,0.25)");
         ctx.beginPath();
         ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
         ctx.fillStyle = grad;
         ctx.fill();
 
         if (isFlashing) {
-          ctx.globalCompositeOperation = 'source-atop';
-          ctx.fillStyle = 'rgba(255, 0, 0, 0.55)';
+          ctx.globalCompositeOperation = "source-atop";
+          ctx.fillStyle = "rgba(255, 0, 0, 0.55)";
           ctx.fill();
         }
 
-        ctx.strokeStyle = isFlashing ? '#ff4d4d' : char.color;
+        ctx.strokeStyle = isFlashing ? "#ff4d4d" : char.color;
         ctx.lineWidth = 2.5;
         ctx.stroke();
         ctx.restore();
@@ -568,7 +795,7 @@ class GameManager {
 
     ctx.save();
     this._tracePlusPath(ctx, x, y, size);
-    ctx.fillStyle = '#222222';
+    ctx.fillStyle = "#222222";
     ctx.fill();
 
     ctx.save();
@@ -579,42 +806,63 @@ class GameManager {
     ctx.restore();
 
     this._tracePlusPath(ctx, x, y, size);
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.28)";
     ctx.lineWidth = 1.5;
-    ctx.lineJoin = 'round';
+    ctx.lineJoin = "round";
     ctx.stroke();
 
     const textCfg = indicatorCfg.text;
-    const fontSize = Math.max(indicatorCfg.health.minFontSize, size * indicatorCfg.health.sizeMultiplier);
-    ctx.fillStyle = textCfg.fillColor;
-    ctx.strokeStyle = textCfg.strokeColor;
-    ctx.lineWidth = textCfg.strokeWidth;
+    const healthCfg = indicatorCfg.health;
+    const fontSize = Math.max(
+      healthCfg.minFontSize,
+      size * healthCfg.sizeMultiplier,
+    );
+    ctx.fillStyle = healthCfg.fillColor;
+    ctx.strokeStyle = healthCfg.strokeColor;
+    ctx.lineWidth = healthCfg.strokeWidth;
     ctx.font = `${textCfg.weight} ${fontSize}px ${textCfg.family}`;
     ctx.textAlign = textCfg.align;
     ctx.textBaseline = textCfg.baseline;
-    ctx.strokeText(String(Math.ceil(char.currentHealth)), x + size / 2, y + size / 2);
-    ctx.fillText(String(Math.ceil(char.currentHealth)), x + size / 2, y + size / 2);
+    ctx.strokeText(
+      String(Math.ceil(char.currentHealth)),
+      x + size / 2,
+      y + size / 2,
+    );
+    ctx.fillText(
+      String(Math.ceil(char.currentHealth)),
+      x + size / 2,
+      y + size / 2,
+    );
     ctx.restore();
   }
 
   _checkWinCondition() {
-    const dead = this.characters.filter((c) => c.isDead);
-    if (dead.length === 0) return;
+    const alive = this.characters.filter((c) => !c.isDead);
+    if (alive.length > 1) return;
 
     this.gameOver = true;
-    dead.forEach((c) => c.onDeath());
+    this.characters
+      .filter((c) => c.isDead)
+      .forEach((c) => c.onDeath());
+    if (alive.length === 1 && !this.victorySoundPlayed) {
+      this.victorySoundPlayed = true;
+      this._playSharedSound("victory");
+    }
   }
 
   _restart() {
     this.hudEls.status.textContent = window.GameConfig.text.statusFight;
     this.gameOver = false;
+    this.victorySoundPlayed = false;
     this.paused = false;
 
     if (this._animId) cancelAnimationFrame(this._animId);
 
     World.clear(this.world, false);
+    this._cleanupCharacters();
     this.projectiles = [];
     this.damageIndicators = [];
+    this.dialogueIndicators = [];
     this.hitSparks = [];
     this._spawnCharacters();
     this._startRenderLoop();
@@ -625,16 +873,22 @@ class GameManager {
   }
 
   setSelectedCharacterIds(ids) {
-    const validIds = new Set(window.CharacterConfigs.map((config) => config.id));
-    const nextIds = ids.filter((id, index) => validIds.has(id) && ids.indexOf(id) === index).slice(0, 2);
+    const validIds = new Set(
+      window.CharacterConfigs.map((config) => config.id),
+    );
+    const nextIds = ids
+      .filter((id, index) => validIds.has(id) && ids.indexOf(id) === index)
+      .slice(0, 2);
 
     while (nextIds.length < 2) {
-      const fallback = window.CharacterConfigs.find((config) => !nextIds.includes(config.id));
+      const fallback = window.CharacterConfigs.find(
+        (config) => !nextIds.includes(config.id),
+      );
       if (!fallback) break;
       nextIds.push(fallback.id);
     }
 
-    const changed = nextIds.join('|') !== this.selectedCharacterIds.join('|');
+    const changed = nextIds.join("|") !== this.selectedCharacterIds.join("|");
     this.selectedCharacterIds = nextIds;
 
     if (changed && this.selectedCharacterIds.length === 2) {

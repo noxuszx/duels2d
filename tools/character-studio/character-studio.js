@@ -18,6 +18,7 @@ class CharacterStudio {
 
     this.select = document.getElementById("char-select");
     this.poseSelect = document.getElementById("pose-select");
+    this.defaultFacingSelect = document.getElementById("defaultFacing");
     this.resetPoseBtn = document.getElementById("reset-pose-btn");
     this.imageOutput = document.getElementById("image-output");
     this.hitboxType = document.getElementById("hitboxType");
@@ -142,6 +143,12 @@ class CharacterStudio {
       }
     });
 
+    this.defaultFacingSelect.addEventListener("change", () => {
+      const config = this._currentConfig();
+      config.defaultFacing = this.defaultFacingSelect.value;
+      this._draw();
+    });
+
     this.saveBtn.addEventListener("click", async () => {
       if (!this.fileHandle) {
         try {
@@ -155,8 +162,8 @@ class CharacterStudio {
             multiple: false,
           });
           this.saveBtn.textContent = "Auto-Saving Active";
-          this.saveBtn.style.background = "#4caf50";
-          this.saveBtn.style.color = "#fff";
+          this.saveBtn.style.background = "#ffffff";
+          this.saveBtn.style.color = "#000000";
         } catch (error) {
           console.warn("File selection canceled or failed:", error);
           return;
@@ -328,6 +335,7 @@ class CharacterStudio {
     config.hitboxOffset ??= { x: 0, y: 0 };
     config.weaponScale ??= 1;
     config.weaponOffset ??= { x: 0, y: 0 };
+    config.defaultFacing ??= "right";
     config.hitbox ??= { type: "box", width: 44, height: 88 };
 
     if (config.hitbox.type === "box") {
@@ -813,6 +821,7 @@ class CharacterStudio {
     this.controls.hitboxRadius.value =
       config.hitbox.radius ?? config.radius ?? 30;
     this._syncHitboxOffsetControls(config.hitboxOffset);
+    this.defaultFacingSelect.value = config.defaultFacing ?? "right";
     this.controls.healthBarOffsetX.value = config.healthBarOffset.x;
     this.controls.healthBarOffsetY.value = config.healthBarOffset.y;
     this.controls.weaponScale.value = config.weaponScale;
@@ -976,6 +985,7 @@ class CharacterStudio {
     return JSON.stringify({
       hitbox: { ...config.hitbox },
       hitboxOffset: { ...(config.hitboxOffset ?? { x: 0, y: 0 }) },
+      defaultFacing: config.defaultFacing ?? "right",
       imageScale: config.imageScale,
       imageOffset: { ...config.imageOffset },
       imageCrop: config.imageCrop ? { ...config.imageCrop } : null,
@@ -1028,6 +1038,8 @@ class CharacterStudio {
 
     config.hitbox = { ...state.hitbox };
     config.hitboxOffset = { ...(state.hitboxOffset ?? config.hitboxOffset ?? { x: 0, y: 0 }) };
+    config.defaultFacing = state.defaultFacing ?? "right";
+    if (this.defaultFacingSelect) this.defaultFacingSelect.value = config.defaultFacing;
     config.imageScale = state.imageScale;
     config.imageOffset = { ...state.imageOffset };
     config.imageCrop = state.imageCrop ? { ...state.imageCrop } : null;
@@ -1195,7 +1207,7 @@ class CharacterStudio {
       this.ctx.arc(cx, cy, rect.width / 2, 0, Math.PI * 2);
     }
     this.ctx.fill("evenodd");
-    this.ctx.strokeStyle = "rgba(0, 212, 255, 0.35)";
+    this.ctx.strokeStyle = "rgba(212, 160, 0, 0.35)";
     this.ctx.setLineDash([4, 4]);
     this.ctx.strokeRect(safety.x, safety.y, safety.width, safety.height);
     this.ctx.strokeStyle = "#ffb000";
@@ -1279,11 +1291,13 @@ class CharacterStudio {
         drawRadius,
       );
 
+      const studioFlip = config.defaultFacing === "left" ? -1 : 1;
       ctx.save();
       ctx.translate(
         centerX + visual.imageOffset.x,
         centerY + visual.imageOffset.y,
       );
+      ctx.scale(studioFlip, 1);
       ctx.drawImage(
         this.images.body,
         crop.x, crop.y, crop.width, crop.height,
@@ -1304,7 +1318,7 @@ class CharacterStudio {
         ctx.rect(cropRect.x, cropRect.y, cropRect.width, cropRect.height);
         ctx.fill("evenodd");
 
-        ctx.strokeStyle = "#00d4ff";
+        ctx.strokeStyle = "#d4a000";
         ctx.lineWidth = 2;
         ctx.strokeRect(cropRect.x, cropRect.y, cropRect.width, cropRect.height);
 
@@ -1322,7 +1336,7 @@ class CharacterStudio {
         ctx.fillStyle = "#fff";
         for (const [x, y] of points) {
           ctx.fillRect(x - handleSize / 2, y - handleSize / 2, handleSize, handleSize);
-          ctx.strokeStyle = "#00d4ff";
+          ctx.strokeStyle = "#d4a000";
           ctx.strokeRect(x - handleSize / 2, y - handleSize / 2, handleSize, handleSize);
         }
         ctx.restore();

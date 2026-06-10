@@ -79,7 +79,11 @@ window.CharacterConfigs = [
   },
   {
     "id": "depressedguy",
-    "name": "Depressed Guy",
+    "name": "Sad Guy",
+    "defaultFacing": "right",
+    "faceTarget": {
+      "mode": "always"
+    },
     "maxHealth": 1000,
     "color": "#5f7ea8",
     "radius": 30,
@@ -118,10 +122,12 @@ window.CharacterConfigs = [
         "recoveryFrames": 8
       },
       "projectile": {
-        "radius": 10,
-        "speed": 7,
-        "damage": 75,
-        "lifetimeMs": 2500
+        "radius": 30,
+        "speed": 3,
+        "damage": 50,
+        "knockback": false,
+        "lifetimeMs": 2500,
+        "image": "assets/characters/depressedguy/projectiles/tear.png"
       }
     },
     "imageCrop": {
@@ -138,6 +144,10 @@ window.CharacterConfigs = [
   {
     "id": "happyguy",
     "name": "Happy Guy",
+    "defaultFacing": "right",
+    "faceTarget": {
+      "mode": "range"
+    },
     "maxHealth": 1000,
     "color": "#ffd84d",
     "radius": 30,
@@ -207,11 +217,29 @@ window.CharacterConfigs = [
         }
       }
     },
+    "lines": {
+      "weaponHit": [
+        "Could be worse!",
+        "Why the long face?!",
+        "How are ya?"
+      ],
+      "ambient": [
+        "Anybody want a hug?",
+        "What a great day!",
+        "Come here!"
+      ],
+      "ambientIntervalMs": 4500,
+      "ambientChance": 0.35
+    },
     "weapon": {
       "type": "proximity-melee",
       "cooldownMs": 1000,
       "damage": 100,
       "rangePadding": 22,
+      "knockback": {
+        "speedMultiplier": 4.2,
+        "durationMs": 650
+      },
       "animation": {
         "windupFrames": 10,
         "activeFrames": 26,

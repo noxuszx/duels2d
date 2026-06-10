@@ -9,8 +9,10 @@ class Projectile {
     this.image = null;
     this.radius = config.radius;
     this.dead = false;
+    const hasKnockback = config.knockback !== false;
     this.body = Bodies.circle(x, y, config.radius, {
-      restitution: 1,
+      isSensor: !hasKnockback,
+      restitution: hasKnockback ? 1 : 0,
       friction: 0,
       frictionAir: 0,
       frictionStatic: 0,

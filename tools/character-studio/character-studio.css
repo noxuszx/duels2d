@@ -4,26 +4,28 @@
 
 /* ── Tokens ──────────────────────────────────────────────────── */
 :root {
-  --accent:        #00d4ff;
-  --accent-dim:    rgba(0, 212, 255, 0.15);
-  --success:       #22c55e;
-  --success-dim:   rgba(34, 197, 94, 0.15);
-  --warning:       #f59e0b;
-  --warning-dim:   rgba(245, 158, 11, 0.15);
-  --danger:        #ef4444;
+  --accent:        #d4a000;
+  --accent-hover:  #f0bd1d;
+  --accent-dim:    rgba(212, 160, 0, 0.16);
+  --success:       #ffffff;
+  --success-dim:   rgba(255, 255, 255, 0.12);
+  --warning:       #d4a000;
+  --warning-dim:   rgba(212, 160, 0, 0.16);
+  --danger:        #cc0000;
 
-  --bg-base:       #0d0d0f;
-  --bg-panel:      #13131a;
-  --bg-card:       #1a1a24;
-  --bg-elevated:   #22222e;
-  --bg-hover:      #2a2a38;
+  --bg-base:       #000000;
+  --bg-panel:      #050505;
+  --bg-card:       #0b0b0b;
+  --bg-elevated:   #121212;
+  --bg-hover:      #1a1a1a;
 
-  --border:        rgba(255, 255, 255, 0.07);
-  --border-accent: rgba(0, 212, 255, 0.3);
+  --border:        rgba(255, 255, 255, 0.16);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-accent: rgba(212, 160, 0, 0.5);
 
-  --text-primary:  #f0f0f6;
-  --text-secondary:#8b8ba0;
-  --text-muted:    #555568;
+  --text-primary:  #ffffff;
+  --text-secondary:#d7d7d7;
+  --text-muted:    #888888;
 
   --radius-sm:  0;
   --radius-md:  0;
@@ -115,7 +117,7 @@ html, body {
 .mode-badge.crop {
   background: var(--warning-dim);
   color: var(--warning);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  border: 1px solid var(--border-accent);
 }
 .mode-badge.hitbox {
   background: var(--accent-dim);
@@ -172,12 +174,13 @@ html, body {
   letter-spacing: 0.01em;
 }
 .save-btn:hover {
-  background: #22daff;
+  background: var(--accent-hover);
   transform: translateY(-1px);
 }
 .save-btn:active { transform: translateY(0); }
 .save-btn.saved {
   background: var(--success);
+  color: #000;
 }
 
 /* Canvas area */
@@ -188,12 +191,12 @@ html, body {
   justify-content: center;
   padding: 24px;
   /* Checkerboard transparency reference */
-  background-color: #1a1a22;
+  background-color: #050505;
   background-image:
-    linear-gradient(45deg, #22222c 25%, transparent 25%),
-    linear-gradient(-45deg, #22222c 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #22222c 75%),
-    linear-gradient(-45deg, transparent 75%, #22222c 75%);
+    linear-gradient(45deg, #111111 25%, transparent 25%),
+    linear-gradient(-45deg, #111111 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #111111 75%),
+    linear-gradient(-45deg, transparent 75%, #111111 75%);
   background-size: 24px 24px;
   background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
   overflow: hidden;
@@ -204,7 +207,7 @@ html, body {
   max-height: 100%;
   object-fit: contain;
   background: #ffffff;
-  box-shadow: 0 0 0 1px var(--border), var(--shadow-lg);
+  box-shadow: 0 0 0 1px var(--border-accent), var(--shadow-lg);
   border-radius: 0;
 }
 
@@ -356,6 +359,7 @@ html, body {
   appearance: none;
   height: 4px;
   background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
   border-radius: 0;
   outline: none;
   cursor: pointer;
@@ -445,7 +449,7 @@ html, body {
   cursor: pointer;
   transition: border-color 0.15s ease;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b8ba0' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
   padding-right: 32px;
@@ -489,17 +493,17 @@ html, body {
   border-color: var(--border-accent);
 }
 .primary-btn:not(:disabled):hover {
-  background: rgba(0, 212, 255, 0.25);
+  background: rgba(212, 160, 0, 0.25);
   transform: translateY(-1px);
 }
 
 .success-btn {
   background: var(--success-dim);
   color: var(--success);
-  border-color: rgba(34, 197, 94, 0.25);
+  border-color: rgba(255, 255, 255, 0.28);
 }
 .success-btn:not(:disabled):hover {
-  background: rgba(34, 197, 94, 0.22);
+  background: rgba(255, 255, 255, 0.18);
   transform: translateY(-1px);
 }
 
@@ -511,7 +515,7 @@ html, body {
 .ghost-btn:not(:disabled):hover {
   background: var(--bg-elevated);
   color: var(--text-secondary);
-  border-color: rgba(255,255,255,0.12);
+  border-color: var(--border);
 }
 
 /* ── Character select group (in header) ─────────────────────── */

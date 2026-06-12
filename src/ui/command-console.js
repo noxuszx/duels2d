@@ -101,7 +101,7 @@ class CommandLineController {
         break;
 
       case 'studio':
-        this.status.textContent = 'Opening Character Studio...';
+        this.status.textContent = 'Opening Fighter Studio...';
         setTimeout(() => {
           window.location.href = 'tools/character-studio/index.html';
         }, 300);

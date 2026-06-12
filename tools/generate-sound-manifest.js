@@ -5,9 +5,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
-const SFX_DIR = path.join(ROOT, "assets", "sfx");
-const SFX_CHAR_DIR = path.join(SFX_DIR, "characters");
-const OUT_FILE = path.join(ROOT, "config", "sounds.js");
+const SFX_SHARED_DIR = path.join(ROOT, "assets", "sfx", "shared");
+const SFX_FIGHTER_DIR = path.join(ROOT, "assets", "sfx", "characters");
+const OUT_FILE = path.join(ROOT, "config", "sound-manifest.js");
 const AUDIO_EXTS = new Set([".mp3", ".wav", ".ogg", ".m4a"]);
 
 function sortedDirectories(dir) {
@@ -35,35 +35,39 @@ function toCamelCase(value) {
   return value.replace(/-([a-z0-9])/g, (_, char) => char.toUpperCase());
 }
 
+function stripExt(file) {
+  return path.parse(file).name;
+}
+
 function buildManifest() {
   const manifest = { shared: {}, characters: {} };
 
-  for (const soundType of sortedDirectories(SFX_DIR)) {
-    if (soundType === "characters") continue;
-
-    const typeDir = path.join(SFX_DIR, soundType);
-    const files = listAudioFiles(typeDir).map(
-      (file) => `assets/sfx/${soundType}/${file}`,
-    );
+  for (const soundType of sortedDirectories(SFX_SHARED_DIR)) {
+    const typeDir = path.join(SFX_SHARED_DIR, soundType);
+    const files = listAudioFiles(typeDir).map((file) => ({
+      id: stripExt(file),
+      path: `assets/sfx/shared/${soundType}/${file}`,
+    }));
 
     if (files.length > 0) manifest.shared[soundType] = files;
   }
 
-  for (const characterId of sortedDirectories(SFX_CHAR_DIR)) {
-    const characterDir = path.join(SFX_CHAR_DIR, characterId);
+  for (const fighterId of sortedDirectories(SFX_FIGHTER_DIR)) {
+    const fighterDir = path.join(SFX_FIGHTER_DIR, fighterId);
     const soundTypes = {};
 
-    for (const soundType of sortedDirectories(characterDir)) {
-      const typeDir = path.join(characterDir, soundType);
-      const files = listAudioFiles(typeDir).map(
-        (file) => `assets/sfx/characters/${characterId}/${soundType}/${file}`,
-      );
+    for (const soundType of sortedDirectories(fighterDir)) {
+      const typeDir = path.join(fighterDir, soundType);
+      const files = listAudioFiles(typeDir).map((file) => ({
+        id: stripExt(file),
+        path: `assets/sfx/characters/${fighterId}/${soundType}/${file}`,
+      }));
 
       if (files.length > 0) soundTypes[toCamelCase(soundType)] = files;
     }
 
     if (Object.keys(soundTypes).length > 0) {
-      manifest.characters[characterId] = soundTypes;
+      manifest.characters[fighterId] = soundTypes;
     }
   }
 

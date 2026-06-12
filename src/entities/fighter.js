@@ -1,6 +1,6 @@
 "use strict";
 
-class Character {
+class Fighter {
   constructor(config, spawnX, spawnY, velX, velY) {
     this.id = config.id;
     this.name = config.name;
@@ -13,6 +13,8 @@ class Character {
     this.baseSpeed = Math.sqrt(velX * velX + velY * velY);
     this.velocityBoostMultiplier = 1;
     this.velocityBoostUntil = 0;
+    this.knockbackOwnerId = null;
+    this.knockbackUntil = 0;
     this.hitboxOffset = config.hitboxOffset ?? { x: 0, y: 0 };
     this.hitFlashTimer = 0;
     this.attackTimer = 0;
@@ -98,7 +100,7 @@ class Character {
 
     this.healthBarOffset = config.healthBarOffset ?? { x: 0, y: 0 };
     this.soundPools = this._createSoundPools();
-    this.sharedSoundPools = Character._getSharedSoundPools();
+    this.sharedSoundPools = Fighter._getSharedSoundPools();
     this.soundCooldowns = {};
     this.lines = config.lines ?? {};
     this.lastAmbientLineTime = performance.now();
@@ -169,6 +171,10 @@ class Character {
     return nowMs - this.lastWeaponUseTime >= cooldown;
   }
 
+  markWeaponUsed(nowMs = performance.now()) {
+    this.lastWeaponUseTime = nowMs;
+  }
+
   getMovementSpeed(nowMs = performance.now()) {
     if (nowMs < this.velocityBoostUntil) {
       return this.baseSpeed * this.velocityBoostMultiplier;
@@ -177,13 +183,17 @@ class Character {
     return this.baseSpeed;
   }
 
-  applyVelocityBoost(direction, speedMultiplier, durationMs) {
+  applyVelocityBoost(direction, speedMultiplier, durationMs, sourceOwnerId = null) {
     const len = Math.hypot(direction.x, direction.y) || 1;
     const multiplier = Math.max(1, speedMultiplier ?? 1);
     const speed = this.baseSpeed * multiplier;
+    const now = performance.now();
+    const duration = Math.max(0, durationMs ?? 0);
 
     this.velocityBoostMultiplier = multiplier;
-    this.velocityBoostUntil = performance.now() + Math.max(0, durationMs ?? 0);
+    this.velocityBoostUntil = now + duration;
+    this.knockbackOwnerId = sourceOwnerId;
+    this.knockbackUntil = sourceOwnerId ? now + duration : 0;
     Body.setVelocity(this.body, {
       x: (direction.x / len) * speed,
       y: (direction.y / len) * speed,
@@ -195,7 +205,6 @@ class Character {
     this.weaponState = "windup";
     this.weaponTimer = this.weapon.animation.windupFrames ?? 0;
     this.attackTimer = this.weapon.animation.windupFrames ?? 0;
-    this.lastWeaponUseTime = performance.now();
     this.playSound("attackWindup", 0);
   }
 
@@ -307,6 +316,10 @@ class Character {
     return { x, y, width, height };
   }
 
+  static _resolveSoundSrc(entry) {
+    return typeof entry === "string" ? entry : entry.path;
+  }
+
   _createSoundPools() {
     if (typeof Howl === "undefined") return {};
     const manifest = window.SoundManifest?.characters?.[this.id] ?? {};
@@ -314,8 +327,8 @@ class Character {
     Object.entries(manifest).forEach(([type, paths]) => {
       if (!Array.isArray(paths) || paths.length === 0) return;
       pools[type] = paths.map(
-        (src) =>
-          new Howl({ src: [src], volume: Character._volumeForSoundType(type) }),
+        (entry) =>
+          new Howl({ src: [Fighter._resolveSoundSrc(entry)], volume: Fighter._volumeForSoundType(type) }),
       );
     });
     return pools;
@@ -323,11 +336,11 @@ class Character {
 
   static _getSharedSoundPools() {
     if (typeof Howl === "undefined") return {};
-    if (Character._sharedSoundPoolCache) return Character._sharedSoundPoolCache;
-    Character._sharedSoundPoolCache = Character._buildSoundPools(
+    if (Fighter._sharedSoundPoolCache) return Fighter._sharedSoundPoolCache;
+    Fighter._sharedSoundPoolCache = Fighter._buildSoundPools(
       window.SoundManifest?.shared ?? {},
     );
-    return Character._sharedSoundPoolCache;
+    return Fighter._sharedSoundPoolCache;
   }
 
   static _buildSoundPools(manifest) {
@@ -335,8 +348,8 @@ class Character {
     Object.entries(manifest).forEach(([type, paths]) => {
       if (!Array.isArray(paths) || paths.length === 0) return;
       pools[type] = paths.map(
-        (src) =>
-          new Howl({ src: [src], volume: Character._volumeForSoundType(type) }),
+        (entry) =>
+          new Howl({ src: [Fighter._resolveSoundSrc(entry)], volume: Fighter._volumeForSoundType(type) }),
       );
     });
     return pools;
@@ -377,6 +390,15 @@ class Character {
     sound.play();
   }
 
+  isKnockbackFrom(ownerId, nowMs = performance.now()) {
+    if (nowMs >= this.knockbackUntil) {
+      this.knockbackOwnerId = null;
+      this.knockbackUntil = 0;
+      return false;
+    }
+    return this.knockbackOwnerId === ownerId;
+  }
+
   takeDamage(amount, nowMs, cooldownMs) {
     if (nowMs - this._lastHitTime < cooldownMs) return false;
     this._lastHitTime = nowMs;
@@ -412,3 +434,6 @@ class Character {
     return lines[Math.floor(Math.random() * lines.length)];
   }
 }
+
+// Temporary alias for backward compatibility during migration
+var Character = Fighter;

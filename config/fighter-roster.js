@@ -1,4 +1,4 @@
-window.CharacterConfigs = [
+window.FighterRoster = [
   {
     "id": "womanguy",
     "name": "Woman Guy",
@@ -12,7 +12,7 @@ window.CharacterConfigs = [
     },
     "baseDamage": 100,
     "speed": 10,
-    "image": "assets/characters/womanguy/womanguy.out.png",
+    "image": "assets/fighters/womanguy/sprites/womanguy.out.png",
     "imageScale": 2.6,
     "imageOffset": {
       "x": 0,
@@ -51,7 +51,7 @@ window.CharacterConfigs = [
     },
     "baseDamage": 100,
     "speed": 10,
-    "image": "assets/characters/chefguy/chefguy.out.png",
+    "image": "assets/fighters/chefguy/sprites/chefguy.out.png",
     "imageScale": 2.4,
     "imageOffset": {
       "x": 0,
@@ -94,7 +94,7 @@ window.CharacterConfigs = [
     },
     "baseDamage": 100,
     "speed": 10,
-    "image": "assets/characters/depressedguy/depressedguy.out.png",
+    "image": "assets/fighters/depressedguy/sprites/depressedguy.out.png",
     "imageScale": 2.8,
     "imageOffset": {
       "x": 8,
@@ -110,8 +110,8 @@ window.CharacterConfigs = [
       "y": 0
     },
     "poses": {
-      "idle": "assets/characters/depressedguy/depressedguy.out.png",
-      "attackActive": "assets/characters/depressedguy/depressedguy.out.png"
+      "idle": "assets/fighters/depressedguy/sprites/depressedguy.out.png",
+      "attackActive": "assets/fighters/depressedguy/sprites/depressedguy.out.png"
     },
     "weapon": {
       "type": "projectile",
@@ -127,7 +127,7 @@ window.CharacterConfigs = [
         "damage": 50,
         "knockback": false,
         "lifetimeMs": 2500,
-        "image": "assets/characters/depressedguy/projectiles/tear.png"
+        "image": "assets/fighters/depressedguy/projectiles/tear.png"
       }
     },
     "imageCrop": {
@@ -158,7 +158,7 @@ window.CharacterConfigs = [
     },
     "baseDamage": 100,
     "speed": 10,
-    "image": "assets/characters/happyguy/happyguy.out.png",
+    "image": "assets/fighters/happyguy/sprites/happyguy.out.png",
     "imageScale": 2.3,
     "imageOffset": {
       "x": 0,
@@ -175,7 +175,7 @@ window.CharacterConfigs = [
     },
     "poses": {
       "idle": {
-        "image": "assets/characters/happyguy/happyguy.out.png",
+        "image": "assets/fighters/happyguy/sprites/happyguy.out.png",
         "imageCrop": {
           "x": 0,
           "y": 0,
@@ -189,7 +189,7 @@ window.CharacterConfigs = [
         }
       },
       "attackWindup": {
-        "image": "assets/characters/happyguy/happyguy-windup.png",
+        "image": "assets/fighters/happyguy/sprites/happyguy-windup.png",
         "imageCrop": {
           "x": 0,
           "y": 0,
@@ -203,7 +203,7 @@ window.CharacterConfigs = [
         }
       },
       "attackActive": {
-        "image": "assets/characters/happyguy/happyguy-slap.png",
+        "image": "assets/fighters/happyguy/sprites/happyguy-slap.png",
         "imageCrop": {
           "x": 0,
           "y": 0,
@@ -258,3 +258,6 @@ window.CharacterConfigs = [
     }
   }
 ];
+
+// Temporary alias for backward compatibility during migration
+window.CharacterConfigs = window.FighterRoster;

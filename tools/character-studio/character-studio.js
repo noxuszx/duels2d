@@ -3,7 +3,7 @@ class CharacterStudio {
     this.canvas = document.getElementById("studio-canvas");
     this.ctx = this.canvas.getContext("2d");
 
-    this.configs = window.CharacterConfigs;
+    this.configs = window.FighterRoster;
     this.activeConfigIndex = 0;
     this.activePoseKey = "base";
     this.history = [];
@@ -1009,7 +1009,7 @@ class CharacterStudio {
 
     try {
       const writable = await this.fileHandle.createWritable();
-      const content = `window.CharacterConfigs = ${JSON.stringify(this.configs, null, 2)};\n`;
+      const content = `window.FighterRoster = ${JSON.stringify(this.configs, null, 2)};\n`;
       await writable.write(content);
       await writable.close();
     } catch (error) {

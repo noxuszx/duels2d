@@ -71,18 +71,20 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
 
   <!-- CONFIGS -->
-  <script src="config/game.js"></script>
-  <script src="config/indicators.js"></script>
-  <script src="config/sounds.js"></script>
-  <script src="config/characters.js"></script>
+  <script src="config/game-settings.js"></script>
+  <script src="config/indicator-settings.js"></script>
+  <script src="config/sound-manifest.js"></script>
+  <script src="config/fighter-roster.js"></script>
 
   <!-- GAME SCRIPTS -->
-  <script src="js/character.js"></script>
-  <script src="js/projectile.js"></script>
-  <script src="js/character-select.js"></script>
-  <script src="js/game-manager.js"></script>
-  <script src="js/game.js"></script>
-  <script src="js/command-line.js"></script>
+  <script src="src/entities/fighter.js"></script>
+  <script src="src/entities/projectile.js"></script>
+  <script src="src/ui/fighter-select-panel.js"></script>
+  <script src="src/systems/indicator-system.js"></script>
+  <script src="src/systems/weapon-system.js"></script>
+  <script src="src/engine/game-manager.js"></script>
+  <script src="src/boot/start-game.js"></script>
+  <script src="src/ui/command-console.js"></script>
 
 </body>
 </html>

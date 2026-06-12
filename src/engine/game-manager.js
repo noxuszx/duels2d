@@ -11,9 +11,7 @@ class GameManager {
     this.paused = false;
     this.characters = [];
     this.projectiles = [];
-    this.damageIndicators = [];
-    this.dialogueIndicators = [];
-    this.hitSparks = [];
+    this.indicators = new IndicatorSystem();
     this.gameOver = false;
     this.victorySoundPlayed = false;
     this._animId = null;
@@ -29,10 +27,11 @@ class GameManager {
     this.canvas = document.getElementById("arena-canvas");
     this.ctx = this.canvas.getContext("2d");
     this.hudEls = { status: document.getElementById("hud-status") };
+    this.weaponSystem = new WeaponSystem(this);
     this.characterSelectPanel =
-      typeof CharacterSelectPanel === "undefined"
+      typeof FighterSelectPanel === "undefined"
         ? null
-        : new CharacterSelectPanel(this);
+        : new FighterSelectPanel(this);
 
     this._resizeCanvas();
     const ro = new ResizeObserver(() => this._resizeCanvas());
@@ -42,7 +41,7 @@ class GameManager {
   }
 
   _defaultSelectedCharacterIds() {
-    return window.CharacterConfigs.slice(0, 2).map((config) => config.id);
+    return window.FighterRoster.slice(0, 2).map((config) => config.id);
   }
 
   _applyConfigDOM() {
@@ -76,7 +75,7 @@ class GameManager {
 
   _getSelectedCharacterConfigs() {
     const byId = new Map(
-      window.CharacterConfigs.map((config) => [config.id, config]),
+      window.FighterRoster.map((config) => [config.id, config]),
     );
     const selectedConfigs = this.selectedCharacterIds
       .map((id) => byId.get(id))
@@ -86,7 +85,7 @@ class GameManager {
       return selectedConfigs.slice(0, 2);
     }
 
-    return window.CharacterConfigs.slice(0, 2);
+    return window.FighterRoster.slice(0, 2);
   }
 
   _cleanupCharacters() {
@@ -152,12 +151,12 @@ class GameManager {
           );
           if (didDamage) {
             character.playSound("hurt");
-            this._spawnDamageIndicator(character, projectile.damage);
-            this._spawnHitSpark(character.body.position, character.color);
+            this.indicators.spawnDamageIndicator(character, projectile.damage);
+            this.indicators.spawnHitSpark(character.body.position, character.color);
             const owner = this.characters.find(
               (c) => c.id === projectile.ownerId,
             );
-            if (owner) this._spawnCharacterLine(owner, "weaponHit");
+            if (owner) this.indicators.spawnCharacterLine(owner, "weaponHit");
           }
           projectile.dead = true;
           World.remove(this.world, projectile.body);
@@ -262,67 +261,6 @@ class GameManager {
     return this.projectiles.find((p) => p.body === body) || null;
   }
 
-  _spawnProjectile(config, owner, x, y, vx, vy) {
-    const projectile = new Projectile(config, owner, x, y, vx, vy);
-    this.projectiles.push(projectile);
-    World.add(this.world, projectile.body);
-    return projectile;
-  }
-
-  _spawnDamageIndicator(char, amount) {
-    const pos = char.visualPosition;
-    const cfg = window.IndicatorConfig.damage;
-    this.damageIndicators.push({
-      text: `-${amount}`,
-      x: pos.x + (Math.random() - 0.5) * char.radius,
-      y: pos.y - char.hitbox.halfHeight * 0.35,
-      vy: cfg.driftY,
-      life: 1,
-      fontSize: Math.max(cfg.minFontSize, char.radius * cfg.sizeMultiplier),
-    });
-  }
-
-  _spawnDialogueIndicator(character, text) {
-    const pos = character.visualPosition;
-    const cfg = window.IndicatorConfig.dialogue;
-    this.dialogueIndicators.push({
-      text,
-      x: pos.x,
-      y: pos.y - character.hitbox.halfHeight * (cfg.offsetYMultiplier ?? 1),
-      vy: cfg.driftY,
-      life: 1,
-      fontSize: Math.max(
-        cfg.minFontSize,
-        character.radius * cfg.sizeMultiplier,
-      ),
-    });
-  }
-
-  _spawnCharacterLine(character, type) {
-    const line = character.getRandomLine(type);
-    if (!line) return;
-    this._spawnDialogueIndicator(character, line);
-  }
-
-  _spawnHitSpark(pos, color) {
-    if (window.GameConfig.effects?.hitSpark === false) return;
-
-    const count = 6;
-    for (let i = 0; i < count; i++) {
-      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
-      const speed = 2 + Math.random() * 2;
-      this.hitSparks.push({
-        x: pos.x,
-        y: pos.y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 1,
-        decay: 0.12 + Math.random() * 0.04,
-        color,
-      });
-    }
-  }
-
   _applyImpactDamage(character, speed, nowMs) {
     if (character.isDead) return false;
 
@@ -340,51 +278,21 @@ class GameManager {
     if (!didDamage) return false;
 
     character.playSound("hurt");
-    this._spawnDamageIndicator(character, damage);
-    this._spawnHitSpark(character.body.position, character.color);
+    this.indicators.spawnDamageIndicator(character, damage);
+    this.indicators.spawnHitSpark(character.body.position, character.color);
     return true;
   }
 
   _handleCharacterImpact(charA, charB, nowMs) {
     const speedA = Math.hypot(charA.body.velocity.x, charA.body.velocity.y);
     const speedB = Math.hypot(charB.body.velocity.x, charB.body.velocity.y);
-    this._applyImpactDamage(charA, speedB, nowMs);
-    this._applyImpactDamage(charB, speedA, nowMs);
-  }
-
-  _updateFloatingIndicators(indicators, config) {
-    for (let i = indicators.length - 1; i >= 0; i--) {
-      const indicator = indicators[i];
-      indicator.y += indicator.vy;
-      indicator.vy *= config.velocityDamping;
-      indicator.life -= config.fadeRate;
-      if (indicator.life <= 0) indicators.splice(i, 1);
+    // Suppress impact damage when the fast-moving fighter was launched by the
+    // potential victim — prevents slap-into-self-bounce damage.
+    if (!charB.isKnockbackFrom(charA.id, nowMs)) {
+      this._applyImpactDamage(charA, speedB, nowMs);
     }
-  }
-
-  _updateDamageIndicators() {
-    this._updateFloatingIndicators(
-      this.damageIndicators,
-      window.IndicatorConfig.damage,
-    );
-  }
-
-  _updateDialogueIndicators() {
-    this._updateFloatingIndicators(
-      this.dialogueIndicators,
-      window.IndicatorConfig.dialogue,
-    );
-  }
-
-  _updateHitSparks() {
-    for (let i = this.hitSparks.length - 1; i >= 0; i--) {
-      const spark = this.hitSparks[i];
-      spark.x += spark.vx;
-      spark.y += spark.vy;
-      spark.vx *= 0.92;
-      spark.vy *= 0.92;
-      spark.life -= spark.decay;
-      if (spark.life <= 0) this.hitSparks.splice(i, 1);
+    if (!charA.isKnockbackFrom(charB.id, nowMs)) {
+      this._applyImpactDamage(charB, speedA, nowMs);
     }
   }
 
@@ -397,48 +305,6 @@ class GameManager {
         this.projectiles.splice(i, 1);
       }
     }
-  }
-
-  _updateWeapons() {
-    const now = performance.now();
-    this.characters.forEach((character) => {
-      character.updateWeaponState();
-      if (character.isDead || !character.weapon) return;
-      if (!character.canUseWeapon(now)) return;
-
-      if (character.weapon.type === "projectile") {
-        const target = this._findNearestEnemy(character);
-        if (!target) return;
-        this._fireProjectileWeapon(character, target);
-        return;
-      }
-
-      if (character.weapon.type === "proximity-melee") {
-        const target = this._findTargetInMeleeRange(character);
-        if (!target) return;
-        this._triggerMeleeWeapon(character, target);
-      }
-    });
-  }
-
-  _updateFaceTargeting() {
-    this.characters.forEach((character) => {
-      if (character.isDead) return;
-      const mode = character.faceTarget?.mode ?? "never";
-      if (mode === "always") {
-        const target = this._findNearestEnemy(character);
-        character.setFacingToward(target);
-      } else if (mode === "range") {
-        const target = this._findTargetInMeleeRange(character);
-        if (target) {
-          character.setFacingToward(target);
-        } else {
-          character.facing = character.defaultFacing;
-        }
-      } else {
-        character.facing = character.defaultFacing;
-      }
-    });
   }
 
   _updateCharacterAudio() {
@@ -459,123 +325,8 @@ class GameManager {
       if (now - character.lastAmbientLineTime < interval) return;
       character.lastAmbientLineTime = now;
       if (Math.random() > chance) return;
-      this._spawnCharacterLine(character, "ambient");
+      this.indicators.spawnCharacterLine(character, "ambient");
     });
-  }
-
-  _findNearestEnemy(character) {
-    let best = null;
-    let bestDist = Infinity;
-
-    this.characters.forEach((enemy) => {
-      if (enemy === character || enemy.isDead) return;
-      const dx = enemy.body.position.x - character.body.position.x;
-      const dy = enemy.body.position.y - character.body.position.y;
-      const dist = dx * dx + dy * dy;
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = enemy;
-      }
-    });
-
-    return best;
-  }
-
-  _findTargetInMeleeRange(character) {
-    const attackBox = this._getMeleeAttackBox(character);
-    return (
-      this.characters.find(
-        (enemy) =>
-          enemy !== character &&
-          !enemy.isDead &&
-          this._rectsOverlap(attackBox, this._getCharacterBox(enemy)),
-      ) ?? null
-    );
-  }
-
-  _getCharacterBox(character) {
-    return {
-      x: character.body.position.x - character.hitbox.halfWidth,
-      y: character.body.position.y - character.hitbox.halfHeight,
-      width: character.hitbox.halfWidth * 2,
-      height: character.hitbox.halfHeight * 2,
-    };
-  }
-
-  _getMeleeAttackBox(character) {
-    const padding = character.weapon?.rangePadding ?? 0;
-    return {
-      x: character.body.position.x - character.hitbox.halfWidth - padding,
-      y: character.body.position.y - character.hitbox.halfHeight - padding,
-      width: character.hitbox.width + padding * 2,
-      height: character.hitbox.height + padding * 2,
-    };
-  }
-
-  _rectsOverlap(a, b) {
-    return (
-      a.x < b.x + b.width &&
-      a.x + a.width > b.x &&
-      a.y < b.y + b.height &&
-      a.y + a.height > b.y
-    );
-  }
-
-  _triggerMeleeWeapon(character, target) {
-    const weapon = character.weapon;
-    if (!weapon) return;
-
-    const damage = weapon.damage ?? character.baseDamage;
-    character.startWeaponAnimation();
-    character.playSound("weaponSlap");
-    const didDamage = target.takeDamage(
-      damage,
-      Date.now(),
-      this.COLLISION_COOLDOWN,
-    );
-    if (!didDamage) return;
-
-    target.playSound("hurt");
-    this._applyWeaponKnockback(character, target, weapon);
-    this._spawnDamageIndicator(target, damage);
-    this._spawnHitSpark(target.body.position, target.color);
-    this._spawnCharacterLine(character, "weaponHit");
-  }
-
-  _applyWeaponKnockback(character, target, weapon) {
-    const knockback = weapon.knockback;
-    if (!knockback) return;
-
-    target.applyVelocityBoost(
-      {
-        x: target.body.position.x - character.body.position.x,
-        y: target.body.position.y - character.body.position.y,
-      },
-      knockback.speedMultiplier,
-      knockback.durationMs,
-    );
-  }
-
-  _fireProjectileWeapon(character, target) {
-    const weapon = character.weapon;
-    const projectile = weapon.projectile;
-    if (!projectile) return;
-
-    const dx = target.body.position.x - character.body.position.x;
-    const dy = target.body.position.y - character.body.position.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const vx = (dx / len) * projectile.speed;
-    const vy = (dy / len) * projectile.speed;
-    const startX =
-      character.body.position.x +
-      (dx / len) * (character.hitbox.halfWidth + projectile.radius + 2);
-    const startY =
-      character.body.position.y +
-      (dy / len) * (character.hitbox.halfHeight + projectile.radius + 2);
-
-    this._spawnProjectile(projectile, character, startX, startY, vx, vy);
-    character.startWeaponAnimation();
-    character.playSound("weapon-fire");
   }
 
   _startRenderLoop() {
@@ -584,14 +335,14 @@ class GameManager {
       this._animId = requestAnimationFrame(loop);
 
       if (!this.paused) {
-        this._updateWeapons();
-        this._updateFaceTargeting();
+        this.weaponSystem.update();
+        this.weaponSystem.updateFaceTargeting();
         this._updateCharacterAudio();
         this._updateCharacterLines();
         Runner.tick(this.runner, this.engine, performance.now());
-        this._updateDamageIndicators();
-        this._updateDialogueIndicators();
-        this._updateHitSparks();
+        this.indicators.updateDamageIndicators();
+        this.indicators.updateDialogueIndicators();
+        this.indicators.updateHitSparks();
         this._updateProjectiles();
       }
 
@@ -599,9 +350,9 @@ class GameManager {
       this._drawArenaBorder(ctx);
       this._drawProjectiles(ctx);
       this._drawCharacters(ctx);
-      this._drawDamageIndicators(ctx);
-      this._drawDialogueIndicators(ctx);
-      this._drawHitSparks(ctx);
+      this.indicators.drawDamageIndicators(ctx);
+      this.indicators.drawDialogueIndicators(ctx);
+      this.indicators.drawHitSparks(ctx);
       if (!this.gameOver) this._checkWinCondition();
     };
 
@@ -616,53 +367,6 @@ class GameManager {
     ctx.lineWidth = b * 2;
     ctx.strokeRect(ax, ay, aw, ah);
     ctx.restore();
-  }
-
-  _drawFloatingTextIndicators(ctx, indicators, config) {
-    const baseText = window.IndicatorConfig.text;
-    indicators.forEach((indicator) => {
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, indicator.life);
-      ctx.fillStyle = config.fillColor;
-      ctx.strokeStyle = config.strokeColor;
-      ctx.lineWidth = config.strokeWidth;
-      ctx.font = `${baseText.weight} ${indicator.fontSize}px ${baseText.family}`;
-      ctx.textAlign = baseText.align;
-      ctx.textBaseline = baseText.baseline;
-      ctx.strokeText(indicator.text, indicator.x, indicator.y);
-      ctx.fillText(indicator.text, indicator.x, indicator.y);
-      ctx.restore();
-    });
-  }
-
-  _drawDamageIndicators(ctx) {
-    this._drawFloatingTextIndicators(
-      ctx,
-      this.damageIndicators,
-      window.IndicatorConfig.damage,
-    );
-  }
-
-  _drawDialogueIndicators(ctx) {
-    this._drawFloatingTextIndicators(
-      ctx,
-      this.dialogueIndicators,
-      window.IndicatorConfig.dialogue,
-    );
-  }
-
-  _drawHitSparks(ctx) {
-    this.hitSparks.forEach((spark) => {
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, spark.life);
-      ctx.strokeStyle = spark.color;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(spark.x, spark.y);
-      ctx.lineTo(spark.x - spark.vx * 2, spark.y - spark.vy * 2);
-      ctx.stroke();
-      ctx.restore();
-    });
   }
 
   _drawProjectiles(ctx) {
@@ -861,9 +565,7 @@ class GameManager {
     World.clear(this.world, false);
     this._cleanupCharacters();
     this.projectiles = [];
-    this.damageIndicators = [];
-    this.dialogueIndicators = [];
-    this.hitSparks = [];
+    this.indicators.reset();
     this._spawnCharacters();
     this._startRenderLoop();
   }
@@ -874,14 +576,14 @@ class GameManager {
 
   setSelectedCharacterIds(ids) {
     const validIds = new Set(
-      window.CharacterConfigs.map((config) => config.id),
+      window.FighterRoster.map((config) => config.id),
     );
     const nextIds = ids
       .filter((id, index) => validIds.has(id) && ids.indexOf(id) === index)
       .slice(0, 2);
 
     while (nextIds.length < 2) {
-      const fallback = window.CharacterConfigs.find(
+      const fallback = window.FighterRoster.find(
         (config) => !nextIds.includes(config.id),
       );
       if (!fallback) break;

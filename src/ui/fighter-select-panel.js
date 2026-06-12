@@ -1,6 +1,6 @@
 'use strict';
 
-class CharacterSelectPanel {
+class FighterSelectPanel {
   constructor(game) {
     this.game = game;
     this.root = document.getElementById('character-select-panel');
@@ -41,7 +41,7 @@ class CharacterSelectPanel {
 
     const selectedIds = this.game.getSelectedCharacterIds();
     const normalizedQuery = this.query.trim().toLowerCase();
-    const configs = window.CharacterConfigs.filter((config) => {
+    const configs = window.FighterRoster.filter((config) => {
       if (!normalizedQuery) return true;
       return `${config.name} ${config.id}`.toLowerCase().includes(normalizedQuery);
     });
@@ -114,3 +114,6 @@ class CharacterSelectPanel {
     this.render();
   }
 }
+
+// Temporary alias for backward compatibility during migration
+var CharacterSelectPanel = FighterSelectPanel;

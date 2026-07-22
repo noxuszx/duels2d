@@ -9,7 +9,7 @@ class CharacterStudio {
     this.history = [];
     this.historyIndex = -1;
     this.isRestoring = false;
-    this.fileHandle = null;
+    this.fileHandles = new Map();
     this.mode = "default";
     this.cropDraft = null;
     this.hitboxDraft = null;
@@ -147,23 +147,24 @@ class CharacterStudio {
       const config = this._currentConfig();
       config.defaultFacing = this.defaultFacingSelect.value;
       this._draw();
+      this._saveState();
     });
 
     this.saveBtn.addEventListener("click", async () => {
-      if (!this.fileHandle) {
+      const config = this._currentConfig();
+      if (!this.fileHandles.has(config.id)) {
         try {
-          [this.fileHandle] = await window.showOpenFilePicker({
+          const fileHandle = await window.showSaveFilePicker({
+            suggestedName: `${config.id}.js`,
             types: [
               {
                 description: "JavaScript Files",
                 accept: { "text/javascript": [".js"] },
               },
             ],
-            multiple: false,
           });
-          this.saveBtn.textContent = "Auto-Saving Active";
-          this.saveBtn.style.background = "#ffffff";
-          this.saveBtn.style.color = "#000000";
+          this.fileHandles.set(config.id, fileHandle);
+          this._updateSaveButton();
         } catch (error) {
           console.warn("File selection canceled or failed:", error);
           return;
@@ -812,6 +813,7 @@ class CharacterStudio {
     this.activePoseKey = "base";
     const config = this._currentConfig();
     this._ensureConfigShape(config);
+    this._updateSaveButton();
 
     this._populatePoseSelect(config);
 
@@ -1004,12 +1006,67 @@ class CharacterStudio {
     this._saveToLocalFile();
   }
 
+  _updateSaveButton() {
+    const config = this._currentConfig();
+    const isConnected = config && this.fileHandles.has(config.id);
+    this.saveBtn.textContent = isConnected
+      ? `Auto-Saving ${config.id}.js`
+      : `Save ${config?.id ?? "Fighter"} File`;
+    this.saveBtn.style.background = isConnected ? "#ffffff" : "";
+    this.saveBtn.style.color = isConnected ? "#000000" : "";
+  }
+
+  _syncFighterDefinition(config) {
+    const definition = window.FighterDefinitions.find((item) => item.id === config.id);
+    if (!definition) throw new Error(`Missing fighter definition for ${config.id}`);
+
+    definition.body = definition.body || {};
+    definition.body.hitbox = JSON.parse(JSON.stringify(config.hitbox));
+    definition.body.hitboxOffset = JSON.parse(JSON.stringify(config.hitboxOffset));
+
+    definition.presentation = definition.presentation || {};
+    definition.presentation.image = config.image;
+    definition.presentation.imageScale = config.imageScale;
+    definition.presentation.imageOffset = JSON.parse(JSON.stringify(config.imageOffset));
+    definition.presentation.imageCrop = config.imageCrop
+      ? JSON.parse(JSON.stringify(config.imageCrop))
+      : null;
+    definition.presentation.healthBarOffset = JSON.parse(
+      JSON.stringify(config.healthBarOffset),
+    );
+    definition.presentation.weaponScale = config.weaponScale;
+    definition.presentation.weaponOffset = JSON.parse(JSON.stringify(config.weaponOffset));
+    definition.presentation.defaultFacing = config.defaultFacing;
+    definition.presentation.poses = config.poses
+      ? JSON.parse(JSON.stringify(config.poses))
+      : null;
+
+    return definition;
+  }
+
+  _cleanForSave(value) {
+    if (typeof value === "number") {
+      if (Math.abs(value) < 0.0005) return 0;
+      return Math.round(value * 1000) / 1000;
+    }
+    if (Array.isArray(value)) return value.map((item) => this._cleanForSave(item));
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [key, this._cleanForSave(item)]),
+      );
+    }
+    return value;
+  }
+
   async _saveToLocalFile() {
-    if (!this.fileHandle) return;
+    const config = this._currentConfig();
+    const fileHandle = this.fileHandles.get(config.id);
+    if (!fileHandle) return;
 
     try {
-      const writable = await this.fileHandle.createWritable();
-      const content = `window.FighterRoster = ${JSON.stringify(this.configs, null, 2)};\n`;
+      const definition = this._cleanForSave(this._syncFighterDefinition(config));
+      const writable = await fileHandle.createWritable();
+      const content = `window.FighterDefinitions.push(${JSON.stringify(definition, null, 2)});\n`;
       await writable.write(content);
       await writable.close();
     } catch (error) {
@@ -1028,6 +1085,7 @@ class CharacterStudio {
     if (this.historyIndex >= this.history.length - 1) return;
     this.historyIndex += 1;
     this._restoreState(this.history[this.historyIndex]);
+    this._saveToLocalFile();
     this._saveToLocalFile();
   }
 

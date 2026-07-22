@@ -1,0 +1,58 @@
+window.FighterDefinitions.push({
+  id: "happyguy",
+  name: "Happy Guy",
+  color: "#ffd84d",
+
+  combat: {
+    faceTarget: { mode: "range" },
+    weapon: {
+      type: "proximity-melee",
+      cooldownMs: 1000,
+      damage: 100,
+      rangePadding: 22,
+      knockback: {
+        speedMultiplier: 4.2,
+        durationMs: 650,
+      },
+      animation: {
+        windupFrames: 10,
+        activeFrames: 26,
+        recoveryFrames: 14,
+      },
+    },
+  },
+
+  presentation: {
+    image: "assets/fighters/happyguy/sprites/happyguy.out.png",
+    imageScale: 2.3,
+    imageOffset: { x: 0, y: -14 },
+    imageCrop: { x: 0, y: 0, width: 2500, height: 2165 },
+    poses: {
+      idle: {
+        image: "assets/fighters/happyguy/sprites/happyguy.out.png",
+        imageCrop: { x: 0, y: 0, width: 2500, height: 2165 },
+        imageScale: 2.3,
+        imageOffset: { x: 0, y: -14 },
+      },
+      attackWindup: {
+        image: "assets/fighters/happyguy/sprites/happyguy-windup.png",
+        imageCrop: { x: 0, y: 0, width: 1288, height: 1201 },
+        imageScale: 2,
+        imageOffset: { x: 0, y: -18 },
+      },
+      attackActive: {
+        image: "assets/fighters/happyguy/sprites/happyguy-slap.png",
+        imageCrop: { x: 0, y: 0, width: 1254, height: 1254 },
+        imageScale: 2,
+        imageOffset: { x: -3, y: -20 },
+      },
+    },
+  },
+
+  lines: {
+    weaponHit: ["Could be worse!", "Why the long face?!", "How are ya?"],
+    ambient: ["Anybody want a hug?", "What a great day!", "Come here!"],
+    ambientIntervalMs: 4500,
+    ambientChance: 0.35,
+  },
+});

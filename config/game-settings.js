@@ -1,8 +1,11 @@
 window.GameConfig = {
   physics: {
-    globalSpeedMultiplier: 0.15, // Multiplies the base speed of all characters
+    // Multiplies every fighter's combat.speed. Use 0.1-1 for normal tuning.
+    globalSpeedMultiplier: 0.15,
+    // Prevents one sustained collision from dealing damage every frame.
     collisionCooldownMs: 300,
     impactDamage: {
+      // Minimum boosted velocity before a body collision deals damage.
       minSpeedMultiplier: 2.8,
       damage: 45
     }
@@ -11,7 +14,9 @@ window.GameConfig = {
     hitSpark: true,
   },
   audio: {
+    // Minimum delay between repeated sounds in the same sound group.
     defaultCooldownMs: 80,
+    // How often fighters are allowed to attempt an idle sound.
     idleIntervalMs: 4000,
     volumes: {
       "body-bounce": 0.55,
@@ -27,9 +32,11 @@ window.GameConfig = {
     }
   },
   arena: {
+    // Canvas border appearance, in CSS pixels.
     borderWidth: 5,
     borderColor: '#000000',
     backgroundColor: '#2b2b2b',
+    // Extra off-arena canvas space so large sprites are not clipped.
     visualOverflow: 160
   },
   text: {

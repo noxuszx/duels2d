@@ -1,0 +1,43 @@
+window.FighterDefinitions.push({
+  id: "depressedguy",
+  name: "Sad Guy",
+  color: "#5f7ea8",
+
+  combat: {
+    faceTarget: { mode: "always" },
+    weapon: {
+      type: "projectile",
+      cooldownMs: 900,
+      animation: {
+        windupFrames: 4,
+        activeFrames: 4,
+        recoveryFrames: 8,
+      },
+      projectile: {
+        radius: 30,
+        speed: 3,
+        damage: 50,
+        knockback: false,
+        lifetimeMs: 2500,
+        image: "assets/fighters/depressedguy/projectiles/tear.png",
+      },
+    },
+  },
+
+  presentation: {
+    image: "assets/fighters/depressedguy/sprites/depressedguy.out.png",
+    imageScale: 2.8,
+    imageOffset: { x: 8, y: -11 },
+    imageCrop: { x: 242, y: 124, width: 744, height: 901 },
+    poses: {
+      idle: {
+        image: "assets/fighters/depressedguy/sprites/depressedguy.out.png",
+        imageCrop: { x: 242, y: 124, width: 744, height: 901 },
+      },
+      attackActive: {
+        image: "assets/fighters/depressedguy/sprites/depressedguy.out.png",
+        imageCrop: { x: 242, y: 124, width: 744, height: 901 },
+      },
+    },
+  },
+});

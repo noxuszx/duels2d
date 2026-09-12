@@ -26,6 +26,9 @@ class Projectile {
     });
     Body.setVelocity(this.body, { x: vx, y: vy });
 
+    this.rotationSpeed = config.rotationSpeed || 0;
+    this.angle = config.angle || 0;
+
     if (config.image) this._loadImage(config.image);
   }
 
@@ -34,6 +37,12 @@ class Projectile {
     img.onload = () => { this.image = img; };
     img.onerror = () => { console.warn(`[Duels2D] Could not load projectile image: ${src}`); };
     img.src = src;
+  }
+
+  update() {
+    if (this.rotationSpeed) {
+      this.angle += this.rotationSpeed;
+    }
   }
 
   get expired() {

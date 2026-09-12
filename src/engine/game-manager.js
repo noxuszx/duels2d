@@ -299,6 +299,7 @@ class GameManager {
   _updateProjectiles() {
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const projectile = this.projectiles[i];
+      projectile.update();
       if (projectile.expired) {
         projectile.dead = true;
         World.remove(this.world, projectile.body);
@@ -374,13 +375,17 @@ class GameManager {
       const pos = projectile.body.position;
       const r = projectile.radius;
       ctx.save();
+      ctx.translate(pos.x, pos.y);
+      if (projectile.angle) {
+        ctx.rotate(projectile.angle);
+      }
 
       if (projectile.image) {
-        ctx.drawImage(projectile.image, pos.x - r, pos.y - r, r * 2, r * 2);
+        ctx.drawImage(projectile.image, -r, -r, r * 2, r * 2);
       } else {
         ctx.fillStyle = "#9ad6ff";
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
         ctx.fill();
       }
 

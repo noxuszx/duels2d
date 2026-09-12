@@ -1,441 +1,794 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Duels2D — Character Studio</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="character-studio.css" />
-</head>
-<body>
-  <div id="studio-layout">
-
-    <!-- Left panel: Canvas Preview -->
-    <div id="preview-panel">
-      <div id="preview-header">
-        <a href="../../index.html" id="back-link">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-          Back to Arena
-        </a>
-        <div id="mode-badge" class="mode-badge hidden">DEFAULT</div>
-        <div id="preview-actions">
-          <button id="undo-btn" class="icon-btn" title="Undo (Ctrl+Z)">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13C5.46 7.59 11.93 5 17 7.3 20.1 8.7 22 11.1 22 14"/></svg>
-          </button>
-          <button id="redo-btn" class="icon-btn" title="Redo (Ctrl+Y)">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13C18.54 7.59 12.07 5 7 7.3 3.9 8.7 2 11.1 2 14"/></svg>
-          </button>
-          <button id="save-config-btn" class="save-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            Save to File
-          </button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Duels2D — Character Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="character-studio.css" />
+  </head>
+  <body>
+    <div id="studio-layout">
+      <!-- Left panel: Canvas Preview -->
+      <div id="preview-panel">
+        <div id="preview-header">
+          <a href="../../index.html" id="back-link">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M19 12H5M12 5l-7 7 7 7" />
+            </svg>
+            Back to Arena
+          </a>
+          <div id="mode-badge" class="mode-badge hidden">DEFAULT</div>
+          <div id="preview-actions">
+            <button id="undo-btn" class="icon-btn" title="Undo (Ctrl+Z)">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M3 7v6h6" />
+                <path
+                  d="M3 13C5.46 7.59 11.93 5 17 7.3 20.1 8.7 22 11.1 22 14"
+                />
+              </svg>
+            </button>
+            <button id="redo-btn" class="icon-btn" title="Redo (Ctrl+Y)">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 7v6h-6" />
+                <path d="M21 13C18.54 7.59 12.07 5 7 7.3 3.9 8.7 2 11.1 2 14" />
+              </svg>
+            </button>
+            <button id="save-config-btn" class="save-btn">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
+                />
+                <polyline points="17 21 17 13 7 13 7 21" />
+                <polyline points="7 3 7 8 15 8" />
+              </svg>
+              Save to File
+            </button>
+          </div>
+        </div>
+        <div id="canvas-wrapper">
+          <canvas id="studio-canvas" width="512" height="512"></canvas>
         </div>
       </div>
-      <div id="canvas-wrapper">
-        <canvas id="studio-canvas" width="512" height="512"></canvas>
+
+      <!-- Right panel: Tabbed Controls -->
+      <div id="control-panel">
+        <div id="panel-header">
+          <h1>Character Studio</h1>
+          <div class="control-group" id="char-select-group">
+            <label for="char-select">Character</label>
+            <select id="char-select"></select>
+          </div>
+        </div>
+
+        <!-- Tab Bar -->
+        <div id="tab-bar" role="tablist">
+          <button
+            class="tab-btn active"
+            data-tab="hitbox"
+            role="tab"
+            aria-selected="true"
+          >
+            Hitbox
+          </button>
+          <button
+            class="tab-btn"
+            data-tab="image"
+            role="tab"
+            aria-selected="false"
+          >
+            Image
+          </button>
+          <button
+            class="tab-btn"
+            data-tab="healthbar"
+            role="tab"
+            aria-selected="false"
+          >
+            Health Bar
+          </button>
+          <button
+            class="tab-btn"
+            data-tab="weapon"
+            role="tab"
+            aria-selected="false"
+          >
+            Weapon
+          </button>
+        </div>
+
+        <!-- Tab: Hitbox -->
+        <div id="tab-hitbox" class="tab-content active" role="tabpanel">
+          <div class="control-group">
+            <label for="hitboxType">Type</label>
+            <select id="hitboxType">
+              <option value="box">Box</option>
+              <option value="circle">Circle</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <span>Width</span>
+              <span class="val-display" id="val-hitboxWidth"></span>
+            </label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="hitboxWidth"
+                min="10"
+                max="180"
+                step="1"
+              />
+              <input
+                type="number"
+                class="num-input"
+                data-for="hitboxWidth"
+                min="10"
+                max="180"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <span>Height</span>
+              <span class="val-display" id="val-hitboxHeight"></span>
+            </label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="hitboxHeight"
+                min="10"
+                max="220"
+                step="1"
+              />
+              <input
+                type="number"
+                class="num-input"
+                data-for="hitboxHeight"
+                min="10"
+                max="220"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <span>Radius</span>
+              <span class="val-display" id="val-hitboxRadius"></span>
+            </label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="hitboxRadius"
+                min="5"
+                max="120"
+                step="1"
+              />
+              <input
+                type="number"
+                class="num-input"
+                data-for="hitboxRadius"
+                min="5"
+                max="120"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="section-divider">
+            <span>Position</span>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <span>Offset X</span>
+              <span class="val-display" id="val-hitboxOffsetX"></span>
+            </label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="hitboxOffsetX"
+                min="-200"
+                max="200"
+                step="1"
+              />
+              <input
+                type="number"
+                class="num-input"
+                data-for="hitboxOffsetX"
+                min="-200"
+                max="200"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <span>Offset Y</span>
+              <span class="val-display" id="val-hitboxOffsetY"></span>
+            </label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="hitboxOffsetY"
+                min="-200"
+                max="200"
+                step="1"
+              />
+              <input
+                type="number"
+                class="num-input"
+                data-for="hitboxOffsetY"
+                min="-200"
+                max="200"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="control-group">
+            <label for="hitbox-output">Raw Config</label>
+            <input
+              type="text"
+              id="hitbox-output"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="box: width height x y"
+            />
+          </div>
+
+          <div class="control-actions hitbox-actions">
+            <button
+              id="edit-hitbox-btn"
+              type="button"
+              class="action-btn primary-btn"
+            >
+              Edit Hitbox
+            </button>
+            <button
+              id="apply-hitbox-btn"
+              type="button"
+              class="action-btn success-btn"
+              disabled
+            >
+              Apply
+            </button>
+            <button
+              id="cancel-hitbox-btn"
+              type="button"
+              class="action-btn ghost-btn"
+              disabled
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab: Image -->
+        <div id="tab-image" class="tab-content" role="tabpanel">
+          <p class="tab-description">
+            Adjust how the character sprite is positioned and scaled on the
+            canvas.
+          </p>
+
+          <div class="control-group">
+            <label for="defaultFacing">Default Facing</label>
+            <select id="defaultFacing">
+              <option value="right">Right</option>
+              <option value="left">Left</option>
+            </select>
+          </div>
+
+          <div class="control-group" id="pose-select-group">
+            <label for="pose-select">Pose</label>
+            <select id="pose-select"></select>
+          </div>
+
+          <div class="control-group">
+            <label for="image-output">Raw Config</label>
+            <input
+              type="text"
+              id="image-output"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="scale offsetX offsetY cropX cropY cropW cropH"
+            />
+          </div>
+
+          <div class="control-actions pose-actions">
+            <button
+              id="reset-pose-btn"
+              type="button"
+              class="action-btn ghost-btn"
+              disabled
+              title="Remove pose-specific visual overrides"
+            >
+              Reset Pose
+            </button>
+          </div>
+
+          <div class="section-divider"><span>Visual</span></div>
+
+          <div class="control-group">
+            <label>
+              <span>Scale</span>
+              <span class="val-display" id="val-imageScale"></span>
+            </label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="imageScale"
+                min="0.1"
+                max="5"
+                step="0.1"
+              />
+              <input
+                type="number"
+                class="num-input"
+                data-for="imageScale"
+                min="0.1"
+                max="5"
+                step="0.1"
+              />
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <span>Offset X</span>
+              <span class="val-display" id="val-imageOffsetX"></span>
+            </label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="imageOffsetX"
+                min="-200"
+                max="200"
+                step="1"
+              />
+              <input
+                type="number"
+                class="num-input"
+                data-for="imageOffsetX"
+                min="-200"
+                max="200"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <span>Offset Y</span>
+              <span class="val-display" id="val-imageOffsetY"></span>
+            </label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="imageOffsetY"
+                min="-200"
+                max="200"
+                step="1"
+              />
+              <input
+                type="number"
+                class="num-input"
+                data-for="imageOffsetY"
+                min="-200"
+                max="200"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="section-divider">
+            <span>Crop</span>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <span>Crop X</span>
+              <span class="val-display" id="val-imageCropX"></span>
+            </label>
+            <div class="slider-row">
+              <input type="range" id="imageCropX" min="0" max="511" step="1" />
+              <input
+                type="number"
+                class="num-input"
+                data-for="imageCropX"
+                min="0"
+                max="511"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <span>Crop Y</span>
+              <span class="val-display" id="val-imageCropY"></span>
+            </label>
+            <div class="slider-row">
+              <input type="range" id="imageCropY" min="0" max="511" step="1" />
+              <input
+                type="number"
+                class="num-input"
+                data-for="imageCropY"
+                min="0"
+                max="511"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <span>Crop Width</span>
+              <span class="val-display" id="val-imageCropWidth"></span>
+            </label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="imageCropWidth"
+                min="1"
+                max="512"
+                step="1"
+              />
+              <input
+                type="number"
+                class="num-input"
+                data-for="imageCropWidth"
+                min="1"
+                max="512"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <span>Crop Height</span>
+              <span class="val-display" id="val-imageCropHeight"></span>
+            </label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="imageCropHeight"
+                min="1"
+                max="512"
+                step="1"
+              />
+              <input
+                type="number"
+                class="num-input"
+                data-for="imageCropHeight"
+                min="1"
+                max="512"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="control-actions crop-actions">
+            <button id="crop-btn" type="button" class="action-btn primary-btn">
+              Edit Crop
+            </button>
+            <button
+              id="apply-crop-btn"
+              type="button"
+              class="action-btn success-btn"
+              disabled
+            >
+              Apply
+            </button>
+            <button
+              id="cancel-crop-btn"
+              type="button"
+              class="action-btn ghost-btn"
+              disabled
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab: Health Bar -->
+        <div id="tab-healthbar" class="tab-content" role="tabpanel">
+          <p class="tab-description">
+            Position the health bar relative to the character center.
+          </p>
+
+          <div class="control-group">
+            <label>
+              <span>Offset X</span>
+              <span class="val-display" id="val-healthBarOffsetX"></span>
+            </label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="healthBarOffsetX"
+                min="-100"
+                max="100"
+                step="1"
+              />
+              <input
+                type="number"
+                class="num-input"
+                data-for="healthBarOffsetX"
+                min="-100"
+                max="100"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <span>Offset Y</span>
+              <span class="val-display" id="val-healthBarOffsetY"></span>
+            </label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="healthBarOffsetY"
+                min="-150"
+                max="150"
+                step="1"
+              />
+              <input
+                type="number"
+                class="num-input"
+                data-for="healthBarOffsetY"
+                min="-150"
+                max="150"
+                step="1"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Weapon -->
+        <div id="tab-weapon" class="tab-content" role="tabpanel">
+          <p class="tab-description">
+            Configure the weapon sprite's scale and position.
+          </p>
+
+          <div class="control-group">
+            <label>
+              <span>Scale</span>
+              <span class="val-display" id="val-weaponScale"></span>
+            </label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="weaponScale"
+                min="0.1"
+                max="5"
+                step="0.1"
+              />
+              <input
+                type="number"
+                class="num-input"
+                data-for="weaponScale"
+                min="0.1"
+                max="5"
+                step="0.1"
+              />
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <span>Offset X</span>
+              <span class="val-display" id="val-weaponOffsetX"></span>
+            </label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="weaponOffsetX"
+                min="-200"
+                max="200"
+                step="1"
+              />
+              <input
+                type="number"
+                class="num-input"
+                data-for="weaponOffsetX"
+                min="-200"
+                max="200"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <span>Offset Y</span>
+              <span class="val-display" id="val-weaponOffsetY"></span>
+            </label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="weaponOffsetY"
+                min="-200"
+                max="200"
+                step="1"
+              />
+              <input
+                type="number"
+                class="num-input"
+                data-for="weaponOffsetY"
+                min="-200"
+                max="200"
+                step="1"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
+    <script src="../../config/indicator-settings.js"></script>
 
-    <!-- Right panel: Tabbed Controls -->
-    <div id="control-panel">
-      <div id="panel-header">
-        <h1>Character Studio</h1>
-        <div class="control-group" id="char-select-group">
-          <label for="char-select">Character</label>
-          <select id="char-select"></select>
-        </div>
-      </div>
-
-      <!-- Tab Bar -->
-      <div id="tab-bar" role="tablist">
-        <button class="tab-btn active" data-tab="hitbox" role="tab" aria-selected="true">Hitbox</button>
-        <button class="tab-btn" data-tab="image" role="tab" aria-selected="false">Image</button>
-        <button class="tab-btn" data-tab="healthbar" role="tab" aria-selected="false">Health Bar</button>
-        <button class="tab-btn" data-tab="weapon" role="tab" aria-selected="false">Weapon</button>
-      </div>
-
-      <!-- Tab: Hitbox -->
-      <div id="tab-hitbox" class="tab-content active" role="tabpanel">
-
-        <div class="control-group">
-          <label for="hitboxType">Type</label>
-          <select id="hitboxType">
-            <option value="box">Box</option>
-            <option value="circle">Circle</option>
-          </select>
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span>Width</span>
-            <span class="val-display" id="val-hitboxWidth"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="hitboxWidth" min="10" max="180" step="1" />
-            <input type="number" class="num-input" data-for="hitboxWidth" min="10" max="180" step="1" />
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span>Height</span>
-            <span class="val-display" id="val-hitboxHeight"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="hitboxHeight" min="10" max="220" step="1" />
-            <input type="number" class="num-input" data-for="hitboxHeight" min="10" max="220" step="1" />
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span>Radius</span>
-            <span class="val-display" id="val-hitboxRadius"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="hitboxRadius" min="5" max="120" step="1" />
-            <input type="number" class="num-input" data-for="hitboxRadius" min="5" max="120" step="1" />
-          </div>
-        </div>
-
-        <div class="section-divider">
-          <span>Position</span>
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span>Offset X</span>
-            <span class="val-display" id="val-hitboxOffsetX"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="hitboxOffsetX" min="-200" max="200" step="1" />
-            <input type="number" class="num-input" data-for="hitboxOffsetX" min="-200" max="200" step="1" />
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span>Offset Y</span>
-            <span class="val-display" id="val-hitboxOffsetY"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="hitboxOffsetY" min="-200" max="200" step="1" />
-            <input type="number" class="num-input" data-for="hitboxOffsetY" min="-200" max="200" step="1" />
-          </div>
-        </div>
-
-        <div class="section-divider"></div>
-
-        <div class="control-group">
-          <label for="hitbox-output">Raw Config</label>
-          <input type="text" id="hitbox-output" autocomplete="off" spellcheck="false" placeholder="box: width height x y" />
-        </div>
-
-        <div class="control-actions hitbox-actions">
-          <button id="edit-hitbox-btn" type="button" class="action-btn primary-btn">Edit Hitbox</button>
-          <button id="apply-hitbox-btn" type="button" class="action-btn success-btn" disabled>Apply</button>
-          <button id="cancel-hitbox-btn" type="button" class="action-btn ghost-btn" disabled>Cancel</button>
-        </div>
-
-      </div>
-
-      <!-- Tab: Image -->
-      <div id="tab-image" class="tab-content" role="tabpanel">
-
-        <p class="tab-description">Adjust how the character sprite is positioned and scaled on the canvas.</p>
-
-        <div class="control-group">
-          <label for="defaultFacing">Default Facing</label>
-          <select id="defaultFacing">
-            <option value="right">Right</option>
-            <option value="left">Left</option>
-          </select>
-        </div>
-
-        <div class="control-group" id="pose-select-group">
-          <label for="pose-select">Pose</label>
-          <select id="pose-select"></select>
-        </div>
-
-        <div class="control-group">
-          <label for="image-output">Raw Config</label>
-          <input type="text" id="image-output" autocomplete="off" spellcheck="false" placeholder="scale offsetX offsetY cropX cropY cropW cropH" />
-        </div>
-
-        <div class="control-actions pose-actions">
-          <button id="reset-pose-btn" type="button" class="action-btn ghost-btn" disabled title="Remove pose-specific visual overrides">Reset Pose</button>
-        </div>
-
-        <div class="section-divider"><span>Visual</span></div>
-
-        <div class="control-group">
-          <label>
-            <span>Scale</span>
-            <span class="val-display" id="val-imageScale"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="imageScale" min="0.1" max="5" step="0.1" />
-            <input type="number" class="num-input" data-for="imageScale" min="0.1" max="5" step="0.1" />
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span>Offset X</span>
-            <span class="val-display" id="val-imageOffsetX"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="imageOffsetX" min="-200" max="200" step="1" />
-            <input type="number" class="num-input" data-for="imageOffsetX" min="-200" max="200" step="1" />
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span>Offset Y</span>
-            <span class="val-display" id="val-imageOffsetY"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="imageOffsetY" min="-200" max="200" step="1" />
-            <input type="number" class="num-input" data-for="imageOffsetY" min="-200" max="200" step="1" />
-          </div>
-        </div>
-
-        <div class="section-divider">
-          <span>Crop</span>
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span>Crop X</span>
-            <span class="val-display" id="val-imageCropX"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="imageCropX" min="0" max="511" step="1" />
-            <input type="number" class="num-input" data-for="imageCropX" min="0" max="511" step="1" />
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span>Crop Y</span>
-            <span class="val-display" id="val-imageCropY"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="imageCropY" min="0" max="511" step="1" />
-            <input type="number" class="num-input" data-for="imageCropY" min="0" max="511" step="1" />
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span>Crop Width</span>
-            <span class="val-display" id="val-imageCropWidth"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="imageCropWidth" min="1" max="512" step="1" />
-            <input type="number" class="num-input" data-for="imageCropWidth" min="1" max="512" step="1" />
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span>Crop Height</span>
-            <span class="val-display" id="val-imageCropHeight"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="imageCropHeight" min="1" max="512" step="1" />
-            <input type="number" class="num-input" data-for="imageCropHeight" min="1" max="512" step="1" />
-          </div>
-        </div>
-
-        <div class="control-actions crop-actions">
-          <button id="crop-btn" type="button" class="action-btn primary-btn">Edit Crop</button>
-          <button id="apply-crop-btn" type="button" class="action-btn success-btn" disabled>Apply</button>
-          <button id="cancel-crop-btn" type="button" class="action-btn ghost-btn" disabled>Cancel</button>
-        </div>
-
-      </div>
-
-      <!-- Tab: Health Bar -->
-      <div id="tab-healthbar" class="tab-content" role="tabpanel">
-
-        <p class="tab-description">Position the health bar relative to the character center.</p>
-
-        <div class="control-group">
-          <label>
-            <span>Offset X</span>
-            <span class="val-display" id="val-healthBarOffsetX"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="healthBarOffsetX" min="-100" max="100" step="1" />
-            <input type="number" class="num-input" data-for="healthBarOffsetX" min="-100" max="100" step="1" />
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span>Offset Y</span>
-            <span class="val-display" id="val-healthBarOffsetY"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="healthBarOffsetY" min="-150" max="150" step="1" />
-            <input type="number" class="num-input" data-for="healthBarOffsetY" min="-150" max="150" step="1" />
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Tab: Weapon -->
-      <div id="tab-weapon" class="tab-content" role="tabpanel">
-
-        <p class="tab-description">Configure the weapon sprite's scale and position.</p>
-
-        <div class="control-group">
-          <label>
-            <span>Scale</span>
-            <span class="val-display" id="val-weaponScale"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="weaponScale" min="0.1" max="5" step="0.1" />
-            <input type="number" class="num-input" data-for="weaponScale" min="0.1" max="5" step="0.1" />
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span>Offset X</span>
-            <span class="val-display" id="val-weaponOffsetX"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="weaponOffsetX" min="-200" max="200" step="1" />
-            <input type="number" class="num-input" data-for="weaponOffsetX" min="-200" max="200" step="1" />
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span>Offset Y</span>
-            <span class="val-display" id="val-weaponOffsetY"></span>
-          </label>
-          <div class="slider-row">
-            <input type="range" id="weaponOffsetY" min="-200" max="200" step="1" />
-            <input type="number" class="num-input" data-for="weaponOffsetY" min="-200" max="200" step="1" />
-          </div>
-        </div>
-
-      </div>
-
-    </div>
-  </div>
-  <script src="../../config/indicator-settings.js"></script>
-
-  <script src="../../config/fighters/defaults.js"></script>
-  <script src="../../config/fighters/womanguy.js"></script>
-  <script src="../../config/fighters/chefguy.js"></script>
-  <script src="../../config/fighters/depressedguy.js"></script>
-  <script src="../../config/fighters/happyguy.js"></script>
-  <script src="../../config/fighter-config.js"></script>
-  <script src="character-studio.js"></script>
-  <script>
-    // ── Tab switching ──────────────────────────────────────────────
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => {
-          b.classList.remove('active');
-          b.setAttribute('aria-selected', 'false');
+    <script src="../../config/fighter-loader.js"></script>
+    <script src="../../config/fighter-config.js"></script>
+    <script src="character-studio.js"></script>
+    <script>
+      // ── Tab switching ──────────────────────────────────────────────
+      document.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".tab-btn").forEach((b) => {
+            b.classList.remove("active");
+            b.setAttribute("aria-selected", "false");
+          });
+          document
+            .querySelectorAll(".tab-content")
+            .forEach((p) => p.classList.remove("active"));
+          btn.classList.add("active");
+          btn.setAttribute("aria-selected", "true");
+          document
+            .getElementById("tab-" + btn.dataset.tab)
+            .classList.add("active");
         });
-        document.querySelectorAll('.tab-content').forEach(p => p.classList.remove('active'));
-        btn.classList.add('active');
-        btn.setAttribute('aria-selected', 'true');
-        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-      });
-    });
-
-    // ── Slider ↔ Number input sync ─────────────────────────────────
-    document.querySelectorAll('.num-input').forEach(numInput => {
-      const sliderId = numInput.dataset.for;
-      const slider = document.getElementById(sliderId);
-      if (!slider) return;
-
-      // Sync number → slider on every keystroke
-      numInput.addEventListener('input', () => {
-        slider.value = numInput.value;
-        slider.dispatchEvent(new Event('input', { bubbles: true }));
-      });
-      numInput.addEventListener('change', () => {
-        slider.value = numInput.value;
-        slider.dispatchEvent(new Event('change', { bubbles: true }));
       });
 
-      // Sync slider → number when slider changes (also fires from JS)
-      slider.addEventListener('input', () => {
+      // ── Slider ↔ Number input sync ─────────────────────────────────
+      document.querySelectorAll(".num-input").forEach((numInput) => {
+        const sliderId = numInput.dataset.for;
+        const slider = document.getElementById(sliderId);
+        if (!slider) return;
+
+        // Sync number → slider on every keystroke
+        numInput.addEventListener("input", () => {
+          slider.value = numInput.value;
+          slider.dispatchEvent(new Event("input", { bubbles: true }));
+        });
+        numInput.addEventListener("change", () => {
+          slider.value = numInput.value;
+          slider.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+
+        // Sync slider → number when slider changes (also fires from JS)
+        slider.addEventListener("input", () => {
+          numInput.value = slider.value;
+        });
+        slider.addEventListener("change", () => {
+          numInput.value = slider.value;
+        });
+
+        // Seed initial value
         numInput.value = slider.value;
       });
-      slider.addEventListener('change', () => {
-        numInput.value = slider.value;
-      });
 
-      // Seed initial value
-      numInput.value = slider.value;
-    });
-
-    // ── Re-seed num inputs whenever labels refresh ─────────────────
-    // _refreshLabels is the single place the studio updates all slider
-    // values, so hooking it keeps num inputs always in sync.
-    const seedNumInputs = () => {
-      document.querySelectorAll('.num-input').forEach(numInput => {
-        const slider = document.getElementById(numInput.dataset.for);
-        if (slider) numInput.value = slider.value;
-      });
-    };
-
-    const origRefresh = CharacterStudio.prototype._refreshLabels;
-    CharacterStudio.prototype._refreshLabels = function(...args) {
-      origRefresh.apply(this, args);
-      seedNumInputs();
-    };
-
-    // ── Mode badge ─────────────────────────────────────────────────
-    const badge = document.getElementById('mode-badge');
-    const updateBadge = (mode) => {
-      if (mode === 'crop') {
-        badge.textContent = '✂ CROP MODE';
-        badge.className = 'mode-badge crop';
-      } else if (mode === 'hitbox') {
-        badge.textContent = '⬛ HITBOX MODE';
-        badge.className = 'mode-badge hitbox';
-      } else {
-        badge.className = 'mode-badge hidden';
-      }
-    };
-
-    // Patch mode-transition methods to update the badge
-    ['_enterCropMode','_applyCrop','_cancelCrop','_enterHitboxMode','_applyHitbox','_cancelHitbox','_loadCurrentConfig'].forEach(fn => {
-      const orig = CharacterStudio.prototype[fn];
-      CharacterStudio.prototype[fn] = function(...args) {
-        orig.apply(this, args);
-        updateBadge(this.mode);
+      // ── Re-seed num inputs whenever labels refresh ─────────────────
+      // _refreshLabels is the single place the studio updates all slider
+      // values, so hooking it keeps num inputs always in sync.
+      const seedNumInputs = () => {
+        document.querySelectorAll(".num-input").forEach((numInput) => {
+          const slider = document.getElementById(numInput.dataset.for);
+          if (slider) numInput.value = slider.value;
+        });
       };
-    });
 
-    // ── Undo/Redo buttons ─────────────────────────────────────────
-    document.getElementById('undo-btn').addEventListener('click', () => {
-      window.__studioInstance?.undo();
-    });
-    document.getElementById('redo-btn').addEventListener('click', () => {
-      window.__studioInstance?.redo();
-    });
-
-    // Seed num inputs once the studio instance is ready
-    const checkInstance = setInterval(() => {
-      if (window.__studioInstance) {
-        clearInterval(checkInstance);
+      const origRefresh = CharacterStudio.prototype._refreshLabels;
+      CharacterStudio.prototype._refreshLabels = function (...args) {
+        origRefresh.apply(this, args);
         seedNumInputs();
-      }
-    }, 50);
-  </script>
-</body>
+      };
+
+      // ── Mode badge ─────────────────────────────────────────────────
+      const badge = document.getElementById("mode-badge");
+      const updateBadge = (mode) => {
+        if (mode === "crop") {
+          badge.textContent = "✂ CROP MODE";
+          badge.className = "mode-badge crop";
+        } else if (mode === "hitbox") {
+          badge.textContent = "⬛ HITBOX MODE";
+          badge.className = "mode-badge hitbox";
+        } else {
+          badge.className = "mode-badge hidden";
+        }
+      };
+
+      // Patch mode-transition methods to update the badge
+      [
+        "_enterCropMode",
+        "_applyCrop",
+        "_cancelCrop",
+        "_enterHitboxMode",
+        "_applyHitbox",
+        "_cancelHitbox",
+        "_loadCurrentConfig",
+      ].forEach((fn) => {
+        const orig = CharacterStudio.prototype[fn];
+        CharacterStudio.prototype[fn] = function (...args) {
+          orig.apply(this, args);
+          updateBadge(this.mode);
+        };
+      });
+
+      // ── Undo/Redo buttons ─────────────────────────────────────────
+      document.getElementById("undo-btn").addEventListener("click", () => {
+        window.__studioInstance?.undo();
+      });
+      document.getElementById("redo-btn").addEventListener("click", () => {
+        window.__studioInstance?.redo();
+      });
+
+      // Seed num inputs once the studio instance is ready
+      const checkInstance = setInterval(() => {
+        if (window.__studioInstance) {
+          clearInterval(checkInstance);
+          seedNumInputs();
+        }
+      }, 50);
+    </script>
+  </body>
 </html>

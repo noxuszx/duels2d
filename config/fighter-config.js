@@ -26,11 +26,14 @@
       var isPlainObject =
         value != null && typeof value === "object" && !Array.isArray(value);
       var currentIsPlainObject =
-        current != null && typeof current === "object" && !Array.isArray(current);
+        current != null &&
+        typeof current === "object" &&
+        !Array.isArray(current);
 
-      result[key] = isPlainObject && currentIsPlainObject
-        ? merge(current, value)
-        : clone(value);
+      result[key] =
+        isPlainObject && currentIsPlainObject
+          ? merge(current, value)
+          : clone(value);
     }
     return result;
   }
@@ -70,8 +73,17 @@
     };
   }
 
-  window.FighterRoster = window.FighterDefinitions.map(composeFighter);
+  window.buildFighterRoster = function () {
+    if (!window.FighterDefaults || !Array.isArray(window.FighterDefinitions)) {
+      throw new Error(
+        "Fighter configuration must be loaded before building the roster",
+      );
+    }
 
-  // Backward-compatible name used by code still being migrated to "fighter".
-  window.CharacterConfigs = window.FighterRoster;
+    window.FighterRoster = window.FighterDefinitions.map(composeFighter);
+
+    // Backward-compatible name used by code still being migrated to "fighter".
+    window.CharacterConfigs = window.FighterRoster;
+    return window.FighterRoster;
+  };
 })();

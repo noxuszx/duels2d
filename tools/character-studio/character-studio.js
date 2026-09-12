@@ -153,20 +153,34 @@ class CharacterStudio {
     this.saveBtn.addEventListener("click", async () => {
       const config = this._currentConfig();
       if (!this.fileHandles.has(config.id)) {
+        // The File System Access API is not available in every browser or
+        // when this page is opened directly from file://. Fall back to a
+        // regular download so Save still has a useful result in those cases.
+        if (typeof window.showSaveFilePicker !== "function") {
+          this._downloadLocalFile(config);
+          return;
+        }
+
         try {
           const fileHandle = await window.showSaveFilePicker({
-            suggestedName: `${config.id}.js`,
+            suggestedName: `${config.id}.json`,
             types: [
               {
-                description: "JavaScript Files",
-                accept: { "text/javascript": [".js"] },
+                description: "JSON Files",
+                accept: { "application/json": [".json"] },
               },
             ],
           });
           this.fileHandles.set(config.id, fileHandle);
           this._updateSaveButton();
         } catch (error) {
-          console.warn("File selection canceled or failed:", error);
+          // Closing the picker is an intentional cancellation, not a save
+          // failure. Other picker errors can still use the download fallback
+          // (for example, browsers that expose but do not implement it).
+          if (error?.name !== "AbortError") {
+            console.warn("File picker unavailable; downloading instead:", error);
+            this._downloadLocalFile(config);
+          }
           return;
         }
       }
@@ -1010,7 +1024,7 @@ class CharacterStudio {
     const config = this._currentConfig();
     const isConnected = config && this.fileHandles.has(config.id);
     this.saveBtn.textContent = isConnected
-      ? `Auto-Saving ${config.id}.js`
+      ? `Auto-Saving ${config.id}.json`
       : `Save ${config?.id ?? "Fighter"} File`;
     this.saveBtn.style.background = isConnected ? "#ffffff" : "";
     this.saveBtn.style.color = isConnected ? "#000000" : "";
@@ -1058,16 +1072,36 @@ class CharacterStudio {
     return value;
   }
 
+  _getSaveContent(config) {
+    const definition = this._cleanForSave(this._syncFighterDefinition(config));
+    return `${JSON.stringify(definition, null, 2)}\n`;
+  }
+
+  _downloadLocalFile(config) {
+    try {
+      const blob = new Blob([this._getSaveContent(config)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${config.id}.json`;
+      link.click();
+      // Release the object URL after the browser has started the download.
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (error) {
+      console.error("Failed to download file:", error);
+    }
+  }
+
   async _saveToLocalFile() {
     const config = this._currentConfig();
     const fileHandle = this.fileHandles.get(config.id);
     if (!fileHandle) return;
 
     try {
-      const definition = this._cleanForSave(this._syncFighterDefinition(config));
       const writable = await fileHandle.createWritable();
-      const content = `window.FighterDefinitions.push(${JSON.stringify(definition, null, 2)});\n`;
-      await writable.write(content);
+      await writable.write(this._getSaveContent(config));
       await writable.close();
     } catch (error) {
       console.error("Failed to write to file:", error);
@@ -1473,6 +1507,11 @@ class CharacterStudio {
   }
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-  window.__studioInstance = new CharacterStudio();
+window.addEventListener("DOMContentLoaded", async () => {
+  try {
+    await window.loadFighterConfig("../../config/fighters");
+    window.__studioInstance = new CharacterStudio();
+  } catch (error) {
+    console.error("Failed to start Character Studio:", error);
+  }
 });

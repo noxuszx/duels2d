@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fighter.schema.json",
+  "title": "Duels2D Fighter",
+  "type": "object",
+  "required": ["id", "name", "color"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "name": { "type": "string", "minLength": 1 },
+    "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+    "combat": { "$ref": "#/$defs/combat" },
+    "body": { "$ref": "#/$defs/body" },
+    "presentation": { "$ref": "#/$defs/presentation" },
+    "lines": { "$ref": "#/$defs/lines" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "positiveNumber": { "type": "number", "exclusiveMinimum": 0 },
+    "nonNegativeNumber": { "type": "number", "minimum": 0 },
+    "vector": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": { "x": { "type": "number" }, "y": { "type": "number" } },
+      "additionalProperties": false
+    },
+    "crop": {
+      "type": "object",
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number", "minimum": 0 },
+        "y": { "type": "number", "minimum": 0 },
+        "width": { "$ref": "#/$defs/positiveNumber" },
+        "height": { "$ref": "#/$defs/positiveNumber" }
+      },
+      "additionalProperties": false
+    },
+    "faceTarget": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": { "mode": { "enum": ["never", "always", "range"] } },
+      "additionalProperties": false
+    },
+    "animation": {
+      "type": "object",
+      "required": ["windupFrames", "activeFrames", "recoveryFrames"],
+      "properties": {
+        "windupFrames": { "type": "integer", "minimum": 0 },
+        "activeFrames": { "type": "integer", "minimum": 0 },
+        "recoveryFrames": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "knockback": {
+      "oneOf": [
+        { "type": "boolean" },
+        {
+          "type": "object",
+          "required": ["speedMultiplier", "durationMs"],
+          "properties": {
+            "speedMultiplier": { "$ref": "#/$defs/positiveNumber" },
+            "durationMs": { "$ref": "#/$defs/positiveNumber" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "projectile": {
+      "type": "object",
+      "required": ["radius", "speed", "damage", "lifetimeMs", "image"],
+      "properties": {
+        "radius": { "$ref": "#/$defs/positiveNumber" },
+        "speed": { "$ref": "#/$defs/positiveNumber" },
+        "damage": { "$ref": "#/$defs/nonNegativeNumber" },
+        "knockback": { "$ref": "#/$defs/knockback" },
+        "lifetimeMs": { "$ref": "#/$defs/positiveNumber" },
+        "rotationSpeed": { "type": "number" },
+        "image": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "weapon": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "cooldownMs", "projectile"],
+          "properties": {
+            "type": { "const": "projectile" },
+            "cooldownMs": { "$ref": "#/$defs/positiveNumber" },
+            "animation": { "$ref": "#/$defs/animation" },
+            "projectile": { "$ref": "#/$defs/projectile" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "cooldownMs"],
+          "properties": {
+            "type": { "const": "proximity-melee" },
+            "cooldownMs": { "$ref": "#/$defs/positiveNumber" },
+            "damage": { "$ref": "#/$defs/nonNegativeNumber" },
+            "rangePadding": { "$ref": "#/$defs/nonNegativeNumber" },
+            "knockback": { "$ref": "#/$defs/knockback" },
+            "animation": { "$ref": "#/$defs/animation" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "combat": {
+      "type": "object",
+      "properties": {
+        "maxHealth": { "$ref": "#/$defs/positiveNumber" },
+        "speed": { "$ref": "#/$defs/positiveNumber" },
+        "baseDamage": { "$ref": "#/$defs/nonNegativeNumber" },
+        "faceTarget": { "$ref": "#/$defs/faceTarget" },
+        "weapon": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/weapon" }] }
+      },
+      "additionalProperties": false
+    },
+    "hitbox": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "width", "height"],
+          "properties": {
+            "type": { "const": "box" },
+            "width": { "$ref": "#/$defs/positiveNumber" },
+            "height": { "$ref": "#/$defs/positiveNumber" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "radius"],
+          "properties": {
+            "type": { "const": "circle" },
+            "radius": { "$ref": "#/$defs/positiveNumber" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "body": {
+      "type": "object",
+      "properties": {
+        "radius": { "$ref": "#/$defs/positiveNumber" },
+        "hitbox": { "$ref": "#/$defs/hitbox" },
+        "hitboxOffset": { "$ref": "#/$defs/vector" }
+      },
+      "additionalProperties": false
+    },
+    "pose": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "required": ["image"],
+          "properties": {
+            "image": { "type": "string", "minLength": 1 },
+            "imageCrop": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/crop" }] },
+            "imageScale": { "$ref": "#/$defs/positiveNumber" },
+            "imageOffset": { "$ref": "#/$defs/vector" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "presentation": {
+      "type": "object",
+      "properties": {
+        "image": { "type": ["string", "null"] },
+        "imageScale": { "$ref": "#/$defs/positiveNumber" },
+        "imageOffset": { "$ref": "#/$defs/vector" },
+        "imageCrop": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/crop" }] },
+        "healthBarOffset": { "$ref": "#/$defs/vector" },
+        "weaponScale": { "$ref": "#/$defs/positiveNumber" },
+        "weaponOffset": { "$ref": "#/$defs/vector" },
+        "defaultFacing": { "enum": ["left", "right"] },
+        "poses": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "object", "additionalProperties": { "$ref": "#/$defs/pose" } }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "lines": {
+      "type": "object",
+      "properties": {
+        "ambientIntervalMs": { "$ref": "#/$defs/positiveNumber" },
+        "ambientChance": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

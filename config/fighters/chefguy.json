@@ -1,0 +1,38 @@
+{
+  "$schema": "./fighter.schema.json",
+  "id": "chefguy",
+  "name": "Chef Guy",
+  "color": "#ff4d6d",
+  "combat": {
+    "faceTarget": { "mode": "always" },
+    "weapon": {
+      "type": "projectile",
+      "cooldownMs": 800,
+      "animation": { "windupFrames": 4, "activeFrames": 4, "recoveryFrames": 8 },
+      "projectile": {
+        "radius": 24,
+        "speed": 2.5,
+        "damage": 60,
+        "knockback": false,
+        "lifetimeMs": 3000,
+        "rotationSpeed": 0.08,
+        "image": "assets/fighters/chefguy/weapons/knife-weapon.png"
+      }
+    }
+  },
+  "presentation": {
+    "image": "assets/fighters/chefguy/sprites/chefguy.out.png",
+    "imageScale": 2.4,
+    "imageOffset": { "x": 0, "y": -21 },
+    "imageCrop": { "x": 199, "y": 0, "width": 633, "height": 960 },
+    "healthBarOffset": { "x": 0, "y": -75 },
+    "weaponScale": 2.4,
+    "weaponOffset": { "x": 0, "y": 0 },
+    "defaultFacing": "right",
+    "poses": null
+  },
+  "body": {
+    "hitbox": { "type": "box", "width": 78, "height": 112 },
+    "hitboxOffset": { "x": 0, "y": -15 }
+  }
+}

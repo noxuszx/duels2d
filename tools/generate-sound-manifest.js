@@ -1,13 +1,12 @@
 #!/usr/bin/env node
-"use strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const fs = require("node:fs");
-const path = require("node:path");
-
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SFX_SHARED_DIR = path.join(ROOT, "assets", "sfx", "shared");
 const SFX_FIGHTER_DIR = path.join(ROOT, "assets", "sfx", "characters");
-const OUT_FILE = path.join(ROOT, "config", "sound-manifest.js");
+const OUT_FILE = path.join(ROOT, "config", "sound-manifest.json");
 const AUDIO_EXTS = new Set([".mp3", ".wav", ".ogg", ".m4a"]);
 
 function sortedDirectories(dir) {
@@ -83,7 +82,7 @@ function main() {
   fs.mkdirSync(path.dirname(OUT_FILE), { recursive: true });
   fs.writeFileSync(
     OUT_FILE,
-    `window.SoundManifest = ${JSON.stringify(manifest, null, 2)};\n`,
+    `${JSON.stringify(manifest, null, 2)}\n`,
   );
   console.log(`Wrote ${path.relative(ROOT, OUT_FILE)}`);
 }

@@ -114,7 +114,9 @@
         "speed": { "$ref": "#/$defs/positiveNumber" },
         "baseDamage": { "$ref": "#/$defs/nonNegativeNumber" },
         "faceTarget": { "$ref": "#/$defs/faceTarget" },
-        "weapon": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/weapon" }] }
+        "weapon": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/weapon" }]
+        }
       },
       "additionalProperties": false
     },
@@ -158,7 +160,9 @@
           "required": ["image"],
           "properties": {
             "image": { "type": "string", "minLength": 1 },
-            "imageCrop": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/crop" }] },
+            "imageCrop": {
+              "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/crop" }]
+            },
             "imageScale": { "$ref": "#/$defs/positiveNumber" },
             "imageOffset": { "$ref": "#/$defs/vector" }
           },
@@ -172,15 +176,22 @@
         "image": { "type": ["string", "null"] },
         "imageScale": { "$ref": "#/$defs/positiveNumber" },
         "imageOffset": { "$ref": "#/$defs/vector" },
-        "imageCrop": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/crop" }] },
+        "imageCrop": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/crop" }]
+        },
         "healthBarOffset": { "$ref": "#/$defs/vector" },
         "weaponScale": { "$ref": "#/$defs/positiveNumber" },
         "weaponOffset": { "$ref": "#/$defs/vector" },
+        "weaponIdle": { "type": ["string", "null"] },
+        "weaponAttack": { "type": ["string", "null"] },
         "defaultFacing": { "enum": ["left", "right"] },
         "poses": {
           "oneOf": [
             { "type": "null" },
-            { "type": "object", "additionalProperties": { "$ref": "#/$defs/pose" } }
+            {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/pose" }
+            }
           ]
         }
       },

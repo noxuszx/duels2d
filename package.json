@@ -1,0 +1,28 @@
+{
+  "name": "duels2d",
+  "version": "1.0.0",
+  "description": "Duels2D is a modular, zero-player 2D physics simulator designed for recording high-retention YouTube Shorts and TikTok content. Fighters clash inside a mobile-friendly 9:16 aspect ratio arena, bouncing off walls with perfect elasticity, exchanging damage, and deploying unique weaponry. The simulator features dynamic hit flashes, visual particle sparks, custom sprite crops, fighter-specific sound pools, and an in-game command developer console.",
+  "private": true,
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [],
+  "type": "module",
+  "devDependencies": {
+    "@types/howler": "^2.2.13",
+    "@types/matter-js": "^0.20.2",
+    "@types/node": "^22.20.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0"
+  },
+  "dependencies": {
+    "howler": "^2.2.4",
+    "matter-js": "0.19.0"
+  }
+}

@@ -59,33 +59,7 @@
     Like & Subscribe
   </div>
 
-  <!-- MATTER.JS CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
-
-  <!--
-    PLAN 3: Howler.js CDN for non-clipping, channel-managed audio.
-    Howler handles AudioContext unlock, sprite sheets, and concurrent playback.
-    Swap this for a local copy if you prefer:
-      <script src="assets/vendor/howler.min.js"></script>
-  -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
-
-  <!-- CONFIGS -->
-  <script src="config/game-settings.js"></script>
-  <script src="config/indicator-settings.js"></script>
-  <script src="config/sound-manifest.js"></script>
-  <script src="config/fighter-loader.js"></script>
-  <script src="config/fighter-config.js"></script>
-
-  <!-- GAME SCRIPTS -->
-  <script src="src/entities/fighter.js"></script>
-  <script src="src/entities/projectile.js"></script>
-  <script src="src/ui/fighter-select-panel.js"></script>
-  <script src="src/systems/indicator-system.js"></script>
-  <script src="src/systems/weapon-system.js"></script>
-  <script src="src/engine/game-manager.js"></script>
-  <script src="src/boot/start-game.js"></script>
-  <script src="src/ui/command-console.js"></script>
+  <script type="module" src="/src/boot/start-game.ts"></script>
 
 </body>
 </html>

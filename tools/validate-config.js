@@ -1,10 +1,9 @@
 #!/usr/bin/env node
-"use strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const fs = require("node:fs");
-const path = require("node:path");
-
-const root = path.resolve(__dirname, "..");
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fightersDir = path.join(root, "config", "fighters");
 const errors = [];
 
@@ -26,11 +25,57 @@ function checkAsset(location, assetPath) {
   }
 }
 
-global.window = {
-  FighterDefaults: JSON.parse(
-    fs.readFileSync(path.join(fightersDir, "defaults.json"), "utf8"),
-  ),
-};
+
+function clone(value) {
+  if (value == null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(clone);
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, clone(item)]));
+}
+
+function merge(base, overrides) {
+  const result = clone(base);
+  if (!overrides) return result;
+  for (const [key, value] of Object.entries(overrides)) {
+    const current = result[key];
+    const plainValue = value != null && typeof value === "object" && !Array.isArray(value);
+    const plainCurrent = current != null && typeof current === "object" && !Array.isArray(current);
+    result[key] = plainValue && plainCurrent ? merge(current, value) : clone(value);
+  }
+  return result;
+}
+
+function composeFighter(defaults, definition) {
+  const fighter = merge(defaults, definition);
+  return {
+    id: fighter.id,
+    name: fighter.name,
+    color: fighter.color,
+    maxHealth: fighter.combat.maxHealth,
+    speed: fighter.combat.speed,
+    baseDamage: fighter.combat.baseDamage,
+    weapon: fighter.combat.weapon,
+    faceTarget: fighter.combat.faceTarget,
+    radius: fighter.body.radius,
+    hitbox: fighter.body.hitbox,
+    hitboxOffset: fighter.body.hitboxOffset,
+    image: fighter.presentation.image,
+    imageScale: fighter.presentation.imageScale,
+    imageOffset: fighter.presentation.imageOffset,
+    imageCrop: fighter.presentation.imageCrop,
+    healthBarOffset: fighter.presentation.healthBarOffset,
+    weaponScale: fighter.presentation.weaponScale,
+    weaponOffset: fighter.presentation.weaponOffset,
+    weaponIdle: fighter.presentation.weaponIdle,
+    weaponAttack: fighter.presentation.weaponAttack,
+    poses: fighter.presentation.poses,
+    defaultFacing: fighter.presentation.defaultFacing,
+    lines: fighter.lines,
+  };
+}
+
+const defaults = JSON.parse(
+  fs.readFileSync(path.join(fightersDir, "defaults.json"), "utf8"),
+);
 
 const manifest = JSON.parse(
   fs.readFileSync(path.join(fightersDir, "index.json"), "utf8"),
@@ -62,15 +107,11 @@ if (errors.length > 0) {
   process.exit(1);
 }
 
-window.FighterDefinitions = fighterFiles.map((file) =>
+const definitions = fighterFiles.map((file) =>
   JSON.parse(fs.readFileSync(path.join(fightersDir, file), "utf8")),
 );
-require(path.join(root, "config", "fighter-config.js"));
-window.buildFighterRoster();
-require(path.join(root, "config", "game-settings.js"));
+const roster = definitions.map((definition) => composeFighter(defaults, definition));
 
-const definitions = window.FighterDefinitions;
-const roster = window.FighterRoster;
 const ids = new Set();
 const faceModes = new Set(["never", "always", "range"]);
 const weaponTypes = new Set(["projectile", "proximity-melee"]);
@@ -254,10 +295,10 @@ roster.forEach((fighter) => {
   }
 });
 
-const game = window.GameConfig;
+const game = JSON.parse(fs.readFileSync(path.join(root, "config", "game-settings.json"), "utf8"));
 if (!isPositive(game.physics?.globalSpeedMultiplier)) {
   fail(
-    "game-settings.js",
+    "game-settings.json",
     "physics.globalSpeedMultiplier must be greater than 0",
   );
 }
@@ -265,11 +306,11 @@ if (
   !Number.isFinite(game.physics?.collisionCooldownMs) ||
   game.physics.collisionCooldownMs < 0
 ) {
-  fail("game-settings.js", "physics.collisionCooldownMs must be 0 or greater");
+  fail("game-settings.json", "physics.collisionCooldownMs must be 0 or greater");
 }
 Object.entries(game.audio?.volumes || {}).forEach(([name, volume]) => {
   if (!Number.isFinite(volume) || volume < 0 || volume > 1) {
-    fail("game-settings.js", `audio.volumes.${name} must be between 0 and 1`);
+    fail("game-settings.json", `audio.volumes.${name} must be between 0 and 1`);
   }
 });
 

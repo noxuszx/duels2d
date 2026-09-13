@@ -1,12 +1,18 @@
-'use strict';
+import type { FighterConfig } from "../types/fighter";
+import type { GameManager } from "../engine/game-manager";
 
-class FighterSelectPanel {
-  constructor(game) {
-    this.game = game;
+export class FighterSelectPanel {
+  private readonly root: HTMLElement | null;
+  private readonly searchInput: HTMLInputElement | null;
+  private readonly grid: HTMLElement | null;
+  private readonly closeButton: HTMLButtonElement | null;
+  private query: string;
+
+  constructor(private readonly game: GameManager) {
     this.root = document.getElementById('character-select-panel');
-    this.searchInput = document.getElementById('character-select-search');
+    this.searchInput = document.getElementById('character-select-search') as HTMLInputElement | null;
     this.grid = document.getElementById('character-select-grid');
-    this.closeButton = document.getElementById('character-select-close');
+    this.closeButton = document.getElementById('character-select-close') as HTMLButtonElement | null;
     this.query = '';
 
     if (!this.root || !this.searchInput || !this.grid || !this.closeButton) return;
@@ -19,7 +25,7 @@ class FighterSelectPanel {
     if (!this.root) return;
     this.root.classList.remove('hidden');
     this.render();
-    this.searchInput.focus();
+    this.searchInput?.focus();
   }
 
   close() {
@@ -41,26 +47,27 @@ class FighterSelectPanel {
 
     const selectedIds = this.game.getSelectedCharacterIds();
     const normalizedQuery = this.query.trim().toLowerCase();
-    const configs = window.FighterRoster.filter((config) => {
+    const configs = this.game.fighterRoster.filter((config: FighterConfig) => {
       if (!normalizedQuery) return true;
       return `${config.name} ${config.id}`.toLowerCase().includes(normalizedQuery);
     });
 
     this.grid.innerHTML = '';
     configs.forEach((config) => {
-      this.grid.appendChild(this._createCard(config, selectedIds));
+      this.grid!.appendChild(this._createCard(config, selectedIds));
     });
   }
 
   _bindEvents() {
+    if (!this.closeButton || !this.searchInput) return;
     this.closeButton.addEventListener('click', () => this.close());
     this.searchInput.addEventListener('input', () => {
-      this.query = this.searchInput.value;
+      this.query = this.searchInput!.value;
       this.render();
     });
   }
 
-  _createCard(config, selectedIds) {
+  _createCard(config: FighterConfig, selectedIds: string[]): HTMLButtonElement {
     const selectedIndex = selectedIds.indexOf(config.id);
     const card = document.createElement('button');
     card.type = 'button';
@@ -76,7 +83,8 @@ class FighterSelectPanel {
 
     const img = document.createElement('img');
     img.alt = config.name;
-    img.src = config.poses?.idle?.image ?? config.poses?.idle ?? config.image;
+    const idlePose = config.poses?.idle;
+    img.src = typeof idlePose === "string" ? idlePose : idlePose?.image ?? config.image ?? "";
     img.onerror = () => {
       preview.classList.add('missing-image');
       img.remove();
@@ -97,7 +105,7 @@ class FighterSelectPanel {
     return card;
   }
 
-  _selectCharacter(characterId) {
+  _selectCharacter(characterId: string) {
     const selectedIds = this.game.getSelectedCharacterIds();
     const existingIndex = selectedIds.indexOf(characterId);
 
@@ -114,6 +122,3 @@ class FighterSelectPanel {
     this.render();
   }
 }
-
-// Temporary alias for backward compatibility during migration
-var CharacterSelectPanel = FighterSelectPanel;

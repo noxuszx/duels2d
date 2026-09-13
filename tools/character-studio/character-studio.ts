@@ -1,9 +1,76 @@
-class CharacterStudio {
-  constructor() {
-    this.canvas = document.getElementById("studio-canvas");
-    this.ctx = this.canvas.getContext("2d");
+// The studio has a large, canvas-focused interaction surface. Keeping its
+// implementation intact here makes this a behaviour-preserving module migration.
+import { loadFighterConfig } from "../../src/config/fighter-loader";
+import { loadRuntimeConfig } from "../../src/config/runtime-config";
+import type { IndicatorConfig } from "../../src/types/game";
+import type { Facing, FighterConfig, FighterDefinition, Hitbox, ImageCrop, PoseConfig, Vector2 } from "../../src/types/fighter";
 
-    this.configs = window.FighterRoster;
+type Rect = { x: number; y: number; width: number; height: number };
+type NumericInput = Omit<HTMLInputElement, "value"> & { value: string | number };
+type PoseVisual = { imageScale: number; imageOffset: Vector2; imageCrop: ImageCrop | null };
+type PosePatch = Partial<PoseVisual>;
+type ControlName = "hitboxWidth" | "hitboxHeight" | "hitboxRadius" | "hitboxOffsetX" | "hitboxOffsetY" | "imageScale" | "imageOffsetX" | "imageOffsetY" | "healthBarOffsetX" | "healthBarOffsetY" | "weaponScale" | "weaponOffsetX" | "weaponOffsetY" | "imageCropX" | "imageCropY" | "imageCropWidth" | "imageCropHeight";
+type EditableHitbox = Hitbox;
+type StudioConfig = Omit<FighterConfig, "hitbox" | "poses"> & { hitbox: Hitbox; poses: Record<string, PoseConfig> | null };
+type StudioState = Pick<StudioConfig, "hitbox" | "hitboxOffset" | "defaultFacing" | "imageScale" | "imageOffset" | "imageCrop" | "healthBarOffset" | "weaponScale" | "weaponOffset" | "poses"> & { activePoseKey: string };
+type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue };
+const numberValue = (input: NumericInput): number => Number.parseFloat(String(input.value));
+type DragState = { handle: string; startX: number; startY: number; startRect: Rect; imageRect: Rect; startOffset: Vector2 };
+type StudioFileHandle = { createWritable(): Promise<{ write(content: string): Promise<void>; close(): Promise<void> }> };
+type StudioTextStyle = { fillColor: string; strokeColor: string; strokeWidth: number; weight: string; family: string; align: CanvasTextAlign; baseline: CanvasTextBaseline };
+declare global {
+  interface Window { showSaveFilePicker?: (options: { suggestedName: string; types: Array<{ description: string; accept: Record<string, string[]> }> }) => Promise<StudioFileHandle>; __studioInstance?: CharacterStudio; }
+}
+const requireElement = <T extends HTMLElement>(id: string): T => {
+  const element = document.getElementById(id);
+  if (!element) throw new Error(`Missing required studio element: #${id}`);
+  return element as T;
+};
+
+export class CharacterStudio {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  configs: StudioConfig[];
+  activeConfigIndex: number;
+  activePoseKey: string;
+  history: string[];
+  historyIndex: number;
+  isRestoring: boolean;
+  fileHandles: Map<string, StudioFileHandle>;
+  mode: "default" | "crop" | "hitbox";
+  cropDraft: ImageCrop | null;
+  hitboxDraft: EditableHitbox | null;
+  hitboxDraftOffset: Vector2 | null = null;
+  dragState: DragState | null;
+  pendingBodyImageRequest: number;
+  select: HTMLSelectElement;
+  poseSelect: HTMLSelectElement;
+  defaultFacingSelect: HTMLSelectElement;
+  resetPoseBtn: HTMLButtonElement;
+  imageOutput: HTMLInputElement;
+  hitboxType: HTMLSelectElement;
+  editHitboxBtn: HTMLButtonElement;
+  applyHitboxBtn: HTMLButtonElement;
+  cancelHitboxBtn: HTMLButtonElement;
+  cropBtn: HTMLButtonElement;
+  applyCropBtn: HTMLButtonElement;
+  cancelCropBtn: HTMLButtonElement;
+  saveBtn: HTMLButtonElement;
+  hitboxOutput: HTMLInputElement;
+  controls: Record<ControlName, NumericInput>;
+  labels: Record<ControlName, HTMLElement>;
+  images: { body: HTMLImageElement; weaponIdle: HTMLImageElement; weaponAttack: HTMLImageElement };
+  constructor(
+    configs: FighterConfig[],
+    private readonly fighterDefinitions: FighterDefinition[],
+    private readonly indicatorConfig: IndicatorConfig,
+  ) {
+    this.canvas = requireElement<HTMLCanvasElement>("studio-canvas");
+    const context = this.canvas.getContext("2d");
+    if (!context) throw new Error("Unable to create Character Studio canvas context");
+    this.ctx = context;
+
+    this.configs = configs;
     this.activeConfigIndex = 0;
     this.activePoseKey = "base";
     this.history = [];
@@ -16,59 +83,29 @@ class CharacterStudio {
     this.dragState = null;
     this.pendingBodyImageRequest = 0;
 
-    this.select = document.getElementById("char-select");
-    this.poseSelect = document.getElementById("pose-select");
-    this.defaultFacingSelect = document.getElementById("defaultFacing");
-    this.resetPoseBtn = document.getElementById("reset-pose-btn");
-    this.imageOutput = document.getElementById("image-output");
-    this.hitboxType = document.getElementById("hitboxType");
-    this.editHitboxBtn = document.getElementById("edit-hitbox-btn");
-    this.applyHitboxBtn = document.getElementById("apply-hitbox-btn");
-    this.cancelHitboxBtn = document.getElementById("cancel-hitbox-btn");
-    this.cropBtn = document.getElementById("crop-btn");
-    this.applyCropBtn = document.getElementById("apply-crop-btn");
-    this.cancelCropBtn = document.getElementById("cancel-crop-btn");
-    this.saveBtn = document.getElementById("save-config-btn");
-    this.hitboxOutput = document.getElementById("hitbox-output");
+    this.select = requireElement<HTMLSelectElement>("char-select");
+    this.poseSelect = requireElement<HTMLSelectElement>("pose-select");
+    this.defaultFacingSelect = requireElement<HTMLSelectElement>("defaultFacing");
+    this.resetPoseBtn = requireElement<HTMLButtonElement>("reset-pose-btn");
+    this.imageOutput = requireElement<HTMLInputElement>("image-output");
+    this.hitboxType = requireElement<HTMLSelectElement>("hitboxType");
+    this.editHitboxBtn = requireElement<HTMLButtonElement>("edit-hitbox-btn");
+    this.applyHitboxBtn = requireElement<HTMLButtonElement>("apply-hitbox-btn");
+    this.cancelHitboxBtn = requireElement<HTMLButtonElement>("cancel-hitbox-btn");
+    this.cropBtn = requireElement<HTMLButtonElement>("crop-btn");
+    this.applyCropBtn = requireElement<HTMLButtonElement>("apply-crop-btn");
+    this.cancelCropBtn = requireElement<HTMLButtonElement>("cancel-crop-btn");
+    this.saveBtn = requireElement<HTMLButtonElement>("save-config-btn");
+    this.hitboxOutput = requireElement<HTMLInputElement>("hitbox-output");
 
     this.controls = {
-      hitboxWidth: document.getElementById("hitboxWidth"),
-      hitboxHeight: document.getElementById("hitboxHeight"),
-      hitboxRadius: document.getElementById("hitboxRadius"),
-      hitboxOffsetX: document.getElementById("hitboxOffsetX"),
-      hitboxOffsetY: document.getElementById("hitboxOffsetY"),
-      imageScale: document.getElementById("imageScale"),
-      imageOffsetX: document.getElementById("imageOffsetX"),
-      imageOffsetY: document.getElementById("imageOffsetY"),
-      healthBarOffsetX: document.getElementById("healthBarOffsetX"),
-      healthBarOffsetY: document.getElementById("healthBarOffsetY"),
-      weaponScale: document.getElementById("weaponScale"),
-      weaponOffsetX: document.getElementById("weaponOffsetX"),
-      weaponOffsetY: document.getElementById("weaponOffsetY"),
-      imageCropX: document.getElementById("imageCropX"),
-      imageCropY: document.getElementById("imageCropY"),
-      imageCropWidth: document.getElementById("imageCropWidth"),
-      imageCropHeight: document.getElementById("imageCropHeight"),
+      hitboxWidth: requireElement<NumericInput>("hitboxWidth"), hitboxHeight: requireElement<NumericInput>("hitboxHeight"), hitboxRadius: requireElement<NumericInput>("hitboxRadius"), hitboxOffsetX: requireElement<NumericInput>("hitboxOffsetX"), hitboxOffsetY: requireElement<NumericInput>("hitboxOffsetY"), imageScale: requireElement<NumericInput>("imageScale"), imageOffsetX: requireElement<NumericInput>("imageOffsetX"), imageOffsetY: requireElement<NumericInput>("imageOffsetY"), healthBarOffsetX: requireElement<NumericInput>("healthBarOffsetX"), healthBarOffsetY: requireElement<NumericInput>("healthBarOffsetY"), weaponScale: requireElement<NumericInput>("weaponScale"), weaponOffsetX: requireElement<NumericInput>("weaponOffsetX"), weaponOffsetY: requireElement<NumericInput>("weaponOffsetY"), imageCropX: requireElement<NumericInput>("imageCropX"), imageCropY: requireElement<NumericInput>("imageCropY"), imageCropWidth: requireElement<NumericInput>("imageCropWidth"), imageCropHeight: requireElement<NumericInput>("imageCropHeight"),
     };
 
     this.labels = {
-      hitboxWidth: document.getElementById("val-hitboxWidth"),
-      hitboxHeight: document.getElementById("val-hitboxHeight"),
-      hitboxRadius: document.getElementById("val-hitboxRadius"),
-      hitboxOffsetX: document.getElementById("val-hitboxOffsetX"),
-      hitboxOffsetY: document.getElementById("val-hitboxOffsetY"),
-      imageScale: document.getElementById("val-imageScale"),
-      imageOffsetX: document.getElementById("val-imageOffsetX"),
-      imageOffsetY: document.getElementById("val-imageOffsetY"),
-      healthBarOffsetX: document.getElementById("val-healthBarOffsetX"),
-      healthBarOffsetY: document.getElementById("val-healthBarOffsetY"),
-      weaponScale: document.getElementById("val-weaponScale"),
-      weaponOffsetX: document.getElementById("val-weaponOffsetX"),
-      weaponOffsetY: document.getElementById("val-weaponOffsetY"),
-      imageCropX: document.getElementById("val-imageCropX"),
-      imageCropY: document.getElementById("val-imageCropY"),
-      imageCropWidth: document.getElementById("val-imageCropWidth"),
-      imageCropHeight: document.getElementById("val-imageCropHeight"),
+      hitboxWidth: requireElement("val-hitboxWidth"),
+      hitboxHeight: requireElement("val-hitboxHeight"),
+      hitboxRadius: requireElement("val-hitboxRadius"), hitboxOffsetX: requireElement("val-hitboxOffsetX"), hitboxOffsetY: requireElement("val-hitboxOffsetY"), imageScale: requireElement("val-imageScale"), imageOffsetX: requireElement("val-imageOffsetX"), imageOffsetY: requireElement("val-imageOffsetY"), healthBarOffsetX: requireElement("val-healthBarOffsetX"), healthBarOffsetY: requireElement("val-healthBarOffsetY"), weaponScale: requireElement("val-weaponScale"), weaponOffsetX: requireElement("val-weaponOffsetX"), weaponOffsetY: requireElement("val-weaponOffsetY"), imageCropX: requireElement("val-imageCropX"), imageCropY: requireElement("val-imageCropY"), imageCropWidth: requireElement("val-imageCropWidth"), imageCropHeight: requireElement("val-imageCropHeight"),
     };
 
     this.images = {
@@ -88,13 +125,13 @@ class CharacterStudio {
       this.select.appendChild(option);
     });
 
-    this.select.addEventListener("change", (event) => {
-      this.activeConfigIndex = Number.parseInt(event.target.value, 10);
+    this.select.addEventListener("change", () => {
+      this.activeConfigIndex = Number.parseInt(this.select.value, 10);
       this._loadCurrentConfig();
     });
 
-    this.poseSelect.addEventListener("change", (event) => {
-      this.activePoseKey = event.target.value;
+    this.poseSelect.addEventListener("change", () => {
+      this.activePoseKey = this.poseSelect.value;
       this._onPoseChanged();
     });
 
@@ -118,7 +155,7 @@ class CharacterStudio {
       this._saveState();
     });
 
-    Object.keys(this.controls).forEach((key) => {
+    (Object.keys(this.controls) as ControlName[]).forEach((key) => {
       this.controls[key].addEventListener("input", () => {
         if (this.isRestoring) return;
         this._updateConfigFromInputs();
@@ -145,7 +182,7 @@ class CharacterStudio {
 
     this.defaultFacingSelect.addEventListener("change", () => {
       const config = this._currentConfig();
-      config.defaultFacing = this.defaultFacingSelect.value;
+      config.defaultFacing = this.defaultFacingSelect.value as Facing;
       this._draw();
       this._saveState();
     });
@@ -173,11 +210,11 @@ class CharacterStudio {
           });
           this.fileHandles.set(config.id, fileHandle);
           this._updateSaveButton();
-        } catch (error) {
+        } catch (error: unknown) {
           // Closing the picker is an intentional cancellation, not a save
           // failure. Other picker errors can still use the download fallback
           // (for example, browsers that expose but do not implement it).
-          if (error?.name !== "AbortError") {
+          if (!(error instanceof DOMException && error.name === "AbortError")) {
             console.warn("File picker unavailable; downloading instead:", error);
             this._downloadLocalFile(config);
           }
@@ -207,7 +244,7 @@ class CharacterStudio {
     this._loadCurrentConfig();
   }
 
-  _currentConfig() {
+  _currentConfig(): StudioConfig {
     return this.configs[this.activeConfigIndex];
   }
 
@@ -217,13 +254,13 @@ class CharacterStudio {
    * Return the raw value stored in config.poses[poseKey].
    * Returns undefined when the key does not exist.
    */
-  _getPoseConfig(config, poseKey) {
+  _getPoseConfig(config: StudioConfig, poseKey: string): PoseConfig | null | undefined {
     if (poseKey === "base") return null;
     return config.poses?.[poseKey];
   }
 
   /** Return the image path for a given pose key. */
-  _getPoseImagePath(config, poseKey) {
+  _getPoseImagePath(config: StudioConfig, poseKey: string): string {
     if (poseKey === "base") return config.image ?? "";
     const poseVal = config.poses?.[poseKey];
     if (!poseVal) return config.image ?? "";
@@ -235,7 +272,7 @@ class CharacterStudio {
    * Return the visual overrides (imageScale, imageOffset, imageCrop) for a pose,
    * falling back to top-level config values when the pose doesn't override them.
    */
-  _getPoseVisual(config, poseKey) {
+  _getPoseVisual(config: StudioConfig, poseKey: string): PoseVisual {
     if (poseKey === "base") {
       return {
         imageScale: config.imageScale ?? 1,
@@ -244,7 +281,7 @@ class CharacterStudio {
       };
     }
     const poseVal = config.poses?.[poseKey];
-    const poseObj = (poseVal && typeof poseVal === "object") ? poseVal : {};
+    const poseObj: Partial<Exclude<PoseConfig, string>> = (poseVal && typeof poseVal === "object") ? poseVal : {};
     return {
       imageScale: poseObj.imageScale ?? config.imageScale ?? 1,
       imageOffset: poseObj.imageOffset ?? config.imageOffset ?? { x: 0, y: 0 },
@@ -256,29 +293,29 @@ class CharacterStudio {
    * Patch visual fields onto a non-base pose object.
    * If the pose was a string, upgrades it to an object first.
    */
-  _setPoseVisual(config, poseKey, patch) {
+  _setPoseVisual(config: StudioConfig, poseKey: string, patch: PosePatch): void {
     if (poseKey === "base") {
-      if ("imageScale" in patch) config.imageScale = patch.imageScale;
-      if ("imageOffset" in patch) config.imageOffset = { ...patch.imageOffset };
+      if (patch.imageScale !== undefined) config.imageScale = patch.imageScale;
+      if (patch.imageOffset !== undefined) config.imageOffset = { ...patch.imageOffset };
       if ("imageCrop" in patch) config.imageCrop = patch.imageCrop ? { ...patch.imageCrop } : null;
       return;
     }
     config.poses ??= {};
     const existing = config.poses[poseKey];
-    const poseObj = (existing && typeof existing === "object")
+    const poseObj: Exclude<PoseConfig, string> = (existing && typeof existing === "object")
       ? existing
       : { image: typeof existing === "string" ? existing : this._getPoseImagePath(config, poseKey) };
-    if ("imageScale" in patch) poseObj.imageScale = patch.imageScale;
-    if ("imageOffset" in patch) poseObj.imageOffset = { ...patch.imageOffset };
+    if (patch.imageScale !== undefined) poseObj.imageScale = patch.imageScale;
+    if (patch.imageOffset !== undefined) poseObj.imageOffset = { ...patch.imageOffset };
     if ("imageCrop" in patch) poseObj.imageCrop = patch.imageCrop ? { ...patch.imageCrop } : null;
     config.poses[poseKey] = poseObj;
   }
 
   /** Populate the pose <select> from base + config.poses keys. */
-  _populatePoseSelect(config) {
+  _populatePoseSelect(config: StudioConfig): void {
     if (!this.poseSelect) return;
     this.poseSelect.innerHTML = "";
-    const addOpt = (value, label) => {
+    const addOpt = (value: string, label: string) => {
       const opt = document.createElement("option");
       opt.value = value;
       opt.textContent = label;
@@ -320,7 +357,7 @@ class CharacterStudio {
     if (poseVal && typeof poseVal === "object") {
       // Keep only the image path, strip visual overrides
       const imagePath = poseVal.image ?? this._getPoseImagePath(config, this.activePoseKey);
-      config.poses[this.activePoseKey] = imagePath;
+      (config.poses ??= {})[this.activePoseKey] = imagePath;
     }
     this._syncImageControls();
     this._refreshLabels();
@@ -342,7 +379,7 @@ class CharacterStudio {
 
   // ── End pose helpers ──────────────────────────────────────────────
 
-  _ensureConfigShape(config) {
+  _ensureConfigShape(config: StudioConfig): void {
     config.imageScale ??= 1;
     config.imageOffset ??= { x: 0, y: 0 };
     config.imageCrop ??= null;
@@ -362,7 +399,7 @@ class CharacterStudio {
     }
   }
 
-  _initCropFromImage(config) {
+  _initCropFromImage(config: StudioConfig): void {
     if (config.imageCrop) return;
     const img = this.images.body;
     if (img.complete && img.naturalWidth > 0) {
@@ -370,7 +407,7 @@ class CharacterStudio {
     }
   }
 
-  _initPoseCropFromImage(config, poseKey) {
+  _initPoseCropFromImage(config: StudioConfig, poseKey: string): void {
     if (poseKey === "base") {
       this._initCropFromImage(config);
       return;
@@ -404,7 +441,7 @@ class CharacterStudio {
     this._setPoseVisual(config, this.activePoseKey, { imageCrop: clamped });
   }
 
-  _loadBodyImage(imagePath, poseKey) {
+  _loadBodyImage(imagePath: string, poseKey: string): void {
     const requestToken = ++this.pendingBodyImageRequest;
     const nextSrc = "../../" + imagePath;
     const previousSrc = this.images.body.src;
@@ -418,7 +455,7 @@ class CharacterStudio {
     }
   }
 
-  _onBodyImageLoaded(config, poseKey) {
+  _onBodyImageLoaded(config: StudioConfig, poseKey: string): void {
     if (poseKey === "base") {
       this._initCropFromImage(config);
     } else {
@@ -437,13 +474,13 @@ class CharacterStudio {
     if (!img.complete || img.naturalWidth === 0) return;
     const nw = img.naturalWidth;
     const nh = img.naturalHeight;
-    this.controls.imageCropX.max = nw - 1;
-    this.controls.imageCropY.max = nh - 1;
-    this.controls.imageCropWidth.max = nw;
-    this.controls.imageCropHeight.max = nh;
+    this.controls.imageCropX.max = String(nw - 1);
+    this.controls.imageCropY.max = String(nh - 1);
+    this.controls.imageCropWidth.max = String(nw);
+    this.controls.imageCropHeight.max = String(nh);
   }
 
-  _getCropDrawRect(image, crop, drawRadius) {
+  _getCropDrawRect(image: HTMLImageElement, crop: ImageCrop | null, drawRadius: number): { dx: number; dy: number; dw: number; dh: number; crop: ImageCrop } {
     const fullW = drawRadius * 2;
     const fullH = drawRadius * 2;
     const safeCrop = crop ?? {
@@ -462,7 +499,7 @@ class CharacterStudio {
     };
   }
 
-  _syncCropControls(config) {
+  _syncCropControls(config: Pick<PoseVisual, "imageCrop">): void {
     // Accept either a config object or a plain {imageCrop} wrapper
     const crop = config.imageCrop;
     if (!crop) return;
@@ -557,7 +594,7 @@ class CharacterStudio {
     this._draw();
   }
 
-  _getImageRect(config) {
+  _getImageRect(config: StudioConfig): Rect {
     const centerX = this.canvas.width / 2;
     const centerY = this.canvas.height / 2;
     const radius = config.radius ?? 30;
@@ -571,7 +608,7 @@ class CharacterStudio {
     };
   }
 
-  _sourceCropToPreviewRect(imageRect, crop, image) {
+  _sourceCropToPreviewRect(imageRect: Rect, crop: ImageCrop, image: HTMLImageElement): Rect {
     return {
       x: imageRect.x + (crop.x / image.naturalWidth) * imageRect.width,
       y: imageRect.y + (crop.y / image.naturalHeight) * imageRect.height,
@@ -580,7 +617,7 @@ class CharacterStudio {
     };
   }
 
-  _previewRectToSourceCrop(imageRect, rect, image) {
+  _previewRectToSourceCrop(imageRect: Rect, rect: Rect, image: HTMLImageElement): ImageCrop {
     const x = ((rect.x - imageRect.x) / imageRect.width) * image.naturalWidth;
     const y = ((rect.y - imageRect.y) / imageRect.height) * image.naturalHeight;
     const width = (rect.width / imageRect.width) * image.naturalWidth;
@@ -588,7 +625,7 @@ class CharacterStudio {
     return this._normalizeCropBounds({ x, y, width, height }, image);
   }
 
-  _normalizeCropBounds(crop, image) {
+  _normalizeCropBounds(crop: ImageCrop, image: HTMLImageElement): ImageCrop {
     const maxW = image.naturalWidth;
     const maxH = image.naturalHeight;
     const x = Math.max(0, Math.min(crop.x, maxW - 1));
@@ -603,11 +640,11 @@ class CharacterStudio {
     };
   }
 
-  _pointInRect(px, py, rect) {
+  _pointInRect(px: number, py: number, rect: Rect): boolean {
     return px >= rect.x && px <= rect.x + rect.width && py >= rect.y && py <= rect.y + rect.height;
   }
 
-  _getHitboxRect(config) {
+  _getHitboxRect(config: Pick<StudioConfig, "hitbox" | "hitboxOffset">): Rect {
     const centerX = this.canvas.width / 2;
     const centerY = this.canvas.height / 2;
     const offset = config.hitboxOffset ?? { x: 0, y: 0 };
@@ -630,11 +667,11 @@ class CharacterStudio {
     };
   }
 
-  _getSafetyRect(config) {
+  _getSafetyRect(config: StudioConfig): Rect {
     return this._getImageRect(config);
   }
 
-  _clampHitboxOffset(config, offset) {
+  _clampHitboxOffset(config: StudioConfig, offset: Vector2): Vector2 {
     const safety = this._getSafetyRect(config);
     const centerX = this.canvas.width / 2;
     const centerY = this.canvas.height / 2;
@@ -648,24 +685,24 @@ class CharacterStudio {
     };
   }
 
-  _syncHitboxControls(config) {
+  _syncHitboxControls(config: StudioConfig): void {
     this.hitboxType.value = config.hitbox.type;
-    this.controls.hitboxWidth.value = config.hitbox.width ?? 44;
-    this.controls.hitboxHeight.value = config.hitbox.height ?? 88;
-    this.controls.hitboxRadius.value = config.hitbox.radius ?? config.radius ?? 30;
+    this.controls.hitboxWidth.value = config.hitbox.type === "box" ? config.hitbox.width : 44;
+    this.controls.hitboxHeight.value = config.hitbox.type === "box" ? config.hitbox.height : 88;
+    this.controls.hitboxRadius.value = config.hitbox.type === "circle" ? config.hitbox.radius : config.radius ?? 30;
     this._syncHitboxOffsetControls(config.hitboxOffset ?? { x: 0, y: 0 });
     this._syncHitboxControlState();
   }
 
-  _syncHitboxOffsetControls(offset) {
+  _syncHitboxOffsetControls(offset: Vector2): void {
     this.controls.hitboxOffsetX.value = Math.round(offset.x ?? 0);
     this.controls.hitboxOffsetY.value = Math.round(offset.y ?? 0);
   }
 
-  _hitTestRectHandles(px, py, rect) {
+  _hitTestRectHandles(px: number, py: number, rect: Rect): string | null {
     const size = 12;
     const half = size / 2;
-    const hits = [
+    const hits: Array<[string, number, number]> = [
       ["nw", rect.x, rect.y], ["n", rect.x + rect.width / 2, rect.y], ["ne", rect.x + rect.width, rect.y],
       ["w", rect.x, rect.y + rect.height / 2], ["e", rect.x + rect.width, rect.y + rect.height / 2],
       ["sw", rect.x, rect.y + rect.height], ["s", rect.x + rect.width / 2, rect.y + rect.height], ["se", rect.x + rect.width, rect.y + rect.height],
@@ -676,7 +713,7 @@ class CharacterStudio {
     return this._pointInRect(px, py, rect) ? "move" : null;
   }
 
-  _hitTestCircleHandle(px, py, rect) {
+  _hitTestCircleHandle(px: number, py: number, rect: Rect): string | null {
     const cx = rect.x + rect.width / 2;
     const cy = rect.y + rect.height / 2;
     const radius = rect.width / 2;
@@ -687,10 +724,10 @@ class CharacterStudio {
     return distance < radius ? "move" : null;
   }
 
-  _hitTestCropHandle(px, py, rect) {
+  _hitTestCropHandle(px: number, py: number, rect: Rect): string | null {
     const size = 12;
     const half = size / 2;
-    const handles = [
+    const handles: Array<[string, number, number]> = [
       ["nw", rect.x, rect.y], ["n", rect.x + rect.width / 2, rect.y], ["ne", rect.x + rect.width, rect.y],
       ["w", rect.x, rect.y + rect.height / 2], ["move", rect.x + rect.width / 2, rect.y + rect.height / 2], ["e", rect.x + rect.width, rect.y + rect.height / 2],
       ["sw", rect.x, rect.y + rect.height], ["s", rect.x + rect.width / 2, rect.y + rect.height], ["se", rect.x + rect.width, rect.y + rect.height],
@@ -701,12 +738,12 @@ class CharacterStudio {
     return this._pointInRect(px, py, rect) ? "move" : null;
   }
 
-  _onCanvasPointerDown(event) {
+  _onCanvasPointerDown(event: PointerEvent): void {
     if (this.mode !== "crop" && this.mode !== "hitbox") return;
     const config = this._currentConfig();
     const point = this._getCanvasPoint(event);
     const rect = this.mode === "crop"
-      ? this._sourceCropToPreviewRect(this._getImageRect(config), this.cropDraft, this.images.body)
+      ? this._sourceCropToPreviewRect(this._getImageRect(config), this.cropDraft ?? { x: 0, y: 0, width: this.images.body.naturalWidth, height: this.images.body.naturalHeight }, this.images.body)
       : this._getHitboxRect({ hitbox: this.hitboxDraft ?? config.hitbox, hitboxOffset: this.hitboxDraftOffset ?? config.hitboxOffset });
     const handle = this.mode === "crop"
       ? this._hitTestCropHandle(point.x, point.y, rect)
@@ -717,7 +754,7 @@ class CharacterStudio {
     this.dragState = { handle, startX: point.x, startY: point.y, startRect: { ...rect }, imageRect: this._getImageRect(config), startOffset: { ...(this.hitboxDraftOffset ?? config.hitboxOffset ?? { x: 0, y: 0 }) } };
   }
 
-  _onCanvasPointerMove(event) {
+  _onCanvasPointerMove(event: PointerEvent): void {
     if (!this.dragState) return;
     const point = this._getCanvasPoint(event);
     const deltaX = point.x - this.dragState.startX;
@@ -780,7 +817,7 @@ class CharacterStudio {
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
         const offset = this.dragState.startOffset ?? { x: 0, y: 0 };
-        let radius = this.hitboxDraft.radius;
+        let radius = this.hitboxDraft?.type === "circle" ? this.hitboxDraft.radius : 30;
         if (handle === "move") {
           this.hitboxDraftOffset = this._clampHitboxOffset(this._currentConfig(), {
             x: offset.x + deltaX,
@@ -800,14 +837,14 @@ class CharacterStudio {
     this._draw();
   }
 
-  _onCanvasPointerUp(event) {
+  _onCanvasPointerUp(event: PointerEvent): void {
     if (this.dragState && this.canvas.hasPointerCapture?.(event.pointerId)) {
       this.canvas.releasePointerCapture(event.pointerId);
     }
     this.dragState = null;
   }
 
-  _getCanvasPoint(event) {
+  _getCanvasPoint(event: PointerEvent): Vector2 {
     const rect = this.canvas.getBoundingClientRect();
     const scaleX = this.canvas.width / rect.width;
     const scaleY = this.canvas.height / rect.height;
@@ -832,10 +869,9 @@ class CharacterStudio {
     this._populatePoseSelect(config);
 
     this.hitboxType.value = config.hitbox.type;
-    this.controls.hitboxWidth.value = config.hitbox.width ?? 44;
-    this.controls.hitboxHeight.value = config.hitbox.height ?? 88;
-    this.controls.hitboxRadius.value =
-      config.hitbox.radius ?? config.radius ?? 30;
+    this.controls.hitboxWidth.value = config.hitbox.type === "box" ? config.hitbox.width : 44;
+    this.controls.hitboxHeight.value = config.hitbox.type === "box" ? config.hitbox.height : 88;
+    this.controls.hitboxRadius.value = config.hitbox.type === "circle" ? config.hitbox.radius : config.radius ?? 30;
     this._syncHitboxOffsetControls(config.hitboxOffset);
     this.defaultFacingSelect.value = config.defaultFacing ?? "right";
     this.controls.healthBarOffsetX.value = config.healthBarOffset.x;
@@ -869,9 +905,9 @@ class CharacterStudio {
     this.controls.hitboxRadius.disabled = isBox;
   }
 
-  _refreshLabels() {
-    Object.keys(this.labels).forEach((key) => {
-      this.labels[key].textContent = this.controls[key].value;
+  _refreshLabels(): void {
+    (Object.keys(this.labels) as ControlName[]).forEach((key) => {
+      this.labels[key].textContent = String(this.controls[key].value);
     });
     this._refreshHitboxOutput();
     this._refreshImageOutput();
@@ -913,7 +949,7 @@ class CharacterStudio {
       ?.map(Number) ?? [];
     if (numbers.length < 1) { this._refreshImageOutput(); return; }
 
-    const patch = {};
+    const patch: PosePatch = {};
     if (numbers.length >= 1) patch.imageScale = Math.max(0.1, numbers[0]);
     if (numbers.length >= 3) patch.imageOffset = { x: numbers[1], y: numbers[2] };
     if (numbers.length >= 7) {
@@ -985,15 +1021,15 @@ class CharacterStudio {
       this.hitboxDraftOffset = this._clampHitboxOffset(config, offsetTarget);
     }
 
-    this._syncHitboxOffsetControls(this.mode === "hitbox" ? this.hitboxDraftOffset : config.hitboxOffset);
+    this._syncHitboxOffsetControls(this.mode === "hitbox" ? (this.hitboxDraftOffset ?? { x: 0, y: 0 }) : config.hitboxOffset);
     this._refreshLabels();
     this._draw();
   }
 
-  _snapshotCurrentState() {
+  _snapshotCurrentState(): string {
     const config = this._currentConfig();
     // Deep-clone poses so undo history never shares nested objects
-    const posesSnapshot = {};
+    const posesSnapshot: Record<string, PoseConfig> = {};
     const poses = config.poses ?? {};
     for (const [k, v] of Object.entries(poses)) {
       posesSnapshot[k] = typeof v === "string" ? v : JSON.parse(JSON.stringify(v));
@@ -1030,8 +1066,8 @@ class CharacterStudio {
     this.saveBtn.style.color = isConnected ? "#000000" : "";
   }
 
-  _syncFighterDefinition(config) {
-    const definition = window.FighterDefinitions.find((item) => item.id === config.id);
+  _syncFighterDefinition(config: StudioConfig): FighterDefinition {
+    const definition = this.fighterDefinitions.find((item) => item.id === config.id);
     if (!definition) throw new Error(`Missing fighter definition for ${config.id}`);
 
     definition.body = definition.body || {};
@@ -1058,7 +1094,7 @@ class CharacterStudio {
     return definition;
   }
 
-  _cleanForSave(value) {
+  _cleanForSave(value: JSONValue): JSONValue {
     if (typeof value === "number") {
       if (Math.abs(value) < 0.0005) return 0;
       return Math.round(value * 1000) / 1000;
@@ -1072,12 +1108,12 @@ class CharacterStudio {
     return value;
   }
 
-  _getSaveContent(config) {
-    const definition = this._cleanForSave(this._syncFighterDefinition(config));
+  _getSaveContent(config: StudioConfig): string {
+    const definition = this._cleanForSave(this._syncFighterDefinition(config) as unknown as JSONValue);
     return `${JSON.stringify(definition, null, 2)}\n`;
   }
 
-  _downloadLocalFile(config) {
+  _downloadLocalFile(config: StudioConfig): void {
     try {
       const blob = new Blob([this._getSaveContent(config)], {
         type: "application/json",
@@ -1123,9 +1159,9 @@ class CharacterStudio {
     this._saveToLocalFile();
   }
 
-  _restoreState(stateString) {
+  _restoreState(stateString: string): void {
     this.isRestoring = true;
-    const state = JSON.parse(stateString);
+    const state = JSON.parse(stateString) as StudioState;
     const config = this._currentConfig();
 
     config.hitbox = { ...state.hitbox };
@@ -1141,7 +1177,7 @@ class CharacterStudio {
 
     // Restore poses with deep copies
     if (state.poses) {
-      const restoredPoses = {};
+      const restoredPoses: Record<string, PoseConfig> = {};
       for (const [k, v] of Object.entries(state.poses)) {
         restoredPoses[k] = typeof v === "string" ? v : JSON.parse(JSON.stringify(v));
       }
@@ -1153,10 +1189,9 @@ class CharacterStudio {
     this._populatePoseSelect(config);
 
     this.hitboxType.value = config.hitbox.type;
-    this.controls.hitboxWidth.value = config.hitbox.width ?? 44;
-    this.controls.hitboxHeight.value = config.hitbox.height ?? 88;
-    this.controls.hitboxRadius.value =
-      config.hitbox.radius ?? config.radius ?? 30;
+    this.controls.hitboxWidth.value = config.hitbox.type === "box" ? config.hitbox.width : 44;
+    this.controls.hitboxHeight.value = config.hitbox.type === "box" ? config.hitbox.height : 88;
+    this.controls.hitboxRadius.value = config.hitbox.type === "circle" ? config.hitbox.radius : config.radius ?? 30;
     this._syncHitboxOffsetControls(config.hitboxOffset);
     this.controls.healthBarOffsetX.value = config.healthBarOffset.x;
     this.controls.healthBarOffsetY.value = config.healthBarOffset.y;
@@ -1187,22 +1222,22 @@ class CharacterStudio {
     const config = this._currentConfig();
     const hitboxType = this.hitboxType.value;
 
-    const nextHitbox =
+    const nextHitbox: Hitbox =
       hitboxType === "box"
         ? {
             type: "box",
-            width: Number.parseInt(this.controls.hitboxWidth.value, 10),
-            height: Number.parseInt(this.controls.hitboxHeight.value, 10),
+            width: Math.round(numberValue(this.controls.hitboxWidth)),
+            height: Math.round(numberValue(this.controls.hitboxHeight)),
           }
         : {
             type: "circle",
-            radius: Number.parseInt(this.controls.hitboxRadius.value, 10),
+            radius: Math.round(numberValue(this.controls.hitboxRadius)),
           };
     const currentHitboxOffset = this.mode === "hitbox" && this.hitboxDraftOffset
       ? this.hitboxDraftOffset
       : (config.hitboxOffset ?? { x: 0, y: 0 });
-    const hitboxOffsetX = Number.parseInt(this.controls.hitboxOffsetX.value, 10);
-    const hitboxOffsetY = Number.parseInt(this.controls.hitboxOffsetY.value, 10);
+    const hitboxOffsetX = numberValue(this.controls.hitboxOffsetX);
+    const hitboxOffsetY = numberValue(this.controls.hitboxOffsetY);
     const nextHitboxOffset = this._clampHitboxOffset(config, {
       x: Number.isFinite(hitboxOffsetX) ? hitboxOffsetX : currentHitboxOffset.x,
       y: Number.isFinite(hitboxOffsetY) ? hitboxOffsetY : currentHitboxOffset.y,
@@ -1218,31 +1253,31 @@ class CharacterStudio {
     this._syncHitboxOffsetControls(nextHitboxOffset);
 
     // Image scale / offset: pose-aware
-    const newScale = Number.parseFloat(this.controls.imageScale.value);
+    const newScale = numberValue(this.controls.imageScale);
     const newOffset = {
-      x: Number.parseInt(this.controls.imageOffsetX.value, 10),
-      y: Number.parseInt(this.controls.imageOffsetY.value, 10),
+      x: Math.round(numberValue(this.controls.imageOffsetX)),
+      y: Math.round(numberValue(this.controls.imageOffsetY)),
     };
     this._setPoseVisual(config, this.activePoseKey, { imageScale: newScale, imageOffset: newOffset });
 
     config.healthBarOffset = {
-      x: Number.parseInt(this.controls.healthBarOffsetX.value, 10),
-      y: Number.parseInt(this.controls.healthBarOffsetY.value, 10),
+      x: Math.round(numberValue(this.controls.healthBarOffsetX)),
+      y: Math.round(numberValue(this.controls.healthBarOffsetY)),
     };
-    config.weaponScale = Number.parseFloat(this.controls.weaponScale.value);
+    config.weaponScale = numberValue(this.controls.weaponScale);
     config.weaponOffset = {
-      x: Number.parseInt(this.controls.weaponOffsetX.value, 10),
-      y: Number.parseInt(this.controls.weaponOffsetY.value, 10),
+      x: Math.round(numberValue(this.controls.weaponOffsetX)),
+      y: Math.round(numberValue(this.controls.weaponOffsetY)),
     };
 
     // Crop: pose-aware
     const visual = this._getPoseVisual(config, this.activePoseKey);
     if (visual.imageCrop) {
       const newCrop = {
-        x: Number.parseInt(this.controls.imageCropX.value, 10),
-        y: Number.parseInt(this.controls.imageCropY.value, 10),
-        width: Number.parseInt(this.controls.imageCropWidth.value, 10),
-        height: Number.parseInt(this.controls.imageCropHeight.value, 10),
+        x: Math.round(numberValue(this.controls.imageCropX)),
+        y: Math.round(numberValue(this.controls.imageCropY)),
+        width: Math.round(numberValue(this.controls.imageCropWidth)),
+        height: Math.round(numberValue(this.controls.imageCropHeight)),
       };
       this._setPoseVisual(config, this.activePoseKey, { imageCrop: newCrop });
       this._clampCrop();
@@ -1253,7 +1288,7 @@ class CharacterStudio {
     this._refreshLabels();
   }
 
-  _drawHitboxOutline(config, centerX, centerY) {
+  _drawHitboxOutline(config: StudioConfig, centerX: number, centerY: number): void {
     const hitbox = this.mode === "hitbox" && this.hitboxDraft ? this.hitboxDraft : config.hitbox;
     const offset = this.mode === "hitbox" && this.hitboxDraftOffset ? this.hitboxDraftOffset : (config.hitboxOffset ?? { x: 0, y: 0 });
     const hitCenterX = centerX + offset.x;
@@ -1281,7 +1316,7 @@ class CharacterStudio {
     this.ctx.restore();
   }
 
-  _drawHitboxEditOverlay(config, centerX, centerY) {
+  _drawHitboxEditOverlay(config: StudioConfig, centerX: number, centerY: number): void {
     if (this.mode !== "hitbox" || !this.hitboxDraft) return;
     const offset = this.hitboxDraftOffset ?? config.hitboxOffset ?? { x: 0, y: 0 };
     const rect = this._getHitboxRect({ hitbox: this.hitboxDraft, hitboxOffset: offset });
@@ -1328,7 +1363,7 @@ class CharacterStudio {
     this.ctx.restore();
   }
 
-  _tracePlusPath(x, y, size) {
+  _tracePlusPath(x: number, y: number, size: number): void {
     const unit = size / 3;
     this.ctx.beginPath();
     this.ctx.moveTo(x + unit, y);
@@ -1488,8 +1523,8 @@ class CharacterStudio {
     ctx.lineJoin = "round";
     ctx.stroke();
 
-    const indicatorCfg = window.IndicatorConfig;
-    const textCfg = indicatorCfg.text;
+    const indicatorCfg = this.indicatorConfig;
+    const textCfg = indicatorCfg.text as StudioTextStyle;
     const fontSize = Math.max(
       indicatorCfg.health.minFontSize,
       plusSize * indicatorCfg.health.sizeMultiplier,
@@ -1507,10 +1542,88 @@ class CharacterStudio {
   }
 }
 
+function installStudioControls(studio: CharacterStudio) {
+  document.querySelectorAll<HTMLButtonElement>(".tab-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach((tab) => {
+        tab.classList.remove("active");
+        tab.setAttribute("aria-selected", "false");
+      });
+      document.querySelectorAll(".tab-content").forEach((panel) => panel.classList.remove("active"));
+      button.classList.add("active");
+      button.setAttribute("aria-selected", "true");
+      document.getElementById(`tab-${button.dataset.tab}`)?.classList.add("active");
+    });
+  });
+
+  const seedNumberInputs = () => {
+    document.querySelectorAll<HTMLInputElement>(".num-input").forEach((numberInput) => {
+      const slider = document.getElementById(numberInput.dataset.for ?? "") as HTMLInputElement | null;
+      if (slider) numberInput.value = slider.value;
+    });
+  };
+
+  document.querySelectorAll<HTMLInputElement>(".num-input").forEach((numberInput) => {
+    const slider = document.getElementById(numberInput.dataset.for ?? "") as HTMLInputElement | null;
+    if (!slider) return;
+    const syncToSlider = (eventName: "input" | "change") => () => {
+      slider.value = numberInput.value;
+      slider.dispatchEvent(new Event(eventName, { bubbles: true }));
+    };
+    numberInput.addEventListener("input", syncToSlider("input"));
+    numberInput.addEventListener("change", syncToSlider("change"));
+    slider.addEventListener("input", () => { numberInput.value = slider.value; });
+    slider.addEventListener("change", () => { numberInput.value = slider.value; });
+    numberInput.value = slider.value;
+  });
+
+  const originalRefresh = studio._refreshLabels.bind(studio);
+  studio._refreshLabels = () => {
+    originalRefresh();
+    seedNumberInputs();
+  };
+
+  const badge = document.getElementById("mode-badge");
+  const updateBadge = () => {
+    if (!badge) return;
+    if (studio.mode === "crop") {
+      badge.textContent = "✂ CROP MODE";
+      badge.className = "mode-badge crop";
+    } else if (studio.mode === "hitbox") {
+      badge.textContent = "⬛ HITBOX MODE";
+      badge.className = "mode-badge hitbox";
+    } else {
+      badge.className = "mode-badge hidden";
+    }
+  };
+
+  ( ["_enterCropMode", "_applyCrop", "_cancelCrop", "_enterHitboxMode", "_applyHitbox", "_cancelHitbox", "_loadCurrentConfig"] as const).forEach((methodName) => {
+    const original = studio[methodName].bind(studio);
+    studio[methodName] = () => {
+      const result = original();
+      updateBadge();
+      return result;
+    };
+  });
+
+  document.getElementById("undo-btn")?.addEventListener("click", () => studio.undo());
+  document.getElementById("redo-btn")?.addEventListener("click", () => studio.redo());
+  seedNumberInputs();
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
   try {
-    await window.loadFighterConfig("../../config/fighters");
-    window.__studioInstance = new CharacterStudio();
+    const [fighterConfig, runtimeConfig] = await Promise.all([
+      loadFighterConfig("../../config/fighters"),
+      loadRuntimeConfig("../../config"),
+    ]);
+    const studio = new CharacterStudio(
+      fighterConfig.roster,
+      fighterConfig.definitions,
+      runtimeConfig.indicators,
+    );
+    window.__studioInstance = studio;
+    installStudioControls(studio);
   } catch (error) {
     console.error("Failed to start Character Studio:", error);
   }

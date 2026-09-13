@@ -1,4 +1,4 @@
-window.SoundManifest = {
+{
   "shared": {
     "body-bounce": [
       {
@@ -67,4 +67,4 @@ window.SoundManifest = {
       ]
     }
   }
-};
+}

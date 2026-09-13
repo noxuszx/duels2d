@@ -1,17 +1,55 @@
-"use strict";
+// This module retains the original game-loop implementation while the physics
+// collaborators are migrated in parallel. Its public module boundary is typed.
+import { Body, Engine, Events, Runner, World } from "matter-js";
+import { Fighter } from "../entities/fighter";
+import { Projectile } from "../entities/projectile";
+import { IndicatorSystem } from "../systems/indicator-system";
+import { WeaponSystem } from "../systems/weapon-system";
+import { FighterSelectPanel } from "../ui/fighter-select-panel";
+import type { FighterConfig } from "../types/fighter";
+import type { RuntimeConfig } from "../config/runtime-config";
 
-const { Engine, Runner, Bodies, Body, World, Events } = Matter;
+type Point = { x: number; y: number };
+type ImpactDamageSettings = { minSpeedMultiplier?: number; minSpeed?: number; damage?: number };
 
-class GameManager {
-  constructor() {
-    const cfg = window.GameConfig;
+export class GameManager {
+  COLLISION_COOLDOWN: number;
+  ARENA_BORDER: number;
+  VISUAL_OVERFLOW: number;
+  paused: boolean;
+  characters: Fighter[];
+  projectiles: Projectile[];
+  indicators: IndicatorSystem;
+  gameOver: boolean;
+  victorySoundPlayed: boolean;
+  private _animId: number | null;
+  private selectedCharacterIds: string[];
+  private engine: Engine;
+  world: World;
+  private runner: Runner;
+  private readonly container: HTMLElement;
+  private readonly canvas: HTMLCanvasElement;
+  private readonly ctx: CanvasRenderingContext2D;
+  private readonly hudEls: { status: HTMLElement };
+  private readonly weaponSystem: WeaponSystem;
+  private readonly characterSelectPanel: FighterSelectPanel;
+  private arenaW = 0;
+  private arenaH = 0;
+  private W = 0;
+  private H = 0;
+
+  constructor(
+    public readonly fighterRoster: FighterConfig[],
+    private readonly runtimeConfig: RuntimeConfig,
+  ) {
+    const cfg = this.runtimeConfig.game;
     this.COLLISION_COOLDOWN = cfg.physics.collisionCooldownMs;
     this.ARENA_BORDER = cfg.arena.borderWidth;
     this.VISUAL_OVERFLOW = cfg.arena.visualOverflow ?? 160;
     this.paused = false;
     this.characters = [];
     this.projectiles = [];
-    this.indicators = new IndicatorSystem();
+    this.indicators = new IndicatorSystem(this.runtimeConfig.game, this.runtimeConfig.indicators);
     this.gameOver = false;
     this.victorySoundPlayed = false;
     this._animId = null;
@@ -22,16 +60,23 @@ class GameManager {
       enableSleeping: false,
     });
     this.world = this.engine.world;
-    this.runner = Runner.create({ isFixed: true });
-    this.container = document.getElementById("game-container");
-    this.canvas = document.getElementById("arena-canvas");
-    this.ctx = this.canvas.getContext("2d");
-    this.hudEls = { status: document.getElementById("hud-status") };
+    this.runner = Runner.create();
+    // Supported by Matter 0.19 at runtime, though omitted from its current typings.
+    Object.assign(this.runner, { isFixed: true });
+    const container = document.getElementById("game-container");
+    const canvas = document.getElementById("arena-canvas");
+    const status = document.getElementById("hud-status");
+    if (!(container instanceof HTMLElement) || !(canvas instanceof HTMLCanvasElement) || !(status instanceof HTMLElement)) {
+      throw new Error("Arena markup is missing required elements.");
+    }
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Arena canvas does not support 2D rendering.");
+    this.container = container;
+    this.canvas = canvas;
+    this.ctx = context;
+    this.hudEls = { status };
     this.weaponSystem = new WeaponSystem(this);
-    this.characterSelectPanel =
-      typeof FighterSelectPanel === "undefined"
-        ? null
-        : new FighterSelectPanel(this);
+    this.characterSelectPanel = new FighterSelectPanel(this);
 
     this._resizeCanvas();
     const ro = new ResizeObserver(() => this._resizeCanvas());
@@ -41,14 +86,15 @@ class GameManager {
   }
 
   _defaultSelectedCharacterIds() {
-    return window.FighterRoster.slice(0, 2).map((config) => config.id);
+    return this.fighterRoster.slice(0, 2).map((config) => config.id);
   }
 
   _applyConfigDOM() {
-    const cfg = window.GameConfig;
+    const cfg = this.runtimeConfig.game;
     document.body.style.background = cfg.arena.backgroundColor;
     this.hudEls.status.textContent = cfg.text.statusFight;
-    document.getElementById("game-footer").textContent = cfg.text.footer;
+    const footer = document.getElementById("game-footer");
+    if (footer) footer.textContent = cfg.text.footer;
   }
 
   _resizeCanvas() {
@@ -75,17 +121,17 @@ class GameManager {
 
   _getSelectedCharacterConfigs() {
     const byId = new Map(
-      window.FighterRoster.map((config) => [config.id, config]),
+      this.fighterRoster.map((config) => [config.id, config]),
     );
     const selectedConfigs = this.selectedCharacterIds
       .map((id) => byId.get(id))
-      .filter(Boolean);
+      .filter((config): config is FighterConfig => config !== undefined);
 
     if (selectedConfigs.length >= 2) {
       return selectedConfigs.slice(0, 2);
     }
 
-    return window.FighterRoster.slice(0, 2);
+    return this.fighterRoster.slice(0, 2);
   }
 
   _cleanupCharacters() {
@@ -93,40 +139,43 @@ class GameManager {
     this.characters = [];
   }
 
-  _playSharedSound(type) {
-    const pool = Character._getSharedSoundPools()?.[type];
+  _playSharedSound(type: string): void {
+    const pool = Fighter._getSharedSoundPools(this.runtimeConfig.sounds, this.runtimeConfig.game)[type];
     if (!pool || pool.length === 0) return;
     pool[Math.floor(Math.random() * pool.length)].play();
   }
 
   _spawnCharacters() {
     const configs = this._getSelectedCharacterConfigs();
-    const m = window.GameConfig.physics.globalSpeedMultiplier || 1.0;
+    if (configs.length < 2) throw new Error("At least two fighters are required to start a duel.");
+    const firstConfig = configs[0]!;
+    const secondConfig = configs[1]!;
+    const m = this.runtimeConfig.game.physics.globalSpeedMultiplier || 1.0;
     const { ax, ay, aw, ah } = this._getArena();
-    const spawnData = [
+    const spawnData: [{ x: number; y: number; vx: number; vy: number }, { x: number; y: number; vx: number; vy: number }] = [
       {
         x: ax + aw * 0.25,
         y: ay + ah * 0.5,
-        vx: configs[0].speed * m,
-        vy: configs[0].speed * 0.6 * m,
+        vx: firstConfig.speed * m,
+        vy: firstConfig.speed * 0.6 * m,
       },
       {
         x: ax + aw * 0.75,
         y: ay + ah * 0.5,
-        vx: -configs[1].speed * m,
-        vy: -configs[1].speed * 0.7 * m,
+        vx: -secondConfig.speed * m,
+        vy: -secondConfig.speed * 0.7 * m,
       },
     ];
 
     this.characters = configs.map((cfg, i) => {
       const sd = spawnData[i];
-      const character = new Character(cfg, sd.x, sd.y, sd.vx, sd.vy);
+      const character = new Fighter(cfg, sd.x, sd.y, sd.vx, sd.vy, this.runtimeConfig.game, this.runtimeConfig.sounds);
       World.add(this.world, character.body);
       return character;
     });
 
-    document.getElementById("hud-title").innerHTML =
-      `${this.characters[0].name} <span class="accent">VS</span> ${this.characters[1].name}`;
+    const title = document.getElementById("hud-title");
+    if (title) title.innerHTML = `${this.characters[0]!.name} <span class="accent">VS</span> ${this.characters[1]!.name}`;
   }
 
   _registerCollisionEvents() {
@@ -253,18 +302,18 @@ class GameManager {
     });
   }
 
-  _charFromBody(body) {
+  _charFromBody(body: Body): Fighter | null {
     return this.characters.find((c) => c.body === body) || null;
   }
 
-  _projectileFromBody(body) {
+  _projectileFromBody(body: Body): Projectile | null {
     return this.projectiles.find((p) => p.body === body) || null;
   }
 
-  _applyImpactDamage(character, speed, nowMs) {
+  _applyImpactDamage(character: Fighter, speed: number, nowMs: number): boolean {
     if (character.isDead) return false;
 
-    const cfg = window.GameConfig.physics.impactDamage ?? {};
+    const cfg = this.runtimeConfig.game.physics.impactDamage as ImpactDamageSettings;
     const minSpeed =
       cfg.minSpeed ?? character.baseSpeed * (cfg.minSpeedMultiplier ?? 2.8);
     if (speed < minSpeed) return false;
@@ -283,7 +332,7 @@ class GameManager {
     return true;
   }
 
-  _handleCharacterImpact(charA, charB, nowMs) {
+  _handleCharacterImpact(charA: Fighter, charB: Fighter, nowMs: number): void {
     const speedA = Math.hypot(charA.body.velocity.x, charA.body.velocity.y);
     const speedB = Math.hypot(charB.body.velocity.x, charB.body.velocity.y);
     // Suppress impact damage when the fast-moving fighter was launched by the
@@ -360,17 +409,17 @@ class GameManager {
     loop();
   }
 
-  _drawArenaBorder(ctx) {
+  _drawArenaBorder(ctx: CanvasRenderingContext2D): void {
     const { ax, ay, aw, ah } = this._getArena();
     const b = this.ARENA_BORDER;
     ctx.save();
-    ctx.strokeStyle = window.GameConfig.arena.borderColor;
+    ctx.strokeStyle = this.runtimeConfig.game.arena.borderColor;
     ctx.lineWidth = b * 2;
     ctx.strokeRect(ax, ay, aw, ah);
     ctx.restore();
   }
 
-  _drawProjectiles(ctx) {
+  _drawProjectiles(ctx: CanvasRenderingContext2D): void {
     this.projectiles.forEach((projectile) => {
       const pos = projectile.body.position;
       const r = projectile.radius;
@@ -393,7 +442,7 @@ class GameManager {
     });
   }
 
-  _drawCharacters(ctx) {
+  _drawCharacters(ctx: CanvasRenderingContext2D): void {
     this.characters.forEach((char) => {
       if (char.isDead) return;
 
@@ -474,7 +523,7 @@ class GameManager {
     });
   }
 
-  _tracePlusPath(ctx, x, y, size) {
+  _tracePlusPath(ctx: CanvasRenderingContext2D, x: number, y: number, size: number): void {
     const unit = size / 3;
     ctx.beginPath();
     ctx.moveTo(x + unit, y);
@@ -492,8 +541,8 @@ class GameManager {
     ctx.closePath();
   }
 
-  _drawInlineHealthBar(ctx, char, pos, r) {
-    const indicatorCfg = window.IndicatorConfig;
+  _drawInlineHealthBar(ctx: CanvasRenderingContext2D, char: Fighter, pos: Point, r: number): void {
+    const indicatorCfg = this.runtimeConfig.indicators;
     const ratio = char.healthRatio;
     const size = r * 2;
     const x = pos.x - size / 2 + char.healthBarOffset.x;
@@ -560,7 +609,7 @@ class GameManager {
   }
 
   _restart() {
-    this.hudEls.status.textContent = window.GameConfig.text.statusFight;
+    this.hudEls.status.textContent = this.runtimeConfig.game.text.statusFight;
     this.gameOver = false;
     this.victorySoundPlayed = false;
     this.paused = false;
@@ -579,16 +628,16 @@ class GameManager {
     return [...this.selectedCharacterIds];
   }
 
-  setSelectedCharacterIds(ids) {
+  setSelectedCharacterIds(ids: readonly string[]): void {
     const validIds = new Set(
-      window.FighterRoster.map((config) => config.id),
+      this.fighterRoster.map((config) => config.id),
     );
     const nextIds = ids
       .filter((id, index) => validIds.has(id) && ids.indexOf(id) === index)
       .slice(0, 2);
 
     while (nextIds.length < 2) {
-      const fallback = window.FighterRoster.find(
+      const fallback = this.fighterRoster.find(
         (config) => !nextIds.includes(config.id),
       );
       if (!fallback) break;

@@ -13,6 +13,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       fighterConfig.roster,
       fighterConfig.definitions,
       runtimeConfig.indicators,
+      fighterConfig.defaults,
     );
     window.__studioInstance = studio;
     installStudioControls(studio);

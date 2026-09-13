@@ -3,6 +3,7 @@ import type { IndicatorConfig } from "../../src/types/game";
 import type {
   Facing,
   FighterConfig,
+  FighterDefaults,
   FighterDefinition,
   Hitbox,
   ImageCrop,
@@ -108,6 +109,7 @@ export class CharacterStudio {
     configs: FighterConfig[],
     private readonly fighterDefinitions: FighterDefinition[],
     readonly indicatorConfig: IndicatorConfig,
+    readonly defaults?: FighterDefaults,
   ) {
     this.canvas = requireElement<HTMLCanvasElement>("studio-canvas");
     const context = this.canvas.getContext("2d");
@@ -478,22 +480,40 @@ export class CharacterStudio {
   // ── End pose helpers ──────────────────────────────────────────────
 
   _ensureConfigShape(config: StudioConfig): void {
-    config.imageScale ??= 1;
-    config.imageOffset ??= { x: 0, y: 0 };
-    config.imageCrop ??= null;
-    config.healthBarOffset ??= { x: 0, y: 0 };
-    config.hitboxOffset ??= { x: 0, y: 0 };
-    config.weaponScale ??= 1;
-    config.weaponOffset ??= { x: 0, y: 0 };
-    config.defaultFacing ??= "right";
-    config.hitbox ??= { type: "box", width: 44, height: 88 };
+    config.imageScale ??= this.defaults?.presentation.imageScale ?? 1;
+    config.imageOffset ??= structuredClone(
+      this.defaults?.presentation.imageOffset ?? { x: 0, y: 0 },
+    );
+    config.imageCrop ??= this.defaults?.presentation.imageCrop ?? null;
+    config.healthBarOffset ??= structuredClone(
+      this.defaults?.presentation.healthBarOffset ?? { x: 0, y: -76 },
+    );
+    config.hitboxOffset ??= structuredClone(
+      this.defaults?.body.hitboxOffset ?? { x: 0, y: -15 },
+    );
+    config.weaponScale ??= this.defaults?.presentation.weaponScale ?? 1;
+    config.weaponOffset ??= structuredClone(
+      this.defaults?.presentation.weaponOffset ?? { x: 0, y: 0 },
+    );
+    config.defaultFacing ??=
+      this.defaults?.presentation.defaultFacing ?? "right";
+    config.hitbox ??= structuredClone(
+      this.defaults?.body.hitbox ?? { type: "box", width: 78, height: 112 },
+    );
 
     if (config.hitbox.type === "box") {
-      config.hitbox.width ??= 44;
-      config.hitbox.height ??= 88;
+      config.hitbox.width ??=
+        this.defaults?.body.hitbox.type === "box"
+          ? this.defaults.body.hitbox.width
+          : 78;
+      config.hitbox.height ??=
+        this.defaults?.body.hitbox.type === "box"
+          ? this.defaults.body.hitbox.height
+          : 112;
     } else {
       config.hitbox.type = "circle";
-      config.hitbox.radius ??= config.radius ?? 30;
+      config.hitbox.radius ??=
+        config.radius ?? this.defaults?.body.radius ?? 30;
     }
   }
 
@@ -662,7 +682,11 @@ export class CharacterStudio {
   }
 
   _syncFighterDefinition(config: StudioConfig): FighterDefinition {
-    return syncFighterDefinition(this.fighterDefinitions, config);
+    return syncFighterDefinition(
+      this.fighterDefinitions,
+      config,
+      this.defaults,
+    );
   }
 
   _cleanForSave(value: JSONValue): JSONValue {
@@ -670,11 +694,11 @@ export class CharacterStudio {
   }
 
   _getSaveContent(config: StudioConfig): string {
-    return getSaveContent(this.fighterDefinitions, config);
+    return getSaveContent(this.fighterDefinitions, config, this.defaults);
   }
 
   _downloadLocalFile(config: StudioConfig): void {
-    downloadFighterFile(this.fighterDefinitions, config);
+    downloadFighterFile(this.fighterDefinitions, config, this.defaults);
   }
 
   async _saveToLocalFile(): Promise<void> {
@@ -682,6 +706,7 @@ export class CharacterStudio {
       this.fighterDefinitions,
       this._currentConfig(),
       this.fileHandles.get(this._currentConfig().id),
+      this.defaults,
     );
   }
 

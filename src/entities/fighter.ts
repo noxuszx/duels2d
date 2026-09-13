@@ -162,7 +162,10 @@ export class Fighter {
       this.loadImage("weaponAttack", config.weaponAttack);
     this.healthBarOffset = config.healthBarOffset;
     this.soundPools = this.createSoundPools();
-    this.sharedSoundPools = Fighter._getSharedSoundPools(this.soundManifest, this.gameConfig);
+    this.sharedSoundPools = Fighter._getSharedSoundPools(
+      this.soundManifest,
+      this.gameConfig,
+    );
     this.lines = config.lines ?? {};
   }
 
@@ -408,7 +411,10 @@ export class Fighter {
       this.gameConfig,
     );
   }
-  static _getSharedSoundPools(soundManifest: SoundManifest, gameConfig: GameConfig): SoundPools {
+  static _getSharedSoundPools(
+    soundManifest: SoundManifest,
+    gameConfig: GameConfig,
+  ): SoundPools {
     if (!Fighter.sharedSoundPoolCache)
       Fighter.sharedSoundPoolCache = Fighter.buildSoundPools(
         soundManifest.shared,
@@ -433,7 +439,10 @@ export class Fighter {
     });
     return pools;
   }
-  private static volumeForSoundType(type: string, gameConfig: GameConfig): number {
+  private static volumeForSoundType(
+    type: string,
+    gameConfig: GameConfig,
+  ): number {
     const audio = gameConfig.audio ?? {};
     if (audio.volumes?.[type] != null) return audio.volumes[type];
     if (type === "body-bounce") return audio.bounceVolume ?? 0.55;

@@ -7,210 +7,245 @@ import type { IndicatorSystem } from "./indicator-system";
 type Rectangle = { x: number; y: number; width: number; height: number };
 
 interface WeaponSystemGameManager {
-  characters: Fighter[];
-  projectiles: Projectile[];
-  world: Matter.World;
-  COLLISION_COOLDOWN: number;
-  indicators: IndicatorSystem;
+      characters: Fighter[];
+      projectiles: Projectile[];
+      world: Matter.World;
+      COLLISION_COOLDOWN: number;
+      indicators: IndicatorSystem;
 }
 
 export class WeaponSystem {
-  private readonly gm: WeaponSystemGameManager;
+      private readonly gm: WeaponSystemGameManager;
 
-  constructor(gameManager: WeaponSystemGameManager) {
-    this.gm = gameManager;
-  }
-
-  private get characters(): Fighter[] {
-    return this.gm.characters;
-  }
-  private get projectiles(): Projectile[] {
-    return this.gm.projectiles;
-  }
-  private get world(): Matter.World {
-    return this.gm.world;
-  }
-  private get collisionCooldown(): number {
-    return this.gm.COLLISION_COOLDOWN;
-  }
-  private get indicators(): IndicatorSystem {
-    return this.gm.indicators;
-  }
-
-  update(): void {
-    const now = performance.now();
-    this.characters.forEach((character) => {
-      character.updateWeaponState();
-      if (character.isDead || !character.weapon || !character.canUseWeapon(now))
-        return;
-      if (character.weapon.type === "projectile") {
-        const target = this.findNearestEnemy(character);
-        if (target)
-          this.fireProjectileWeapon(character, target, character.weapon, now);
-      } else if (character.weapon.type === "proximity-melee") {
-        const target = this.findTargetInMeleeRange(character);
-        if (target)
-          this.triggerMeleeWeapon(character, target, character.weapon, now);
+      constructor(gameManager: WeaponSystemGameManager) {
+            this.gm = gameManager;
       }
-    });
-  }
 
-  updateFaceTargeting(): void {
-    this.characters.forEach((character) => {
-      if (character.isDead) return;
-      const mode = character.faceTarget?.mode ?? "never";
-      if (mode === "always")
-        character.setFacingToward(this.findNearestEnemy(character));
-      else if (mode === "range") {
-        const target = this.findTargetInMeleeRange(character);
-        if (target) character.setFacingToward(target);
-        else character.facing = character.defaultFacing;
-      } else character.facing = character.defaultFacing;
-    });
-  }
-
-  private findNearestEnemy(character: Fighter): Fighter | null {
-    let nearest: Fighter | null = null;
-    let nearestDistance = Infinity;
-    this.characters.forEach((enemy) => {
-      if (enemy === character || enemy.isDead) return;
-      const distanceX = enemy.body.position.x - character.body.position.x;
-      const distanceY = enemy.body.position.y - character.body.position.y;
-      const distance = distanceX * distanceX + distanceY * distanceY;
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearest = enemy;
+      private get characters(): Fighter[] {
+            return this.gm.characters;
       }
-    });
-    return nearest;
-  }
+      private get projectiles(): Projectile[] {
+            return this.gm.projectiles;
+      }
+      private get world(): Matter.World {
+            return this.gm.world;
+      }
+      private get collisionCooldown(): number {
+            return this.gm.COLLISION_COOLDOWN;
+      }
+      private get indicators(): IndicatorSystem {
+            return this.gm.indicators;
+      }
 
-  private findTargetInMeleeRange(character: Fighter): Fighter | null {
-    const attackBox = this.getMeleeAttackBox(character);
-    return (
-      this.characters.find(
-        (enemy) =>
-          enemy !== character &&
-          !enemy.isDead &&
-          this.rectanglesOverlap(attackBox, this.getCharacterBox(enemy)),
-      ) ?? null
-    );
-  }
+      update(): void {
+            const now = performance.now();
+            this.characters.forEach((character) => {
+                  character.updateWeaponState();
+                  if (
+                        character.isDead ||
+                        !character.weapon ||
+                        !character.canUseWeapon(now)
+                  )
+                        return;
+                  if (character.weapon.type === "projectile") {
+                        const target = this.findNearestEnemy(character);
+                        if (target)
+                              this.fireProjectileWeapon(
+                                    character,
+                                    target,
+                                    character.weapon,
+                                    now,
+                              );
+                  } else if (character.weapon.type === "proximity-melee") {
+                        const target = this.findTargetInMeleeRange(character);
+                        if (target)
+                              this.triggerMeleeWeapon(
+                                    character,
+                                    target,
+                                    character.weapon,
+                                    now,
+                              );
+                  }
+            });
+      }
 
-  private getCharacterBox(character: Fighter): Rectangle {
-    return {
-      x: character.body.position.x - character.hitbox.halfWidth,
-      y: character.body.position.y - character.hitbox.halfHeight,
-      width: character.hitbox.halfWidth * 2,
-      height: character.hitbox.halfHeight * 2,
-    };
-  }
+      updateFaceTargeting(): void {
+            this.characters.forEach((character) => {
+                  if (character.isDead) return;
+                  const mode = character.faceTarget?.mode ?? "never";
+                  if (mode === "always")
+                        character.setFacingToward(
+                              this.findNearestEnemy(character),
+                        );
+                  else if (mode === "range") {
+                        const target = this.findTargetInMeleeRange(character);
+                        if (target) character.setFacingToward(target);
+                        else character.facing = character.defaultFacing;
+                  } else character.facing = character.defaultFacing;
+            });
+      }
 
-  private getMeleeAttackBox(character: Fighter): Rectangle {
-    const padding =
-      character.weapon?.type === "proximity-melee"
-        ? (character.weapon.rangePadding ?? 0)
-        : 0;
-    return {
-      x: character.body.position.x - character.hitbox.halfWidth - padding,
-      y: character.body.position.y - character.hitbox.halfHeight - padding,
-      width: character.hitbox.halfWidth * 2 + padding * 2,
-      height: character.hitbox.halfHeight * 2 + padding * 2,
-    };
-  }
+      private findNearestEnemy(character: Fighter): Fighter | null {
+            let nearest: Fighter | null = null;
+            let nearestDistance = Infinity;
+            this.characters.forEach((enemy) => {
+                  if (enemy === character || enemy.isDead) return;
+                  const distanceX =
+                        enemy.body.position.x - character.body.position.x;
+                  const distanceY =
+                        enemy.body.position.y - character.body.position.y;
+                  const distance =
+                        distanceX * distanceX + distanceY * distanceY;
+                  if (distance < nearestDistance) {
+                        nearestDistance = distance;
+                        nearest = enemy;
+                  }
+            });
+            return nearest;
+      }
 
-  private rectanglesOverlap(first: Rectangle, second: Rectangle): boolean {
-    return (
-      first.x < second.x + second.width &&
-      first.x + first.width > second.x &&
-      first.y < second.y + second.height &&
-      first.y + first.height > second.y
-    );
-  }
+      private findTargetInMeleeRange(character: Fighter): Fighter | null {
+            const attackBox = this.getMeleeAttackBox(character);
+            return (
+                  this.characters.find(
+                        (enemy) =>
+                              enemy !== character &&
+                              !enemy.isDead &&
+                              this.rectanglesOverlap(
+                                    attackBox,
+                                    this.getCharacterBox(enemy),
+                              ),
+                  ) ?? null
+            );
+      }
 
-  private triggerMeleeWeapon(
-    character: Fighter,
-    target: Fighter,
-    weapon: ProximityMeleeWeapon,
-    nowMs: number,
-  ): void {
-    const damage = weapon.damage ?? character.baseDamage;
-    character.markWeaponUsed(nowMs);
-    character.startWeaponAnimation();
-    character.playSound("weaponSlap");
-    if (!target.takeDamage(damage, Date.now(), this.collisionCooldown)) return;
-    target.playSound("hurt");
-    this.applyWeaponKnockback(character, target, weapon);
-    this.indicators.spawnDamageIndicator(target, damage);
-    this.indicators.spawnHitSpark(target.body.position, target.color);
-    this.indicators.spawnCharacterLine(character, "weaponHit");
-  }
+      private getCharacterBox(character: Fighter): Rectangle {
+            return {
+                  x: character.body.position.x - character.hitbox.halfWidth,
+                  y: character.body.position.y - character.hitbox.halfHeight,
+                  width: character.hitbox.halfWidth * 2,
+                  height: character.hitbox.halfHeight * 2,
+            };
+      }
 
-  private applyWeaponKnockback(
-    character: Fighter,
-    target: Fighter,
-    weapon: ProximityMeleeWeapon,
-  ): void {
-    if (!weapon.knockback) return;
-    const knockback = weapon.knockback;
-    target.applyVelocityBoost(
-      {
-        x: target.body.position.x - character.body.position.x,
-        y: target.body.position.y - character.body.position.y,
-      },
-      knockback === true ? undefined : knockback.speedMultiplier,
-      knockback === true ? undefined : knockback.durationMs,
-      character.id,
-    );
-  }
+      private getMeleeAttackBox(character: Fighter): Rectangle {
+            const padding =
+                  character.weapon?.type === "proximity-melee"
+                        ? (character.weapon.rangePadding ?? 0)
+                        : 0;
+            return {
+                  x:
+                        character.body.position.x -
+                        character.hitbox.halfWidth -
+                        padding,
+                  y:
+                        character.body.position.y -
+                        character.hitbox.halfHeight -
+                        padding,
+                  width: character.hitbox.halfWidth * 2 + padding * 2,
+                  height: character.hitbox.halfHeight * 2 + padding * 2,
+            };
+      }
 
-  private fireProjectileWeapon(
-    character: Fighter,
-    target: Fighter,
-    weapon: ProjectileWeapon,
-    nowMs: number,
-  ): void {
-    const projectileConfig = weapon.projectile;
-    const distanceX = target.body.position.x - character.body.position.x;
-    const distanceY = target.body.position.y - character.body.position.y;
-    const length = Math.hypot(distanceX, distanceY) || 1;
-    const velocityX = (distanceX / length) * projectileConfig.speed;
-    const velocityY = (distanceY / length) * projectileConfig.speed;
-    this.spawnProjectile(
-      projectileConfig,
-      character,
-      character.body.position.x +
-        (distanceX / length) *
-          (character.hitbox.halfWidth + projectileConfig.radius + 2),
-      character.body.position.y +
-        (distanceY / length) *
-          (character.hitbox.halfHeight + projectileConfig.radius + 2),
-      velocityX,
-      velocityY,
-    );
-    character.markWeaponUsed(nowMs);
-    character.startWeaponAnimation();
-    character.playSound("weapon-fire");
-  }
+      private rectanglesOverlap(first: Rectangle, second: Rectangle): boolean {
+            return (
+                  first.x < second.x + second.width &&
+                  first.x + first.width > second.x &&
+                  first.y < second.y + second.height &&
+                  first.y + first.height > second.y
+            );
+      }
 
-  private spawnProjectile(
-    config: ProjectileConfig,
-    owner: Fighter,
-    x: number,
-    y: number,
-    velocityX: number,
-    velocityY: number,
-  ): Projectile {
-    const projectile = new Projectile(
-      config,
-      owner,
-      x,
-      y,
-      velocityX,
-      velocityY,
-    );
-    this.projectiles.push(projectile);
-    Matter.World.add(this.world, projectile.body);
-    return projectile;
-  }
+      private triggerMeleeWeapon(
+            character: Fighter,
+            target: Fighter,
+            weapon: ProximityMeleeWeapon,
+            nowMs: number,
+      ): void {
+            const damage = weapon.damage ?? character.baseDamage;
+            character.markWeaponUsed(nowMs);
+            character.startWeaponAnimation();
+            character.playSound("weaponSlap");
+            if (!target.takeDamage(damage, Date.now(), this.collisionCooldown))
+                  return;
+            target.playSound("hurt");
+            this.applyWeaponKnockback(character, target, weapon);
+            this.indicators.spawnDamageIndicator(target, damage);
+            this.indicators.spawnHitSpark(target.body.position, target.color);
+            this.indicators.spawnCharacterLine(character, "weaponHit");
+      }
+
+      private applyWeaponKnockback(
+            character: Fighter,
+            target: Fighter,
+            weapon: ProximityMeleeWeapon,
+      ): void {
+            if (!weapon.knockback) return;
+            const knockback = weapon.knockback;
+            target.applyVelocityBoost(
+                  {
+                        x: target.body.position.x - character.body.position.x,
+                        y: target.body.position.y - character.body.position.y,
+                  },
+                  knockback === true ? undefined : knockback.speedMultiplier,
+                  knockback === true ? undefined : knockback.durationMs,
+                  character.id,
+            );
+      }
+
+      private fireProjectileWeapon(
+            character: Fighter,
+            target: Fighter,
+            weapon: ProjectileWeapon,
+            nowMs: number,
+      ): void {
+            const projectileConfig = weapon.projectile;
+            const distanceX =
+                  target.body.position.x - character.body.position.x;
+            const distanceY =
+                  target.body.position.y - character.body.position.y;
+            const length = Math.hypot(distanceX, distanceY) || 1;
+            const velocityX = (distanceX / length) * projectileConfig.speed;
+            const velocityY = (distanceY / length) * projectileConfig.speed;
+            this.spawnProjectile(
+                  projectileConfig,
+                  character,
+                  character.body.position.x +
+                        (distanceX / length) *
+                              (character.hitbox.halfWidth +
+                                    projectileConfig.radius +
+                                    2),
+                  character.body.position.y +
+                        (distanceY / length) *
+                              (character.hitbox.halfHeight +
+                                    projectileConfig.radius +
+                                    2),
+                  velocityX,
+                  velocityY,
+            );
+            character.markWeaponUsed(nowMs);
+            character.startWeaponAnimation();
+            character.playSound("weapon-fire");
+      }
+
+      private spawnProjectile(
+            config: ProjectileConfig,
+            owner: Fighter,
+            x: number,
+            y: number,
+            velocityX: number,
+            velocityY: number,
+      ): Projectile {
+            const projectile = new Projectile(
+                  config,
+                  owner,
+                  x,
+                  y,
+                  velocityX,
+                  velocityY,
+            );
+            this.projectiles.push(projectile);
+            Matter.World.add(this.world, projectile.body);
+            return projectile;
+      }
 }

@@ -1,147 +1,149 @@
 import type { Vector2 } from "../../src/types/fighter";
 import {
-  _getImageRect,
-  _hitTestCropHandle,
-  _previewRectToSourceCrop,
-  _sourceCropToPreviewRect,
-  _syncCropControls,
-  type CropToolHost,
+      _getImageRect,
+      _hitTestCropHandle,
+      _previewRectToSourceCrop,
+      _sourceCropToPreviewRect,
+      _syncCropControls,
+      type CropToolHost,
 } from "./crop-tool";
 import {
-  getHitboxRect,
-  hitTestCircleHandle,
-  hitTestRectHandles,
-  updateHitboxDrag,
-  type HitboxToolHost,
+      getHitboxRect,
+      hitTestCircleHandle,
+      hitTestRectHandles,
+      updateHitboxDrag,
+      type HitboxToolHost,
 } from "./hitbox-tool";
 import type { DragState, Rect, StudioConfig } from "./studio-types";
 
 export type CanvasToolHost = CropToolHost &
-  HitboxToolHost & {
-    dragState: DragState | null;
-  };
+      HitboxToolHost & {
+            dragState: DragState | null;
+      };
 
 function canvasPoint(canvas: HTMLCanvasElement, event: PointerEvent): Vector2 {
-  const rect = canvas.getBoundingClientRect();
-  return {
-    x: (event.clientX - rect.left) * (canvas.width / rect.width),
-    y: (event.clientY - rect.top) * (canvas.height / rect.height),
-  };
+      const rect = canvas.getBoundingClientRect();
+      return {
+            x: (event.clientX - rect.left) * (canvas.width / rect.width),
+            y: (event.clientY - rect.top) * (canvas.height / rect.height),
+      };
 }
 
 export function installCanvasToolController(host: CanvasToolHost): void {
-  host.canvas.addEventListener("pointerdown", (event) =>
-    onPointerDown(host, event),
-  );
-  host.canvas.addEventListener("pointermove", (event) =>
-    onPointerMove(host, event),
-  );
-  host.canvas.addEventListener("pointerup", (event) =>
-    onPointerUp(host, event),
-  );
-  host.canvas.addEventListener("pointerleave", (event) =>
-    onPointerUp(host, event),
-  );
+      host.canvas.addEventListener("pointerdown", (event) =>
+            onPointerDown(host, event),
+      );
+      host.canvas.addEventListener("pointermove", (event) =>
+            onPointerMove(host, event),
+      );
+      host.canvas.addEventListener("pointerup", (event) =>
+            onPointerUp(host, event),
+      );
+      host.canvas.addEventListener("pointerleave", (event) =>
+            onPointerUp(host, event),
+      );
 }
 
 function onPointerDown(host: CanvasToolHost, event: PointerEvent): void {
-  if (host.mode !== "crop" && host.mode !== "hitbox") return;
-  const config = host._currentConfig();
-  const point = canvasPoint(host.canvas, event);
-  const rect =
-    host.mode === "crop"
-      ? _sourceCropToPreviewRect(
-          host,
-          _getImageRect(host, config),
-          host.cropDraft ?? {
-            x: 0,
-            y: 0,
-            width: host.images.body.naturalWidth,
-            height: host.images.body.naturalHeight,
-          },
-          host.images.body,
-        )
-      : getHitboxRect(host, {
-          hitbox: host.hitboxDraft ?? config.hitbox,
-          hitboxOffset: host.hitboxDraftOffset ?? config.hitboxOffset,
-        });
-  const handle =
-    host.mode === "crop"
-      ? _hitTestCropHandle(host, point.x, point.y, rect)
-      : host.hitboxDraft?.type === "box"
-        ? hitTestRectHandles(point.x, point.y, rect)
-        : hitTestCircleHandle(point.x, point.y, rect);
-  if (!handle) return;
-  host.canvas.setPointerCapture(event.pointerId);
-  host.dragState = {
-    handle,
-    startX: point.x,
-    startY: point.y,
-    startRect: { ...rect },
-    imageRect: _getImageRect(host, config),
-    startOffset: {
-      ...(host.hitboxDraftOffset ?? config.hitboxOffset ?? { x: 0, y: 0 }),
-    },
-  };
+      if (host.mode !== "crop" && host.mode !== "hitbox") return;
+      const config = host._currentConfig();
+      const point = canvasPoint(host.canvas, event);
+      const rect =
+            host.mode === "crop"
+                  ? _sourceCropToPreviewRect(
+                          host,
+                          _getImageRect(host, config),
+                          host.cropDraft ?? {
+                                x: 0,
+                                y: 0,
+                                width: host.images.body.naturalWidth,
+                                height: host.images.body.naturalHeight,
+                          },
+                          host.images.body,
+                    )
+                  : getHitboxRect(host, {
+                          hitbox: host.hitboxDraft ?? config.hitbox,
+                          hitboxOffset:
+                                host.hitboxDraftOffset ?? config.hitboxOffset,
+                    });
+      const handle =
+            host.mode === "crop"
+                  ? _hitTestCropHandle(host, point.x, point.y, rect)
+                  : host.hitboxDraft?.type === "box"
+                    ? hitTestRectHandles(point.x, point.y, rect)
+                    : hitTestCircleHandle(point.x, point.y, rect);
+      if (!handle) return;
+      host.canvas.setPointerCapture(event.pointerId);
+      host.dragState = {
+            handle,
+            startX: point.x,
+            startY: point.y,
+            startRect: { ...rect },
+            imageRect: _getImageRect(host, config),
+            startOffset: {
+                  ...(host.hitboxDraftOffset ??
+                        config.hitboxOffset ?? { x: 0, y: 0 }),
+            },
+      };
 }
 
 function onPointerMove(host: CanvasToolHost, event: PointerEvent): void {
-  if (!host.dragState) return;
-  const point = canvasPoint(host.canvas, event);
-  if (host.mode === "hitbox") updateHitboxDrag(host, point);
-  else if (host.mode === "crop") updateCropDrag(host, point);
-  host._refreshLabels();
-  host._draw();
+      if (!host.dragState) return;
+      const point = canvasPoint(host.canvas, event);
+      if (host.mode === "hitbox") updateHitboxDrag(host, point);
+      else if (host.mode === "crop") updateCropDrag(host, point);
+      host._refreshLabels();
+      host._draw();
 }
 
 function updateCropDrag(host: CanvasToolHost, point: Vector2): void {
-  const drag = host.dragState;
-  if (!drag) return;
-  const deltaX = point.x - drag.startX;
-  const deltaY = point.y - drag.startY;
-  const handle = drag.handle;
-  const rect: Rect = { ...drag.startRect };
-  if (handle === "move") {
-    rect.x += deltaX;
-    rect.y += deltaY;
-  } else {
-    if (handle.includes("w")) {
-      rect.x += deltaX;
-      rect.width -= deltaX;
-    }
-    if (handle.includes("e")) rect.width += deltaX;
-    if (handle.includes("n")) {
-      rect.y += deltaY;
-      rect.height -= deltaY;
-    }
-    if (handle.includes("s")) rect.height += deltaY;
-  }
-  const minSize = 8;
-  if (rect.width < minSize) {
-    if (handle.includes("w")) rect.x -= minSize - rect.width;
-    rect.width = minSize;
-  }
-  if (rect.height < minSize) {
-    if (handle.includes("n")) rect.y -= minSize - rect.height;
-    rect.height = minSize;
-  }
-  const maxX = drag.imageRect.x + drag.imageRect.width;
-  const maxY = drag.imageRect.y + drag.imageRect.height;
-  rect.x = Math.max(drag.imageRect.x, Math.min(rect.x, maxX - rect.width));
-  rect.y = Math.max(drag.imageRect.y, Math.min(rect.y, maxY - rect.height));
-  rect.width = Math.max(minSize, Math.min(rect.width, maxX - rect.x));
-  rect.height = Math.max(minSize, Math.min(rect.height, maxY - rect.y));
-  host.cropDraft = _previewRectToSourceCrop(
-    host,
-    drag.imageRect,
-    rect,
-    host.images.body,
-  );
-  _syncCropControls(host, { imageCrop: host.cropDraft });
+      const drag = host.dragState;
+      if (!drag) return;
+      const deltaX = point.x - drag.startX;
+      const deltaY = point.y - drag.startY;
+      const handle = drag.handle;
+      const rect: Rect = { ...drag.startRect };
+      if (handle === "move") {
+            rect.x += deltaX;
+            rect.y += deltaY;
+      } else {
+            if (handle.includes("w")) {
+                  rect.x += deltaX;
+                  rect.width -= deltaX;
+            }
+            if (handle.includes("e")) rect.width += deltaX;
+            if (handle.includes("n")) {
+                  rect.y += deltaY;
+                  rect.height -= deltaY;
+            }
+            if (handle.includes("s")) rect.height += deltaY;
+      }
+      const minSize = 8;
+      if (rect.width < minSize) {
+            if (handle.includes("w")) rect.x -= minSize - rect.width;
+            rect.width = minSize;
+      }
+      if (rect.height < minSize) {
+            if (handle.includes("n")) rect.y -= minSize - rect.height;
+            rect.height = minSize;
+      }
+      const maxX = drag.imageRect.x + drag.imageRect.width;
+      const maxY = drag.imageRect.y + drag.imageRect.height;
+      rect.x = Math.max(drag.imageRect.x, Math.min(rect.x, maxX - rect.width));
+      rect.y = Math.max(drag.imageRect.y, Math.min(rect.y, maxY - rect.height));
+      rect.width = Math.max(minSize, Math.min(rect.width, maxX - rect.x));
+      rect.height = Math.max(minSize, Math.min(rect.height, maxY - rect.y));
+      host.cropDraft = _previewRectToSourceCrop(
+            host,
+            drag.imageRect,
+            rect,
+            host.images.body,
+      );
+      _syncCropControls(host, { imageCrop: host.cropDraft });
 }
 
 function onPointerUp(host: CanvasToolHost, event: PointerEvent): void {
-  if (host.dragState && host.canvas.hasPointerCapture(event.pointerId))
-    host.canvas.releasePointerCapture(event.pointerId);
-  host.dragState = null;
+      if (host.dragState && host.canvas.hasPointerCapture(event.pointerId))
+            host.canvas.releasePointerCapture(event.pointerId);
+      host.dragState = null;
 }

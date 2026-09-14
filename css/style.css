@@ -4,51 +4,58 @@
 
 /* ---- CSS Custom Properties (Design Tokens) ------------------------------ */
 :root {
-  --clr-bg:        #ffffff;
-  --clr-command:   #000000;
-  --clr-command-elevated: rgba(255, 255, 255, 0.08);
-  --clr-command-hover: rgba(255, 255, 255, 0.12);
-  --clr-command-border: rgba(255, 255, 255, 0.16);
-  --clr-command-border-strong: rgba(212, 160, 0, 0.5);
-  --clr-command-muted: #888888;
+      --clr-bg: #ffffff;
+      --clr-command: #000000;
+      --clr-command-elevated: rgba(255, 255, 255, 0.08);
+      --clr-command-hover: rgba(255, 255, 255, 0.12);
+      --clr-command-border: rgba(255, 255, 255, 0.16);
+      --clr-command-border-strong: rgba(212, 160, 0, 0.5);
+      --clr-command-muted: #888888;
 
-  --clr-p1:        #d4a000;
-  --clr-p2:        #ffffff;
-  --clr-p1-glow:   rgba(212, 160, 0, 0.35);
-  --clr-p2-glow:   rgba(255, 255, 255, 0.28);
+      --clr-p1: #d4a000;
+      --clr-p2: #ffffff;
+      --clr-p1-glow: rgba(212, 160, 0, 0.35);
+      --clr-p2-glow: rgba(255, 255, 255, 0.28);
 
-  --clr-gold:      #d4a000;
-  --clr-red:       #cc0000;
-  --clr-text:      #1a1a2e;
-  --clr-muted:     #555;
+      --clr-gold: #d4a000;
+      --clr-red: #cc0000;
+      --clr-text: #1a1a2e;
+      --clr-muted: #555;
 
-  /* Basic system fonts, no imported web fonts */
-  --font-hud:      sans-serif;
-  --font-body:     sans-serif;
+      /* Basic system fonts, no imported web fonts */
+      --font-hud: sans-serif;
+      --font-body: sans-serif;
 
-  --radius-sm:     6px;
-  --radius-md:     12px;
-  --radius-full:   9999px;
+      --radius-sm: 6px;
+      --radius-md: 12px;
+      --radius-full: 9999px;
 
-  --hud-h:         56px;
-  --transition:    0.2s ease;
+      --hud-h: 56px;
+      --transition: 0.2s ease;
 }
 
 /* ---- Reset --------------------------------------------------------------- */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+}
 
-html, body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #ffffff;   /* Changed background color to white */
-  font-family: var(--font-body);
-  color: var(--clr-text);
-  display: flex;
-  flex-direction: column; /* Stack layout components vertically */
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+html,
+body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #ffffff; /* Changed background color to white */
+      font-family: var(--font-body);
+      color: var(--clr-text);
+      display: flex;
+      flex-direction: column; /* Stack layout components vertically */
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
 }
 
 /* ============================================================================
@@ -58,36 +65,36 @@ html, body {
    Physics walls in game.js are built against this container's dimensions.
    ============================================================================ */
 #game-container {
-  position: relative;
-  background: #ffffff;
+      position: relative;
+      background: #ffffff;
 
-  /*
+      /*
    * Constrain width, let height follow aspect ratio, accounting for top/bottom margins.
    * On very wide screens the game won't stretch beyond 1080px wide.
    * On tall/narrow screens it leaves a 40px vertical safety margin (20px top + 20px bottom).
    */
-  width:  min(100vw, calc((100vh - 40px) * 9 / 16));
-  height: min(100vh - 400px, calc(100vw * 16 / 9));
-  max-width:  1080px;
-  max-height: calc(1080px * 16 / 9);
+      width: min(100vw, calc((100vh - 40px) * 9 / 16));
+      height: min(100vh - 400px, calc(100vw * 16 / 9));
+      max-width: 1080px;
+      max-height: calc(1080px * 16 / 9);
 
-  /* Rounded corners and shadow for premium feel since it's now detached from edges */
-  border-radius: 2px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      /* Rounded corners and shadow for premium feel since it's now detached from edges */
+      border-radius: 2px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 
-  /* The logical arena stays this size, but the canvas may draw UI/art outside. */
-  overflow: visible;
+      /* The logical arena stays this size, but the canvas may draw UI/art outside. */
+      overflow: visible;
 }
 
 /* ---- Arena Canvas -------------------------------------------------------- */
 #arena-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width:  100%;
-  height: 100%;
-  display: block;
-  /*
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      /*
    * NOTE: the canvas *pixel* dimensions are set by JS (_resizeCanvas).
    * CSS width/height here just maps the pixel buffer to the container box.
    */
@@ -95,285 +102,297 @@ html, body {
 
 /* ---- Header & Footer (Above and Below Arena) ----------------------------- */
 #game-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  text-align: center;
-  color: #ffffff; /* Contrast against red body background */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      text-align: center;
+      color: #ffffff; /* Contrast against red body background */
 }
 
 #hud-title {
-  font-family: var(--font-hud);
-  font-size: 2rem;
-  font-weight: bold;
-  letter-spacing: 0.1em;
-  color: #ffffff;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      font-family: var(--font-hud);
+      font-size: 2rem;
+      font-weight: bold;
+      letter-spacing: 0.1em;
+      color: #ffffff;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 #hud-title .accent {
-  color: #ffff00; /* Yellow accent for 2D */
+      color: #ffff00; /* Yellow accent for 2D */
 }
 
 #hud-status {
-  font-family: var(--font-hud);
-  font-size: 1rem;
-  font-weight: bold;
-  letter-spacing: 0.2em;
-  color: #ffff00;
-  text-transform: uppercase;
-  animation: pulse-gold 1.4s ease-in-out infinite;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      font-family: var(--font-hud);
+      font-size: 1rem;
+      font-weight: bold;
+      letter-spacing: 0.2em;
+      color: #ffff00;
+      text-transform: uppercase;
+      animation: pulse-gold 1.4s ease-in-out infinite;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 #game-footer {
-  font-family: var(--font-hud);
-  font-size: 1.2rem;
-  font-weight: bold;
-  letter-spacing: 0.05em;
-  color: #ffffff;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  margin-top: 5px;
+      font-family: var(--font-hud);
+      font-size: 1.2rem;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+      color: #ffffff;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      margin-top: 5px;
 }
 
 @keyframes pulse-gold {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.5; }
+      0%,
+      100% {
+            opacity: 1;
+      }
+      50% {
+            opacity: 0.5;
+      }
 }
 
 /* ---- Animations ---------------------------------------------------------- */
 @keyframes fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+      from {
+            opacity: 0;
+      }
+      to {
+            opacity: 1;
+      }
 }
 
 /* ---- Command Line -------------------------------------------------------- */
 #command-line {
-  position: fixed;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(920px, calc(100vw - 24px));
-  height: 34px;
-  background: #000;
-  border: none;
-  border-radius: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  gap: 10px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(920px, calc(100vw - 24px));
+      height: 34px;
+      background: #000;
+      border: none;
+      border-radius: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 10px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 #command-line.hidden {
-  display: none;
+      display: none;
 }
 
 .command-prompt {
-  color: var(--clr-gold);
-  font-family: monospace;
-  font-size: 1rem;
-  font-weight: bold;
+      color: var(--clr-gold);
+      font-family: monospace;
+      font-size: 1rem;
+      font-weight: bold;
 }
 
 #command-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: #fff;
-  font-family: monospace;
-  font-size: 0.95rem;
-  outline: none;
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-family: monospace;
+      font-size: 0.95rem;
+      outline: none;
 }
 
 #command-status {
-  color: #888;
-  font-family: var(--font-body);
-  font-size: 0.85rem;
+      color: #888;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
 }
 
 /* ---- Character Select ------------------------------------------------------ */
 .character-select-panel {
-  position: fixed;
-  top: 72px;
-  left: 18px;
-  bottom: 18px;
-  width: min(380px, calc(100vw - 36px));
-  z-index: 95;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 16px;
-  background: var(--clr-command);
-  border: 1px solid var(--clr-command-border);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
-  color: #fff;
+      position: fixed;
+      top: 72px;
+      left: 18px;
+      bottom: 18px;
+      width: min(380px, calc(100vw - 36px));
+      z-index: 95;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 16px;
+      background: var(--clr-command);
+      border: 1px solid var(--clr-command-border);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+      color: #fff;
 }
 
 .character-select-panel.hidden {
-  display: none;
+      display: none;
 }
 
 .character-select-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
 }
 
 .character-select-header h2 {
-  font-family: var(--font-hud);
-  font-size: 1.25rem;
-  line-height: 1;
-  letter-spacing: 0.04em;
+      font-family: var(--font-hud);
+      font-size: 1.25rem;
+      line-height: 1;
+      letter-spacing: 0.04em;
 }
 
 .character-select-kicker {
-  margin-bottom: 5px;
-  color: var(--clr-gold);
-  font-family: monospace;
-  font-size: 0.75rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+      margin-bottom: 5px;
+      color: var(--clr-gold);
+      font-family: monospace;
+      font-size: 0.75rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
 }
 
 #character-select-close {
-  width: 30px;
-  height: 30px;
-  border: 1px solid var(--clr-command-border);
-  background: var(--clr-command-elevated);
-  color: #fff;
-  cursor: pointer;
-  font-family: monospace;
-  font-size: 1rem;
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--clr-command-border);
+      background: var(--clr-command-elevated);
+      color: #fff;
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 1rem;
 }
 
 #character-select-close:hover {
-  border-color: var(--clr-command-border-strong);
-  color: var(--clr-gold);
-  background: var(--clr-command-hover);
+      border-color: var(--clr-command-border-strong);
+      color: var(--clr-gold);
+      background: var(--clr-command-hover);
 }
 
 .character-select-search {
-  width: 100%;
-  height: 40px;
-  border: 1px solid var(--clr-command-border);
-  background: var(--clr-command);
-  color: #fff;
-  outline: none;
-  padding: 0 12px;
-  font-family: monospace;
-  font-size: 0.95rem;
+      width: 100%;
+      height: 40px;
+      border: 1px solid var(--clr-command-border);
+      background: var(--clr-command);
+      color: #fff;
+      outline: none;
+      padding: 0 12px;
+      font-family: monospace;
+      font-size: 0.95rem;
 }
 
 .character-select-search:focus {
-  border-color: var(--clr-command-border-strong);
+      border-color: var(--clr-command-border-strong);
 }
 
 .character-select-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  overflow-y: auto;
-  padding-right: 4px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      overflow-y: auto;
+      padding-right: 4px;
 }
 
 .character-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-  border: 1px solid var(--clr-command-border);
-  background: var(--clr-command-elevated);
-  color: #fff;
-  cursor: pointer;
-  padding: 8px;
-  text-align: left;
-  transition: border-color var(--transition), transform var(--transition), background var(--transition);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+      border: 1px solid var(--clr-command-border);
+      background: var(--clr-command-elevated);
+      color: #fff;
+      cursor: pointer;
+      padding: 8px;
+      text-align: left;
+      transition:
+            border-color var(--transition),
+            transform var(--transition),
+            background var(--transition);
 }
 
 .character-card:hover {
-  transform: translateY(-1px);
-  border-color: var(--clr-command-border-strong);
-  background: var(--clr-command-hover);
+      transform: translateY(-1px);
+      border-color: var(--clr-command-border-strong);
+      background: var(--clr-command-hover);
 }
 
 .character-card.selected-p1 {
-  border-color: var(--clr-p1);
-  box-shadow: 0 0 0 1px var(--clr-p1-glow);
+      border-color: var(--clr-p1);
+      box-shadow: 0 0 0 1px var(--clr-p1-glow);
 }
 
 .character-card.selected-p2 {
-  border-color: var(--clr-p2);
-  box-shadow: 0 0 0 1px var(--clr-p2-glow);
+      border-color: var(--clr-p2);
+      box-shadow: 0 0 0 1px var(--clr-p2-glow);
 }
 
 .character-card-preview {
-  position: relative;
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1;
-  overflow: hidden;
-  background: #050505;
-  border: 1px solid rgba(212, 160, 0, 0.18);
+      position: relative;
+      display: grid;
+      place-items: center;
+      aspect-ratio: 1;
+      overflow: hidden;
+      background: #050505;
+      border: 1px solid rgba(212, 160, 0, 0.18);
 }
 
 .character-card-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
 }
 
 .character-card-preview.missing-image::after {
-  content: "NO IMG";
-  color: rgba(255, 255, 255, 0.5);
-  font-family: monospace;
-  font-size: 0.75rem;
+      content: "NO IMG";
+      color: rgba(255, 255, 255, 0.5);
+      font-family: monospace;
+      font-size: 0.75rem;
 }
 
 .character-card-badge {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  min-width: 28px;
-  min-height: 22px;
-  display: grid;
-  place-items: center;
-  background: var(--clr-command);
-  color: #fff;
-  border: 1px solid var(--clr-command-border);
-  font-family: monospace;
-  font-size: 0.75rem;
-  font-weight: bold;
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      min-width: 28px;
+      min-height: 22px;
+      display: grid;
+      place-items: center;
+      background: var(--clr-command);
+      color: #fff;
+      border: 1px solid var(--clr-command-border);
+      font-family: monospace;
+      font-size: 0.75rem;
+      font-weight: bold;
 }
 
 .character-card-badge:empty {
-  display: none;
+      display: none;
 }
 
 .character-card-name {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-size: 0.78rem;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      font-size: 0.78rem;
 }
 
 .character-select-help {
-  margin-top: auto;
-  color: var(--clr-command-muted);
-  font-size: 0.78rem;
-  line-height: 1.35;
+      margin-top: auto;
+      color: var(--clr-command-muted);
+      font-size: 0.78rem;
+      line-height: 1.35;
 }
 
 @media (max-width: 720px) {
-  .character-select-panel {
-    top: 64px;
-    left: 10px;
-    right: 10px;
-    bottom: 10px;
-    width: auto;
-  }
+      .character-select-panel {
+            top: 64px;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            width: auto;
+      }
 }

@@ -10,81 +10,79 @@ const OUT_FILE = path.join(ROOT, "config", "sound-manifest.json");
 const AUDIO_EXTS = new Set([".mp3", ".wav", ".ogg", ".m4a"]);
 
 function sortedDirectories(dir) {
-  if (!fs.existsSync(dir)) return [];
+      if (!fs.existsSync(dir)) return [];
 
-  return fs
-    .readdirSync(dir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort((a, b) => a.localeCompare(b));
+      return fs
+            .readdirSync(dir, { withFileTypes: true })
+            .filter((entry) => entry.isDirectory())
+            .map((entry) => entry.name)
+            .sort((a, b) => a.localeCompare(b));
 }
 
 function listAudioFiles(dir) {
-  if (!fs.existsSync(dir)) return [];
+      if (!fs.existsSync(dir)) return [];
 
-  return fs
-    .readdirSync(dir, { withFileTypes: true })
-    .filter((entry) => entry.isFile())
-    .map((entry) => entry.name)
-    .filter((file) => AUDIO_EXTS.has(path.extname(file).toLowerCase()))
-    .sort((a, b) => a.localeCompare(b));
+      return fs
+            .readdirSync(dir, { withFileTypes: true })
+            .filter((entry) => entry.isFile())
+            .map((entry) => entry.name)
+            .filter((file) => AUDIO_EXTS.has(path.extname(file).toLowerCase()))
+            .sort((a, b) => a.localeCompare(b));
 }
 
 function toCamelCase(value) {
-  return value.replace(/-([a-z0-9])/g, (_, char) => char.toUpperCase());
+      return value.replace(/-([a-z0-9])/g, (_, char) => char.toUpperCase());
 }
 
 function stripExt(file) {
-  return path.parse(file).name;
+      return path.parse(file).name;
 }
 
 function buildManifest() {
-  const manifest = { shared: {}, characters: {} };
+      const manifest = { shared: {}, characters: {} };
 
-  for (const soundType of sortedDirectories(SFX_SHARED_DIR)) {
-    const typeDir = path.join(SFX_SHARED_DIR, soundType);
-    const files = listAudioFiles(typeDir).map((file) => ({
-      id: stripExt(file),
-      path: `assets/sfx/shared/${soundType}/${file}`,
-    }));
+      for (const soundType of sortedDirectories(SFX_SHARED_DIR)) {
+            const typeDir = path.join(SFX_SHARED_DIR, soundType);
+            const files = listAudioFiles(typeDir).map((file) => ({
+                  id: stripExt(file),
+                  path: `assets/sfx/shared/${soundType}/${file}`,
+            }));
 
-    if (files.length > 0) manifest.shared[soundType] = files;
-  }
+            if (files.length > 0) manifest.shared[soundType] = files;
+      }
 
-  for (const fighterId of sortedDirectories(SFX_FIGHTER_DIR)) {
-    const fighterDir = path.join(SFX_FIGHTER_DIR, fighterId);
-    const soundTypes = {};
+      for (const fighterId of sortedDirectories(SFX_FIGHTER_DIR)) {
+            const fighterDir = path.join(SFX_FIGHTER_DIR, fighterId);
+            const soundTypes = {};
 
-    for (const soundType of sortedDirectories(fighterDir)) {
-      const typeDir = path.join(fighterDir, soundType);
-      const files = listAudioFiles(typeDir).map((file) => ({
-        id: stripExt(file),
-        path: `assets/sfx/characters/${fighterId}/${soundType}/${file}`,
-      }));
+            for (const soundType of sortedDirectories(fighterDir)) {
+                  const typeDir = path.join(fighterDir, soundType);
+                  const files = listAudioFiles(typeDir).map((file) => ({
+                        id: stripExt(file),
+                        path: `assets/sfx/characters/${fighterId}/${soundType}/${file}`,
+                  }));
 
-      if (files.length > 0) soundTypes[toCamelCase(soundType)] = files;
-    }
+                  if (files.length > 0)
+                        soundTypes[toCamelCase(soundType)] = files;
+            }
 
-    if (Object.keys(soundTypes).length > 0) {
-      manifest.characters[fighterId] = soundTypes;
-    }
-  }
+            if (Object.keys(soundTypes).length > 0) {
+                  manifest.characters[fighterId] = soundTypes;
+            }
+      }
 
-  if (Object.keys(manifest.shared).length === 0) {
-    delete manifest.shared;
-  }
+      if (Object.keys(manifest.shared).length === 0) {
+            delete manifest.shared;
+      }
 
-  return manifest;
+      return manifest;
 }
 
 function main() {
-  const manifest = buildManifest();
-  fs.mkdirSync(path.dirname(OUT_FILE), { recursive: true });
-  fs.writeFileSync(
-    OUT_FILE,
-    `${JSON.stringify(manifest, null, 2)}\n`,
-  );
-  console.log(`Wrote ${path.relative(ROOT, OUT_FILE)}`);
+      const manifest = buildManifest();
+      fs.mkdirSync(path.dirname(OUT_FILE), { recursive: true });
+      fs.writeFileSync(OUT_FILE, `${JSON.stringify(manifest, null, 2)}\n`);
+      console.log(`Wrote ${path.relative(ROOT, OUT_FILE)}`);
 }
 
 main();

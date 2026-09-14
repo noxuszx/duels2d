@@ -1,8 +1,8 @@
 {
-  "fighters": [
-    "womanguy.json",
-    "chefguy.json",
-    "depressedguy.json",
-    "happyguy.json"
-  ]
+      "fighters": [
+            "womanguy.json",
+            "chefguy.json",
+            "depressedguy.json",
+            "happyguy.json"
+      ]
 }

@@ -425,6 +425,15 @@ roster.forEach((fighter) => {
 const game = JSON.parse(
       fs.readFileSync(path.join(root, "config", "game-settings.json"), "utf8"),
 );
+if (
+      !isPositive(game.rendering?.scale) ||
+      game.rendering.scale > 4
+) {
+      fail(
+            "game-settings.json",
+            "rendering.scale must be greater than 0 and no greater than 4",
+      );
+}
 if (!isPositive(game.physics?.globalSpeedMultiplier)) {
       fail(
             "game-settings.json",

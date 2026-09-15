@@ -1,4 +1,7 @@
 {
+      "rendering": {
+            "scale": 2
+      },
       "physics": {
             "globalSpeedMultiplier": 0.15,
             "collisionCooldownMs": 300,

@@ -114,14 +114,20 @@ export class GameManager {
       _resizeCanvas() {
             const rect = this.container.getBoundingClientRect();
             const overflow = this.VISUAL_OVERFLOW;
+            const renderScale = this.runtimeConfig.game.rendering.scale;
             this.arenaW = Math.round(rect.width);
             this.arenaH = Math.round(rect.height);
-            this.W = this.canvas.width = this.arenaW + overflow * 2;
-            this.H = this.canvas.height = this.arenaH + overflow * 2;
+            this.W = this.arenaW + overflow * 2;
+            this.H = this.arenaH + overflow * 2;
+            this.canvas.width = Math.round(this.W * renderScale);
+            this.canvas.height = Math.round(this.H * renderScale);
             this.canvas.style.left = `${-overflow}px`;
             this.canvas.style.top = `${-overflow}px`;
             this.canvas.style.width = `${this.W}px`;
             this.canvas.style.height = `${this.H}px`;
+            // Keep all drawing and physics in CSS-pixel coordinates while the
+            // backing buffer carries the extra pixels used by recordings.
+            this.ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
       }
 
       _getArena() {

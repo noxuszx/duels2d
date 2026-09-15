@@ -4,6 +4,9 @@ export interface ImpactDamageConfig {
 }
 
 export interface GameConfig {
+  rendering: {
+    scale: number;
+  };
   physics: {
     globalSpeedMultiplier: number;
     collisionCooldownMs: number;

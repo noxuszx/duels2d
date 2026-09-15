@@ -48,6 +48,19 @@ function requireString(value: unknown, location: string): void {
 
 function validateGameConfig(value: unknown): GameConfig {
       const game = requireRecord(value, "game settings");
+      const rendering = requireRecord(
+            game.rendering,
+            "game settings.rendering",
+      );
+      requireNumber(
+            rendering.scale,
+            "game settings.rendering.scale",
+            Number.EPSILON,
+      );
+      if ((rendering.scale as number) > 4)
+            throw new Error(
+                  "game settings.rendering.scale must not exceed 4.",
+            );
       const physics = requireRecord(game.physics, "game settings.physics");
       requireNumber(
             physics.globalSpeedMultiplier,

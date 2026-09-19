@@ -26,7 +26,7 @@
           <select id="char-select"></select>
         </div>
         <div class="control-group top-select" id="top-pose-select-group">
-          <label for="pose-select">Pose</label>
+          <label for="pose-select">Sprite</label>
           <select id="pose-select"></select>
         </div>
       </div>
@@ -277,12 +277,49 @@
 
         <!-- Tab: Image -->
         <div id="tab-image" class="tab-content" role="tabpanel">
+          <div class="section-divider"><span>Shared Character Settings</span></div>
+
           <div class="control-group">
             <label for="defaultFacing">Default Facing</label>
             <select id="defaultFacing">
               <option value="right">Right</option>
               <option value="left">Left</option>
             </select>
+          </div>
+
+          <div class="section-divider"><span>Selected Sprite</span></div>
+
+          <div class="control-group">
+            <label for="pose-image-select">Available Images</label>
+            <select id="pose-image-select">
+              <option value="">Choose an image…</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="pose-image-path">Image Path</label>
+            <input
+              type="text"
+              id="pose-image-path"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="assets/fighters/.../sprites/image.png"
+            />
+            <p class="control-hint">
+              Crop, scale, and position below apply only to this sprite.
+            </p>
+          </div>
+
+          <div class="control-actions pose-management-actions">
+            <button id="add-pose-btn" type="button" class="action-btn primary-btn">
+              Add Sprite
+            </button>
+            <button id="rename-pose-btn" type="button" class="action-btn ghost-btn" disabled>
+              Rename
+            </button>
+            <button id="remove-pose-btn" type="button" class="action-btn danger-btn" disabled>
+              Remove
+            </button>
           </div>
 
           <div class="control-group">
@@ -304,7 +341,7 @@
               disabled
               title="Remove pose-specific visual overrides"
             >
-              Reset Pose
+              Reset Sprite
             </button>
           </div>
 
@@ -657,6 +694,46 @@
         </div>
       </div>
     </div>
+    <dialog id="pose-dialog" aria-labelledby="pose-dialog-title">
+      <form id="pose-dialog-form" method="dialog">
+        <div class="dialog-header">
+          <h2 id="pose-dialog-title">Add Sprite</h2>
+          <button type="button" id="pose-dialog-close" class="dialog-close" aria-label="Close">×</button>
+        </div>
+        <div class="dialog-body">
+          <div class="control-group">
+            <label for="pose-dialog-key">Game Pose</label>
+            <select id="pose-dialog-key"></select>
+            <p class="control-hint">
+              The game chooses this sprite during the matching animation phase.
+            </p>
+          </div>
+          <div class="control-group">
+            <label for="pose-dialog-image-select">Available Images</label>
+            <select id="pose-dialog-image-select">
+              <option value="">Choose an image…</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label for="pose-dialog-image">Image Path</label>
+            <input
+              type="text"
+              id="pose-dialog-image"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="assets/fighters/.../sprites/image.png"
+              required
+            />
+          </div>
+          <p id="pose-dialog-error" class="dialog-error" role="alert"></p>
+        </div>
+        <div class="dialog-actions">
+          <button type="button" id="pose-dialog-cancel" class="action-btn ghost-btn">Cancel</button>
+          <button type="submit" class="action-btn success-btn">Save Sprite</button>
+        </div>
+      </form>
+    </dialog>
+
     <footer id="status-bar">
       <span><span class="status-dot"></span> Ready</span><span id="status-context">Character preview</span><span class="status-spacer"></span><span>RGB</span><span>8 bpc</span><span>100%</span>
     </footer>

@@ -45,6 +45,7 @@ export type StudioState = Pick<
       | "hitbox"
       | "hitboxOffset"
       | "defaultFacing"
+      | "image"
       | "imageScale"
       | "imageOffset"
       | "imageCrop"

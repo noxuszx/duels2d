@@ -1,6 +1,27 @@
-import { cpSync, existsSync, mkdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { cpSync, existsSync, mkdirSync, readdirSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
+
+const SPRITE_FILE_PATTERN = /\.(?:png|jpe?g|webp|gif)$/i;
+
+function listSpriteFiles(): string[] {
+  const assetRoot = resolve("assets/fighters");
+  const spriteFiles: string[] = [];
+  const visit = (directory: string) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) visit(path);
+      else if (
+        SPRITE_FILE_PATTERN.test(entry.name) &&
+        path.replaceAll("\\", "/").includes("/sprites/")
+      ) {
+        spriteFiles.push(relative(resolve("."), path).replaceAll("\\", "/"));
+      }
+    }
+  };
+  if (existsSync(assetRoot)) visit(assetRoot);
+  return spriteFiles.sort((a, b) => a.localeCompare(b));
+}
 
 /** Copies runtime-addressed files which are deliberately kept as editable JSON/assets. */
 function copyRuntimeFiles(): Plugin {
@@ -27,6 +48,9 @@ function copyRuntimeFiles(): Plugin {
 }
 
 export default defineConfig({
+  define: {
+    __SPRITE_CATALOG__: JSON.stringify(listSpriteFiles()),
+  },
   plugins: [copyRuntimeFiles()],
   build: {
     outDir: "dist",

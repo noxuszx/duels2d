@@ -8,6 +8,7 @@ import type {
       PoseOverrides,
       Vector2,
 } from "../types/fighter";
+import { getAspectFitCropDrawRect } from "../rendering/sprite-geometry";
 import type { WeaponConfig } from "../types/weapon";
 import type { GameConfig, SoundManifest } from "../types/game";
 
@@ -370,18 +371,15 @@ export class Fighter {
             dh: number;
             crop: Required<ImageCrop>;
       } {
-            const fullWidth = drawRadius * 2;
-            const fullHeight = drawRadius * 2;
             const safeCrop = this.getImageCrop(image, crop);
+            const destination = getAspectFitCropDrawRect(
+                  image.naturalWidth,
+                  image.naturalHeight,
+                  safeCrop,
+                  drawRadius,
+            );
             return {
-                  dx:
-                        -drawRadius +
-                        (safeCrop.x / image.naturalWidth) * fullWidth,
-                  dy:
-                        -drawRadius +
-                        (safeCrop.y / image.naturalHeight) * fullHeight,
-                  dw: (safeCrop.width / image.naturalWidth) * fullWidth,
-                  dh: (safeCrop.height / image.naturalHeight) * fullHeight,
+                  ...destination,
                   crop: safeCrop,
             };
       }

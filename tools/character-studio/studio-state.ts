@@ -17,6 +17,7 @@ export function snapshotStudioState(
                   config.hitboxOffset ?? { x: 0, y: 0 },
             ),
             defaultFacing: config.defaultFacing ?? "right",
+            image: config.image,
             imageScale: config.imageScale,
             imageOffset: structuredClone(config.imageOffset),
             imageCrop: config.imageCrop

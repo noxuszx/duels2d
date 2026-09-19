@@ -510,6 +510,16 @@ html, body {
   border-color: var(--border);
 }
 
+.danger-btn {
+  color: #ffb3b3;
+  background: rgba(204, 0, 0, 0.12);
+  border-color: rgba(255, 88, 88, 0.35);
+}
+.danger-btn:not(:disabled):hover {
+  color: #fff;
+  background: rgba(204, 0, 0, 0.32);
+}
+
 /* ══════════════════════════════════════════════════════════════
    CREATIVE WORKSPACE SHELL
 ══════════════════════════════════════════════════════════════ */
@@ -686,6 +696,37 @@ button, input, select { font: inherit; }
 .mode-badge { padding: 3px 7px; border-radius: 2px; font-size: 8px; letter-spacing: .08em; }
 .mode-badge.crop { color: #ffd478; }
 .mode-badge.hitbox { color: #9bcaff; }
+
+#pose-dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 0;
+  color: var(--text-primary);
+  background: #292929;
+  border: 1px solid #0d0d0d;
+  border-radius: 2px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, .7);
+}
+#pose-dialog::backdrop { background: rgba(0, 0, 0, .68); }
+#pose-dialog-form { display: flex; flex-direction: column; }
+.dialog-header {
+  height: 40px; display: flex; align-items: center; padding: 0 12px;
+  background: #252525; border-bottom: 1px solid #111;
+}
+.dialog-header h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .055em; }
+.dialog-close {
+  width: 28px; height: 28px; margin-left: auto; color: #aaa; background: transparent;
+  border: 0; cursor: pointer; font-size: 20px; line-height: 1;
+}
+.dialog-close:hover { color: #fff; background: #3b3b3b; }
+.dialog-body { padding: 16px 14px 6px; }
+.dialog-body .control-group select,
+.dialog-body .control-group input[type="text"] { width: 100%; }
+.dialog-error { min-height: 18px; color: #ff9f9f; font-size: 10px; }
+.dialog-actions {
+  display: flex; justify-content: flex-end; gap: 6px; padding: 10px 14px;
+  background: #242424; border-top: 1px solid #151515;
+}
+.dialog-actions .action-btn { flex: 0 0 auto; min-width: 90px; }
 
 #status-bar {
   height: 22px; flex: 0 0 22px; display: flex; align-items: center; gap: 14px;

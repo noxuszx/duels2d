@@ -2,6 +2,9 @@ import type {
       FighterConfig,
       FighterDefinition,
       FighterDefaults,
+      FighterPoses,
+      FighterPresentationOverrides,
+      PoseConfig,
 } from "../types/fighter";
 
 type JsonValue =
@@ -47,6 +50,41 @@ function merge(
       return result;
 }
 
+/**
+ * Converts compact pose declarations into independent visual records. A pose
+ * may start with the base visual values, but it must not keep inheriting them
+ * after the Studio begins editing either sprite.
+ */
+function materializePoses(
+      presentation: FighterPresentationOverrides &
+            FighterDefaults["presentation"],
+): FighterPoses {
+      if (!presentation.poses) return null;
+      return Object.fromEntries(
+            Object.entries(presentation.poses).map(([key, pose]) => {
+                  const poseObject =
+                        typeof pose === "string" ? null : pose;
+                  const image =
+                        typeof pose === "string" ? pose : pose.image;
+                  const imageCrop = poseObject && "imageCrop" in poseObject
+                        ? poseObject.imageCrop
+                        : presentation.imageCrop;
+                  const materialized: Exclude<PoseConfig, string> = {
+                        image,
+                        imageScale:
+                              poseObject?.imageScale ??
+                              presentation.imageScale,
+                        imageOffset: {
+                              ...(poseObject?.imageOffset ??
+                                    presentation.imageOffset),
+                        },
+                        imageCrop: imageCrop ? { ...imageCrop } : null,
+                  };
+                  return [key, materialized];
+            }),
+      );
+}
+
 /** Merges an editable definition with defaults and flattens it for runtime use. */
 export function composeFighter(
       defaults: FighterDefaults,
@@ -77,7 +115,7 @@ export function composeFighter(
             weaponOffset: merged.presentation.weaponOffset,
             weaponIdle: merged.presentation.weaponIdle,
             weaponAttack: merged.presentation.weaponAttack,
-            poses: merged.presentation.poses,
+            poses: materializePoses(merged.presentation),
             defaultFacing: merged.presentation.defaultFacing,
             lines: merged.lines,
       };

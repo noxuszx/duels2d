@@ -1,4 +1,8 @@
 import type { ImageCrop } from "../../src/types/fighter";
+import {
+      getAspectFitCropDrawRect,
+      getAspectFitSpriteRect,
+} from "../../src/rendering/sprite-geometry";
 import type {
       DragState,
       NumericInput,
@@ -171,8 +175,6 @@ export function _getCropDrawRect(
       crop: ImageCrop | null,
       drawRadius: number,
 ): { dx: number; dy: number; dw: number; dh: number; crop: ImageCrop } {
-      const fullW = drawRadius * 2;
-      const fullH = drawRadius * 2;
       const safeCrop = crop ?? {
             x: 0,
             y: 0,
@@ -180,10 +182,12 @@ export function _getCropDrawRect(
             height: image.naturalHeight,
       };
       return {
-            dx: -drawRadius + (safeCrop.x / image.naturalWidth) * fullW,
-            dy: -drawRadius + (safeCrop.y / image.naturalHeight) * fullH,
-            dw: (safeCrop.width / image.naturalWidth) * fullW,
-            dh: (safeCrop.height / image.naturalHeight) * fullH,
+            ...getAspectFitCropDrawRect(
+                  image.naturalWidth,
+                  image.naturalHeight,
+                  safeCrop,
+                  drawRadius,
+            ),
             crop: safeCrop,
       };
 }
@@ -262,11 +266,16 @@ export function _getImageRect(
       const radius = config.radius ?? 30;
       const visual = studio._getPoseVisual(config, studio.activePoseKey);
       const drawR = radius * visual.imageScale;
+      const fitted = getAspectFitSpriteRect(
+            studio.images.body.naturalWidth,
+            studio.images.body.naturalHeight,
+            drawR,
+      );
       return {
-            x: centerX + visual.imageOffset.x - drawR,
-            y: centerY + visual.imageOffset.y - drawR,
-            width: drawR * 2,
-            height: drawR * 2,
+            x: centerX + visual.imageOffset.x + fitted.dx,
+            y: centerY + visual.imageOffset.y + fitted.dy,
+            width: fitted.dw,
+            height: fitted.dh,
       };
 }
 

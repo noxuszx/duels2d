@@ -1,0 +1,58 @@
+{
+  "$schema": "./fighter.schema.json",
+  "id": "angryman",
+  "name": "Angry Man",
+  "color": "#d94a38",
+  "combat": {
+    "faceTarget": { "mode": "always" },
+    "weapon": {
+      "type": "proximity-melee",
+      "cooldownMs": 1500,
+      "damage": 140,
+      "rangePadding": 0,
+      "dash": { "speedMultiplier": 5, "durationMs": 350 },
+      "animation": { "windupFrames": 18, "activeFrames": 22, "recoveryFrames": 18 }
+    }
+  },
+  "presentation": {
+    "image": "assets/fighters/angryguy/sprites/angryguy.png",
+    "imageScale": 3,
+    "imageOffset": { "x": 1, "y": 6 },
+    "poses": {
+      "idle": {
+        "image": "assets/fighters/angryguy/sprites/angryguy.png",
+        "imageCrop": { "x": 0, "y": 0, "width": 1086, "height": 1128 },
+        "imageScale": 2.6,
+        "imageOffset": { "x": -1, "y": -3 }
+      },
+      "attackWindup": {
+        "image": "assets/fighters/angryguy/sprites/angryguy-windup.png",
+        "imageCrop": { "x": 0, "y": 0, "width": 1086, "height": 1060 },
+        "imageScale": 3,
+        "imageOffset": { "x": -1, "y": 3 }
+      },
+      "attackActive": {
+        "image": "assets/fighters/angryguy/sprites/angryguy-dash.png",
+        "imageCrop": { "x": 0, "y": 0, "width": 1086, "height": 1066 },
+        "imageScale": 3,
+        "imageOffset": { "x": 23, "y": -1 }
+      }
+    },
+    "imageCrop": { "x": 0, "y": 0, "width": 1086, "height": 1023 },
+    "defaultFacing": "left"
+  },
+  "lines": {
+    "weaponHit": [
+      "RAAAGH!",
+      "Get out of my way!",
+      "You asked for it!"
+    ],
+    "ambient": [
+      "Don't test me.",
+      "I'm still standing.",
+      "Come closer."
+    ],
+    "ambientIntervalMs": 5000,
+    "ambientChance": 0.3
+  }
+}

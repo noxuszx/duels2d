@@ -38,6 +38,7 @@ export interface ProximityMeleeWeapon extends BaseWeaponConfig {
   damage?: number;
   rangePadding?: number;
   knockback?: Knockback;
+  dash?: KnockbackConfig;
 }
 
 export type WeaponConfig = ProjectileWeapon | ProximityMeleeWeapon;

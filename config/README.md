@@ -56,6 +56,15 @@ Every fighter file references `fighter.schema.json`, which documents the support
 
 Only values that differ from `fighters/defaults.json` need to be included. `faceTarget.mode` accepts `never`, `always`, or `range`. Supported weapon types are `projectile` and `proximity-melee`. Values ending in `Ms` are milliseconds; values ending in `Frames` are render frames.
 
+### Multiple character sprites
+
+Use Character Studio's **Sprite** selector to tune separate images for the
+`idle`, `attackWindup`, and `attackActive` animation phases. Crop, scale, and
+image offset are stored per sprite; hitbox, health bar, facing, and weapon
+settings remain shared by the fighter. The Image tab can add, rename, remove,
+or change the file path of these sprites. A new sprite starts with the base
+presentation values, then keeps its own crop, scale, and offset independently.
+
 ## Adding a fighter
 
 1. Copy the closest fighter JSON file and make its filename match its unique `id`.

@@ -16,6 +16,8 @@ interface WeaponSystemGameManager {
 
 export class WeaponSystem {
       private readonly gm: WeaponSystemGameManager;
+      private readonly dashTargets = new Map<Fighter, Fighter>();
+      private readonly dashHits = new Set<Fighter>();
 
       constructor(gameManager: WeaponSystemGameManager) {
             this.gm = gameManager;
@@ -40,7 +42,56 @@ export class WeaponSystem {
       update(): void {
             const now = performance.now();
             this.characters.forEach((character) => {
+                  const previousWeaponState = character.weaponState;
                   character.updateWeaponState();
+
+                  if (
+                        character.weapon?.type === "proximity-melee" &&
+                        character.weapon.dash &&
+                        previousWeaponState === "windup" &&
+                        character.weaponState === "active"
+                  ) {
+                        const target = this.dashTargets.get(character);
+                        if (target && !target.isDead) {
+                              character.applyVelocityBoost(
+                                    {
+                                          x:
+                                                target.body.position.x -
+                                                character.body.position.x,
+                                          y:
+                                                target.body.position.y -
+                                                character.body.position.y,
+                                    },
+                                    character.weapon.dash.speedMultiplier,
+                                    character.weapon.dash.durationMs,
+                              );
+                        }
+                  }
+
+                  if (
+                        character.weapon?.type === "proximity-melee" &&
+                        character.weapon.dash &&
+                        character.weaponState === "active"
+                  ) {
+                        const target = this.dashTargets.get(character);
+                        if (
+                              target &&
+                              !target.isDead &&
+                              !this.dashHits.has(character) &&
+                              this.rectanglesOverlap(
+                                    this.getMeleeAttackBox(character),
+                                    this.getCharacterBox(target),
+                              )
+                        ) {
+                              this.applyMeleeHit(character, target);
+                              this.dashHits.add(character);
+                        }
+                  }
+
+                  if (character.weaponState === "idle") {
+                        this.dashTargets.delete(character);
+                        this.dashHits.delete(character);
+                  }
                   if (
                         character.isDead ||
                         !character.weapon ||
@@ -57,7 +108,9 @@ export class WeaponSystem {
                                     now,
                               );
                   } else if (character.weapon.type === "proximity-melee") {
-                        const target = this.findTargetInMeleeRange(character);
+                        const target = character.weapon.dash
+                              ? this.findNearestEnemy(character)
+                              : this.findTargetInMeleeRange(character);
                         if (target)
                               this.triggerMeleeWeapon(
                                     character,
@@ -166,10 +219,26 @@ export class WeaponSystem {
             character.markWeaponUsed(nowMs);
             character.startWeaponAnimation();
             character.playSound("weaponSlap");
+            if (weapon.dash) {
+                  this.dashTargets.set(character, target);
+                  this.dashHits.delete(character);
+                  return;
+            }
+            this.applyMeleeHit(character, target, damage);
+      }
+
+      private applyMeleeHit(
+            character: Fighter,
+            target: Fighter,
+            damage = character.weapon?.type === "proximity-melee"
+                  ? (character.weapon.damage ?? character.baseDamage)
+                  : character.baseDamage,
+      ): void {
             if (!target.takeDamage(damage, Date.now(), this.collisionCooldown))
                   return;
             target.playSound("hurt");
-            this.applyWeaponKnockback(character, target, weapon);
+            if (character.weapon?.type === "proximity-melee")
+                  this.applyWeaponKnockback(character, target, character.weapon);
             this.indicators.spawnDamageIndicator(target, damage);
             this.indicators.spawnHitSpark(target.body.position, target.color);
             this.indicators.spawnCharacterLine(character, "weaponHit");

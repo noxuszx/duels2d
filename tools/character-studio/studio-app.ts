@@ -32,6 +32,7 @@ import {
       _cancelCrop,
 } from "./crop-tool";
 import { installCanvasToolController } from "./canvas-tool-controller";
+import { spriteCatalog } from "./sprite-catalog";
 import {
       applyHitbox,
       applyHitboxOutput,
@@ -71,6 +72,19 @@ declare global {
             __studioInstance?: CharacterStudio;
       }
 }
+
+const SUPPORTED_POSE_KEYS = ["idle", "attackWindup", "attackActive"] as const;
+
+function poseLabel(key: string): string {
+      const labels: Record<string, string> = {
+            base: "Base / Default",
+            idle: "Idle",
+            attackWindup: "Attack Windup",
+            attackActive: "Attack Active",
+      };
+      return labels[key] ?? key;
+}
+
 export class CharacterStudio {
       canvas: HTMLCanvasElement;
       ctx: CanvasRenderingContext2D;
@@ -89,8 +103,21 @@ export class CharacterStudio {
       pendingBodyImageRequest: number;
       select: HTMLSelectElement;
       poseSelect: HTMLSelectElement;
+      poseImageSelect: HTMLSelectElement;
+      poseImageInput: HTMLInputElement;
       defaultFacingSelect: HTMLSelectElement;
       resetPoseBtn: HTMLButtonElement;
+      addPoseBtn: HTMLButtonElement;
+      renamePoseBtn: HTMLButtonElement;
+      removePoseBtn: HTMLButtonElement;
+      poseDialog: HTMLDialogElement;
+      poseDialogForm: HTMLFormElement;
+      poseDialogTitle: HTMLElement;
+      poseDialogKey: HTMLSelectElement;
+      poseDialogImageSelect: HTMLSelectElement;
+      poseDialogImage: HTMLInputElement;
+      poseDialogError: HTMLElement;
+      poseDialogMode: "add" | "rename" = "add";
       imageOutput: HTMLInputElement;
       hitboxType: HTMLSelectElement;
       editHitboxBtn: HTMLButtonElement;
@@ -143,10 +170,33 @@ export class CharacterStudio {
 
             this.select = requireElement<HTMLSelectElement>("char-select");
             this.poseSelect = requireElement<HTMLSelectElement>("pose-select");
+            this.poseImageSelect =
+                  requireElement<HTMLSelectElement>("pose-image-select");
+            this.poseImageInput =
+                  requireElement<HTMLInputElement>("pose-image-path");
             this.defaultFacingSelect =
                   requireElement<HTMLSelectElement>("defaultFacing");
             this.resetPoseBtn =
                   requireElement<HTMLButtonElement>("reset-pose-btn");
+            this.addPoseBtn =
+                  requireElement<HTMLButtonElement>("add-pose-btn");
+            this.renamePoseBtn =
+                  requireElement<HTMLButtonElement>("rename-pose-btn");
+            this.removePoseBtn =
+                  requireElement<HTMLButtonElement>("remove-pose-btn");
+            this.poseDialog =
+                  requireElement<HTMLDialogElement>("pose-dialog");
+            this.poseDialogForm =
+                  requireElement<HTMLFormElement>("pose-dialog-form");
+            this.poseDialogTitle = requireElement("pose-dialog-title");
+            this.poseDialogKey =
+                  requireElement<HTMLSelectElement>("pose-dialog-key");
+            this.poseDialogImageSelect = requireElement<HTMLSelectElement>(
+                  "pose-dialog-image-select",
+            );
+            this.poseDialogImage =
+                  requireElement<HTMLInputElement>("pose-dialog-image");
+            this.poseDialogError = requireElement("pose-dialog-error");
             this.imageOutput = requireElement<HTMLInputElement>("image-output");
             this.hitboxType = requireElement<HTMLSelectElement>("hitboxType");
             this.editHitboxBtn =
@@ -246,6 +296,46 @@ export class CharacterStudio {
             this.poseSelect.addEventListener("change", () => {
                   this.activePoseKey = this.poseSelect.value;
                   this._onPoseChanged();
+            });
+
+            this.poseImageInput.addEventListener("change", () =>
+                  this._updateCurrentPoseImage(),
+            );
+            this.poseImageSelect.addEventListener("change", () => {
+                  if (!this.poseImageSelect.value) return;
+                  this.poseImageInput.value = this.poseImageSelect.value;
+                  this._updateCurrentPoseImage();
+            });
+            this.poseImageInput.addEventListener("keydown", (event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  this._updateCurrentPoseImage();
+                  this.poseImageInput.select();
+            });
+            this.addPoseBtn.addEventListener("click", () =>
+                  this._openPoseDialog("add"),
+            );
+            this.renamePoseBtn.addEventListener("click", () =>
+                  this._openPoseDialog("rename"),
+            );
+            this.removePoseBtn.addEventListener("click", () =>
+                  this._removeCurrentPose(),
+            );
+            this.poseDialogForm.addEventListener("submit", (event) => {
+                  event.preventDefault();
+                  this._commitPoseDialog();
+            });
+            this.poseDialogImageSelect.addEventListener("change", () => {
+                  if (this.poseDialogImageSelect.value) {
+                        this.poseDialogImage.value =
+                              this.poseDialogImageSelect.value;
+                  }
+            });
+            ["pose-dialog-close", "pose-dialog-cancel"].forEach((id) => {
+                  requireElement<HTMLButtonElement>(id).addEventListener(
+                        "click",
+                        () => this.poseDialog.close(),
+                  );
             });
 
             this.resetPoseBtn.addEventListener("click", () =>
@@ -521,6 +611,78 @@ export class CharacterStudio {
             return poseVal.image ?? config.image ?? "";
       }
 
+      /** Update an image path without disturbing that sprite's visual edits. */
+      _setPoseImagePath(
+            config: StudioConfig,
+            poseKey: string,
+            imagePath: string,
+      ): void {
+            if (poseKey === "base") {
+                  config.image = imagePath;
+                  return;
+            }
+            config.poses ??= {};
+            const existing = config.poses[poseKey];
+            config.poses[poseKey] =
+                  existing && typeof existing === "object"
+                        ? { ...existing, image: imagePath }
+                        : {
+                                image: imagePath,
+                                imageScale: config.imageScale,
+                                imageOffset: { ...config.imageOffset },
+                                imageCrop: config.imageCrop
+                                      ? { ...config.imageCrop }
+                                      : null,
+                          };
+      }
+
+      _availableSpritePaths(config: StudioConfig): string[] {
+            const configuredPaths = [
+                  config.image,
+                  ...Object.values(config.poses ?? {}).map((pose) =>
+                        typeof pose === "string" ? pose : pose.image,
+                  ),
+            ].filter((path): path is string => Boolean(path));
+            const directories = new Set(
+                  configuredPaths
+                        .map((path) => path.slice(0, path.lastIndexOf("/") + 1))
+                        .filter((path) => path.includes("/sprites/")),
+            );
+            if (directories.size === 0) {
+                  directories.add(`assets/fighters/${config.id}/sprites/`);
+            }
+            return spriteCatalog.filter((path) =>
+                  [...directories].some((directory) =>
+                        path.startsWith(directory),
+                  ),
+            );
+      }
+
+      _populateSpriteImageSelect(
+            select: HTMLSelectElement,
+            selectedPath: string,
+      ): void {
+            select.replaceChildren();
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = "Choose an image…";
+            select.appendChild(placeholder);
+            const availablePaths = this._availableSpritePaths(
+                  this._currentConfig(),
+            );
+            availablePaths.forEach((path) => {
+                  const option = document.createElement("option");
+                  option.value = path;
+                  option.textContent = path.split("/").pop() ?? path;
+                  option.title = path;
+                  select.appendChild(option);
+            });
+            select.disabled = availablePaths.length === 0;
+            select.value = availablePaths.includes(selectedPath)
+                  ? selectedPath
+                  : "";
+      }
+
       /**
        * Return the visual overrides (imageScale, imageOffset, imageCrop) for a pose,
        * falling back to top-level config values when the pose doesn't override them.
@@ -540,7 +702,10 @@ export class CharacterStudio {
                   imageScale: poseObj.imageScale ?? config.imageScale ?? 1,
                   imageOffset: poseObj.imageOffset ??
                         config.imageOffset ?? { x: 0, y: 0 },
-                  imageCrop: poseObj.imageCrop ?? config.imageCrop ?? null,
+                  imageCrop:
+                        "imageCrop" in poseObj
+                              ? poseObj.imageCrop ?? null
+                              : config.imageCrop ?? null,
             };
       }
 
@@ -599,10 +764,17 @@ export class CharacterStudio {
                   opt.textContent = label;
                   this.poseSelect.appendChild(opt);
             };
-            addOpt("base", "Base");
+            addOpt("base", poseLabel("base"));
             const poses = config.poses ?? {};
+            for (const key of SUPPORTED_POSE_KEYS) {
+                  if (key in poses) addOpt(key, poseLabel(key));
+            }
+            // Preserve any older custom entries so they remain editable instead
+            // of silently disappearing from the Studio.
             for (const key of Object.keys(poses)) {
-                  addOpt(key, key);
+                  if (!SUPPORTED_POSE_KEYS.includes(key as typeof SUPPORTED_POSE_KEYS[number])) {
+                        addOpt(key, key);
+                  }
             }
             // Keep or reset activePoseKey to something valid
             const validKeys = ["base", ...Object.keys(poses)];
@@ -617,12 +789,27 @@ export class CharacterStudio {
             if (!this.resetPoseBtn) return;
             const isBase = this.activePoseKey === "base";
             this.resetPoseBtn.disabled = isBase;
+            this.renamePoseBtn.disabled = isBase;
+            this.removePoseBtn.disabled = isBase;
+            this.addPoseBtn.disabled = SUPPORTED_POSE_KEYS.every(
+                  (key) => key in (this._currentConfig().poses ?? {}),
+            );
+            this.poseImageInput.value = this._getPoseImagePath(
+                  this._currentConfig(),
+                  this.activePoseKey,
+            );
+            this._populateSpriteImageSelect(
+                  this.poseImageSelect,
+                  this.poseImageInput.value,
+            );
       }
 
       /** Called when the pose selector changes. Load new image and sync controls. */
       _onPoseChanged() {
             this._updatePoseActionButtons();
             const config = this._currentConfig();
+            this._syncImageControls();
+            this._refreshLabels();
             const imagePath = this._getPoseImagePath(
                   config,
                   this.activePoseKey,
@@ -630,18 +817,149 @@ export class CharacterStudio {
             _loadBodyImage(this, imagePath, this.activePoseKey);
       }
 
-      /** Remove pose-specific visual overrides so it falls back to base. */
+      _updateCurrentPoseImage(): void {
+            const imagePath = this.poseImageInput.value.trim();
+            const config = this._currentConfig();
+            const previous = this._getPoseImagePath(config, this.activePoseKey);
+            if (!imagePath) {
+                  this.poseImageInput.value = previous;
+                  return;
+            }
+            if (imagePath === previous) return;
+            this._setPoseImagePath(config, this.activePoseKey, imagePath);
+            this._populateSpriteImageSelect(this.poseImageSelect, imagePath);
+            _loadBodyImage(this, imagePath, this.activePoseKey);
+            this._saveState();
+      }
+
+      _openPoseDialog(mode: "add" | "rename"): void {
+            if (mode === "rename" && this.activePoseKey === "base") return;
+            const poses = this._currentConfig().poses ?? {};
+            const availableKeys = SUPPORTED_POSE_KEYS.filter(
+                  (key) =>
+                        !(key in poses) ||
+                        (mode === "rename" && key === this.activePoseKey),
+            );
+            if (availableKeys.length === 0) return;
+
+            this.poseDialogMode = mode;
+            this.poseDialogTitle.textContent =
+                  mode === "add" ? "Add Sprite" : "Rename Sprite";
+            this.poseDialogKey.replaceChildren();
+            availableKeys.forEach((key) => {
+                  const option = document.createElement("option");
+                  option.value = key;
+                  option.textContent = poseLabel(key);
+                  this.poseDialogKey.appendChild(option);
+            });
+            const selectedImagePath =
+                  mode === "rename"
+                        ? this._getPoseImagePath(
+                                this._currentConfig(),
+                                this.activePoseKey,
+                          )
+                        : "";
+            this._populateSpriteImageSelect(
+                  this.poseDialogImageSelect,
+                  selectedImagePath,
+            );
+            if (mode === "rename") {
+                  this.poseDialogKey.value = this.activePoseKey;
+                  this.poseDialogImage.value = selectedImagePath;
+            } else {
+                  this.poseDialogImage.value = "";
+            }
+            this.poseDialogError.textContent = "";
+            this.poseDialog.showModal();
+            queueMicrotask(() =>
+                  mode === "add"
+                        ? this.poseDialogImage.focus()
+                        : this.poseDialogKey.focus(),
+            );
+      }
+
+      _commitPoseDialog(): void {
+            const nextKey = this.poseDialogKey.value;
+            const imagePath = this.poseDialogImage.value.trim();
+            if (!SUPPORTED_POSE_KEYS.includes(nextKey as typeof SUPPORTED_POSE_KEYS[number])) {
+                  this.poseDialogError.textContent = "Choose a supported game pose.";
+                  return;
+            }
+            if (!imagePath) {
+                  this.poseDialogError.textContent = "Enter the sprite image path.";
+                  this.poseDialogImage.focus();
+                  return;
+            }
+
+            const config = this._currentConfig();
+            config.poses ??= {};
+            const oldKey = this.activePoseKey;
+            if (
+                  nextKey in config.poses &&
+                  !(this.poseDialogMode === "rename" && nextKey === oldKey)
+            ) {
+                  this.poseDialogError.textContent = `${poseLabel(nextKey)} already has a sprite.`;
+                  return;
+            }
+
+            if (this.poseDialogMode === "add") {
+                  config.poses[nextKey] = {
+                        image: imagePath,
+                        imageScale: config.imageScale,
+                        imageOffset: { ...config.imageOffset },
+                        imageCrop: null,
+                  };
+            } else {
+                  const existing = config.poses[oldKey];
+                  if (!existing) return;
+                  delete config.poses[oldKey];
+                  config.poses[nextKey] =
+                        typeof existing === "string"
+                              ? imagePath
+                              : { ...existing, image: imagePath };
+            }
+
+            this.activePoseKey = nextKey;
+            this._populatePoseSelect(config);
+            this._onPoseChanged();
+            this._saveState();
+            this.poseDialog.close();
+      }
+
+      _removeCurrentPose(): void {
+            if (this.activePoseKey === "base") return;
+            const label = poseLabel(this.activePoseKey);
+            if (!window.confirm(`Remove the ${label} sprite? You can undo this change.`)) {
+                  return;
+            }
+            const config = this._currentConfig();
+            if (!config.poses?.[this.activePoseKey]) return;
+            delete config.poses[this.activePoseKey];
+            if (Object.keys(config.poses).length === 0) config.poses = null;
+            this.activePoseKey = "base";
+            this._populatePoseSelect(config);
+            this._onPoseChanged();
+            this._saveState();
+      }
+
+      /** Reset this sprite to a snapshot of the base visual without coupling it. */
       _resetCurrentPose() {
             if (this.activePoseKey === "base") return;
             const config = this._currentConfig();
             const poseVal = config.poses?.[this.activePoseKey];
-            if (poseVal && typeof poseVal === "object") {
-                  // Keep only the image path, strip visual overrides
-                  const imagePath =
-                        poseVal.image ??
-                        this._getPoseImagePath(config, this.activePoseKey);
-                  (config.poses ??= {})[this.activePoseKey] = imagePath;
-            }
+            if (!poseVal) return;
+            const imagePath = this._getPoseImagePath(
+                  config,
+                  this.activePoseKey,
+            );
+            (config.poses ??= {})[this.activePoseKey] = {
+                  image: imagePath,
+                  imageScale: config.imageScale,
+                  imageOffset: { ...config.imageOffset },
+                  imageCrop: config.imageCrop
+                        ? { ...config.imageCrop }
+                        : null,
+            };
             this._syncImageControls();
             this._refreshLabels();
             this._saveState();
@@ -962,6 +1280,7 @@ export class CharacterStudio {
             config.defaultFacing = state.defaultFacing ?? "right";
             if (this.defaultFacingSelect)
                   this.defaultFacingSelect.value = config.defaultFacing;
+            config.image = state.image;
             config.imageScale = state.imageScale;
             config.imageOffset = { ...state.imageOffset };
             config.imageCrop = state.imageCrop ? { ...state.imageCrop } : null;

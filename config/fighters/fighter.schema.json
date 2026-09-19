@@ -63,20 +63,21 @@
             "knockback": {
                   "oneOf": [
                         { "type": "boolean" },
-                        {
-                              "type": "object",
-                              "required": ["speedMultiplier", "durationMs"],
-                              "properties": {
-                                    "speedMultiplier": {
-                                          "$ref": "#/$defs/positiveNumber"
-                                    },
-                                    "durationMs": {
-                                          "$ref": "#/$defs/positiveNumber"
-                                    }
-                              },
-                              "additionalProperties": false
-                        }
+                        { "$ref": "#/$defs/knockbackConfig" }
                   ]
+            },
+            "knockbackConfig": {
+                  "type": "object",
+                  "required": ["speedMultiplier", "durationMs"],
+                  "properties": {
+                        "speedMultiplier": {
+                              "$ref": "#/$defs/positiveNumber"
+                        },
+                        "durationMs": {
+                              "$ref": "#/$defs/positiveNumber"
+                        }
+                  },
+                  "additionalProperties": false
             },
             "projectile": {
                   "type": "object",
@@ -148,6 +149,9 @@
                                     },
                                     "knockback": {
                                           "$ref": "#/$defs/knockback"
+                                    },
+                                    "dash": {
+                                          "$ref": "#/$defs/knockbackConfig"
                                     },
                                     "animation": { "$ref": "#/$defs/animation" }
                               },

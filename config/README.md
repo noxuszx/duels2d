@@ -28,8 +28,8 @@ Every fighter file references `fighter.schema.json`, which documents the support
 ```json
 {
   "$schema": "./fighter.schema.json",
-  "id": "exampleguy",
-  "name": "Example Guy",
+  "id": "exampleman",
+  "name": "Example Man",
   "color": "#ffcc00",
   "combat": {
     "maxHealth": 1200,
@@ -44,7 +44,7 @@ Every fighter file references `fighter.schema.json`, which documents the support
     "hitboxOffset": { "x": 0, "y": -15 }
   },
   "presentation": {
-    "image": "assets/fighters/exampleguy/sprites/exampleguy.png",
+    "image": "assets/fighters/exampleman/sprites/exampleman.png",
     "imageScale": 2,
     "imageOffset": { "x": 0, "y": -10 }
   },

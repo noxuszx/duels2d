@@ -1,8 +1,8 @@
 {
       "fighters": [
-            "womanguy.json",
-            "chefguy.json",
-            "depressedguy.json",
-            "happyguy.json"
+            "womanman.json",
+            "chefman.json",
+            "depressedman.json",
+            "happyman.json"
       ]
 }

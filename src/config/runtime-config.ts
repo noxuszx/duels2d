@@ -58,9 +58,7 @@ function validateGameConfig(value: unknown): GameConfig {
             Number.EPSILON,
       );
       if ((rendering.scale as number) > 4)
-            throw new Error(
-                  "game settings.rendering.scale must not exceed 4.",
-            );
+            throw new Error("game settings.rendering.scale must not exceed 4.");
       const physics = requireRecord(game.physics, "game settings.physics");
       requireNumber(
             physics.globalSpeedMultiplier,

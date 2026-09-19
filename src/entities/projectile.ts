@@ -47,7 +47,12 @@ export class Projectile {
         Matter.Body.setVelocity(this.body, { x: vx, y: vy });
         this.rotationSpeed = config.rotationSpeed || 0;
         this.angle = 0;
-        if (config.image) this.loadImage(config.image);
+        if (config.image) {
+            const images = Array.isArray(config.image)
+                ? config.image
+                : [config.image];
+            this.loadImage(images[Math.floor(Math.random() * images.length)]);
+        }
     }
 
     private loadImage(src: string): void {

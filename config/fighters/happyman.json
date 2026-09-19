@@ -1,7 +1,7 @@
 {
       "$schema": "./fighter.schema.json",
-      "id": "happyguy",
-      "name": "Happy Guy",
+      "id": "happyman",
+      "name": "Happy Man",
       "color": "#ffd84d",
       "combat": {
             "faceTarget": { "mode": "range" },

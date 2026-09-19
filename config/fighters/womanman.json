@@ -1,7 +1,7 @@
 {
       "$schema": "./fighter.schema.json",
-      "id": "womanguy",
-      "name": "Woman Guy",
+      "id": "womanman",
+      "name": "Woman Man",
       "color": "#00d4ff",
       "presentation": {
             "image": "assets/fighters/womanguy/sprites/womanguy.out.png",

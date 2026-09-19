@@ -1,7 +1,7 @@
 {
       "$schema": "./fighter.schema.json",
-      "id": "chefguy",
-      "name": "Chef Guy",
+      "id": "chefman",
+      "name": "Chef Man",
       "color": "#ff4d6d",
       "combat": {
             "faceTarget": { "mode": "always" },
@@ -19,8 +19,12 @@
                         "damage": 60,
                         "knockback": false,
                         "lifetimeMs": 3000,
-                        "rotationSpeed": 0.08,
-                        "image": "assets/fighters/chefguy/weapons/knife-weapon.png"
+                        "rotationSpeed": 0.1,
+                        "image": [
+                              "assets/fighters/chefguy/weapons/knife-weapon.png",
+                              "assets/fighters/chefguy/weapons/pan-weapon.png",
+                              "assets/fighters/chefguy/weapons/rolling-pin-weapon.png"
+                        ]
                   }
             }
       },

@@ -94,7 +94,16 @@
                         "knockback": { "$ref": "#/$defs/knockback" },
                         "lifetimeMs": { "$ref": "#/$defs/positiveNumber" },
                         "rotationSpeed": { "type": "number" },
-                        "image": { "type": "string", "minLength": 1 }
+                        "image": {
+                              "oneOf": [
+                                    { "type": "string", "minLength": 1 },
+                                    {
+                                          "type": "array",
+                                          "items": { "type": "string", "minLength": 1 },
+                                          "minItems": 1
+                                    }
+                              ]
+                        }
                   },
                   "additionalProperties": false
             },

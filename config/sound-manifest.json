@@ -32,36 +32,36 @@
             ]
       },
       "characters": {
-            "depressedguy": {
+            "depressedman": {
                   "ambient": [
                         {
-                              "id": "depressedguy-sigh-01",
+                              "id": "depressedman-sigh-01",
                               "path": "assets/sfx/characters/depressedguy/ambient/depressedguy-sigh-01.mp3"
                         }
                   ]
             },
-            "happyguy": {
+            "happyman": {
                   "ambient": [
                         {
-                              "id": "happyguy-cheer-01",
+                              "id": "happyman-cheer-01",
                               "path": "assets/sfx/characters/happyguy/ambient/happyguy-cheer-01.mp3"
                         },
                         {
-                              "id": "happyguy-greeting-01",
+                              "id": "happyman-greeting-01",
                               "path": "assets/sfx/characters/happyguy/ambient/happyguy-greeting-01.mp3"
                         },
                         {
-                              "id": "happyguy-hello-01",
+                              "id": "happyman-hello-01",
                               "path": "assets/sfx/characters/happyguy/ambient/happyguy-hello-01.mp3"
                         },
                         {
-                              "id": "happyguy-laugh-short-01",
+                              "id": "happyman-laugh-short-01",
                               "path": "assets/sfx/characters/happyguy/ambient/happyguy-laugh-short-01.mp3"
                         }
                   ],
                   "weaponSlap": [
                         {
-                              "id": "happyguy-slap-impact-01",
+                              "id": "happyman-slap-impact-01",
                               "path": "assets/sfx/characters/happyguy/weapon-slap/happyguy-slap-impact-01.mp3"
                         }
                   ]

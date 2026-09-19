@@ -18,7 +18,7 @@ export interface ProjectileConfig {
   knockback?: Knockback;
   lifetimeMs: number;
   rotationSpeed?: number;
-  image: string;
+  image: string | string[];
 }
 
 interface BaseWeaponConfig {

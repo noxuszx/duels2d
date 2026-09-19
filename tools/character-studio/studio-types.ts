@@ -51,6 +51,7 @@ export type StudioState = Pick<
       | "healthBarOffset"
       | "weaponScale"
       | "weaponOffset"
+      | "weapon"
       | "poses"
 > & { activePoseKey: string };
 export type JSONValue =

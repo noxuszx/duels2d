@@ -14,6 +14,7 @@ export class Projectile {
     readonly lifetimeMs: number;
     image: HTMLImageElement | null = null;
     readonly radius: number;
+    readonly imageScale: number;
     dead = false;
     readonly body: Matter.Body;
     readonly rotationSpeed: number;
@@ -32,6 +33,7 @@ export class Projectile {
         this.createdAt = performance.now();
         this.lifetimeMs = config.lifetimeMs;
         this.radius = config.radius;
+        this.imageScale = 1;
         const hasKnockback = config.knockback !== false;
         this.body = Matter.Bodies.circle(x, y, config.radius, {
             isSensor: !hasKnockback,
@@ -51,7 +53,9 @@ export class Projectile {
             const images = Array.isArray(config.image)
                 ? config.image
                 : [config.image];
-            this.loadImage(images[Math.floor(Math.random() * images.length)]);
+            const imagePath = images[Math.floor(Math.random() * images.length)];
+            this.imageScale = config.imageScales?.[imagePath] ?? 1;
+            this.loadImage(imagePath);
         }
     }
 

@@ -276,6 +276,61 @@ export function drawStudio(studio: CharacterStudio): void {
             drawHitboxEditOverlay(studio, config, centerX, centerY);
       }
 
+      const projectileWeapon =
+            config.weapon?.type === "projectile" ? config.weapon : null;
+      if (
+            projectileWeapon &&
+            studio.images.projectile.complete &&
+            studio.images.projectile.naturalWidth > 0
+      ) {
+            const imagePath = studio.projectileImageSelect.value;
+            const imageScale =
+                  projectileWeapon.projectile.imageScales?.[imagePath] ?? 1;
+            const previewDiameter = projectileWeapon.projectile.radius * 2 * imageScale;
+            const maxSide = Math.max(
+                  studio.images.projectile.naturalWidth,
+                  studio.images.projectile.naturalHeight,
+            );
+            const drawScale = previewDiameter / maxSide;
+            const width = studio.images.projectile.naturalWidth * drawScale;
+            const height = studio.images.projectile.naturalHeight * drawScale;
+            const previewX = centerX + Math.max(radius * 3.4, 118);
+            const previewY = centerY;
+
+            ctx.save();
+            ctx.translate(previewX, previewY);
+            ctx.rotate(studio.projectilePreviewAngle);
+            ctx.drawImage(
+                  studio.images.projectile,
+                  -width / 2,
+                  -height / 2,
+                  width,
+                  height,
+            );
+            ctx.restore();
+
+            ctx.save();
+            ctx.strokeStyle = "rgba(38, 128, 235, 0.65)";
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.arc(
+                  previewX,
+                  previewY,
+                  projectileWeapon.projectile.radius,
+                  0,
+                  Math.PI * 2,
+            );
+            ctx.stroke();
+            ctx.fillStyle = "rgba(20, 20, 20, 0.78)";
+            ctx.fillRect(previewX - 42, previewY + Math.max(height / 2, 20) + 8, 84, 18);
+            ctx.fillStyle = "#b9cde6";
+            ctx.font = "9px Inter, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("THROWN WEAPON", previewX, previewY + Math.max(height / 2, 20) + 17);
+            ctx.restore();
+      }
+
       if (
             studio.images.weaponIdle.complete &&
             studio.images.weaponIdle.naturalWidth > 0

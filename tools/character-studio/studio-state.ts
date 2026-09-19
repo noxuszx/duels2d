@@ -25,6 +25,7 @@ export function snapshotStudioState(
             healthBarOffset: structuredClone(config.healthBarOffset),
             weaponScale: config.weaponScale,
             weaponOffset: structuredClone(config.weaponOffset),
+            weapon: config.weapon ? structuredClone(config.weapon) : null,
             poses: posesSnapshot,
             activePoseKey,
       });

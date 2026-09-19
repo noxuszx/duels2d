@@ -94,6 +94,12 @@
                         "knockback": { "$ref": "#/$defs/knockback" },
                         "lifetimeMs": { "$ref": "#/$defs/positiveNumber" },
                         "rotationSpeed": { "type": "number" },
+                        "imageScales": {
+                              "type": "object",
+                              "additionalProperties": {
+                                    "$ref": "#/$defs/positiveNumber"
+                              }
+                        },
                         "image": {
                               "oneOf": [
                                     { "type": "string", "minLength": 1 },

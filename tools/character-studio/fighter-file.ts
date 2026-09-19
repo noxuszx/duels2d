@@ -107,6 +107,15 @@ export function syncFighterDefinition(
             }
       }
 
+      definition.combat = definition.combat || {};
+      if (!isEqual(config.weapon, defaults.combat.weapon)) {
+            definition.combat.weapon = config.weapon
+                  ? structuredClone(config.weapon)
+                  : null;
+      } else {
+            delete definition.combat.weapon;
+      }
+
       // Presentation: strip fields equal to defaults
       definition.presentation = definition.presentation || {};
 

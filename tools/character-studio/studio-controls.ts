@@ -1,25 +1,36 @@
 import type { CharacterStudio } from "./studio-app";
 
 export function installStudioControls(studio: CharacterStudio) {
+      const activatePanel = (tabName: string) => {
+            document.querySelectorAll<HTMLButtonElement>(".tab-btn").forEach((tab) => {
+                  const active = tab.dataset.tab === tabName;
+                  tab.classList.toggle("active", active);
+                  tab.setAttribute("aria-selected", String(active));
+            });
+            document.querySelectorAll<HTMLElement>(".tab-content").forEach((panel) =>
+                  panel.classList.toggle("active", panel.id === `tab-${tabName}`),
+            );
+            document.querySelectorAll<HTMLButtonElement>(".tool-btn").forEach((tool) =>
+                  tool.classList.toggle("active", tool.dataset.toolTab === tabName),
+            );
+            const context = document.getElementById("status-context");
+            if (context) context.textContent = `${tabName === "healthbar" ? "Health bar" : tabName} properties`;
+      };
+
       document
             .querySelectorAll<HTMLButtonElement>(".tab-btn")
             .forEach((button) => {
-                  button.addEventListener("click", () => {
-                        document.querySelectorAll(".tab-btn").forEach((tab) => {
-                              tab.classList.remove("active");
-                              tab.setAttribute("aria-selected", "false");
-                        });
-                        document
-                              .querySelectorAll(".tab-content")
-                              .forEach((panel) =>
-                                    panel.classList.remove("active"),
-                              );
-                        button.classList.add("active");
-                        button.setAttribute("aria-selected", "true");
-                        document
-                              .getElementById(`tab-${button.dataset.tab}`)
-                              ?.classList.add("active");
-                  });
+                  button.addEventListener("click", () =>
+                        activatePanel(button.dataset.tab ?? "hitbox"),
+                  );
+            });
+
+      document
+            .querySelectorAll<HTMLButtonElement>(".tool-btn")
+            .forEach((button) => {
+                  button.addEventListener("click", () =>
+                        activatePanel(button.dataset.toolTab ?? "hitbox"),
+                  );
             });
 
       const seedNumberInputs = () => {

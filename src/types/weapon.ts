@@ -19,6 +19,8 @@ export interface ProjectileConfig {
   lifetimeMs: number;
   rotationSpeed?: number;
   image: string | string[];
+  /** Optional visual scale per image path. Does not change the collision radius. */
+  imageScales?: Record<string, number>;
 }
 
 interface BaseWeaponConfig {

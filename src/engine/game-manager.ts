@@ -534,7 +534,20 @@ export class GameManager {
                   }
 
                   if (projectile.image) {
-                        ctx.drawImage(projectile.image, -r, -r, r * 2, r * 2);
+                        const maxSide = Math.max(
+                              projectile.image.naturalWidth,
+                              projectile.image.naturalHeight,
+                        );
+                        const scale = (r * 2 * projectile.imageScale) / maxSide;
+                        const width = projectile.image.naturalWidth * scale;
+                        const height = projectile.image.naturalHeight * scale;
+                        ctx.drawImage(
+                              projectile.image,
+                              -width / 2,
+                              -height / 2,
+                              width,
+                              height,
+                        );
                   } else {
                         ctx.fillStyle = "#9ad6ff";
                         ctx.beginPath();

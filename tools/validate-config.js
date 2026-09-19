@@ -400,10 +400,39 @@ roster.forEach((fighter) => {
                               "projectile.lifetimeMs must be greater than 0",
                         );
                   }
-                  checkAsset(
-                        `${location}.combat.weapon.projectile.image`,
+                  const projectileImages = Array.isArray(
                         weapon.projectile.image,
+                  )
+                        ? weapon.projectile.image
+                        : [weapon.projectile.image];
+                  projectileImages.forEach((imagePath, imageIndex) =>
+                        checkAsset(
+                              `${location}.combat.weapon.projectile.image${
+                                    projectileImages.length > 1
+                                          ? `[${imageIndex}]`
+                                          : ""
+                              }`,
+                              imagePath,
+                        ),
                   );
+                  if (weapon.projectile.imageScales) {
+                        Object.entries(weapon.projectile.imageScales).forEach(
+                              ([imagePath, scale]) => {
+                                    if (!projectileImages.includes(imagePath)) {
+                                          fail(
+                                                `${location}.combat.weapon.projectile.imageScales`,
+                                                `references an unconfigured image: ${imagePath}`,
+                                          );
+                                    }
+                                    if (!isPositive(scale)) {
+                                          fail(
+                                                `${location}.combat.weapon.projectile.imageScales.${imagePath}`,
+                                                "must be greater than 0",
+                                          );
+                                    }
+                              },
+                        );
+                  }
             }
       } else if (weapon.type === "proximity-melee") {
             if (

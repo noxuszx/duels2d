@@ -290,14 +290,6 @@ html, body {
 }
 .tab-content::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
-/* Tab description */
-.tab-description {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  margin-bottom: 6px;
-  line-height: 1.5;
-}
-
 /* ── Section divider ────────────────────────────────────────── */
 .section-divider {
   display: flex;
@@ -518,20 +510,6 @@ html, body {
   border-color: var(--border);
 }
 
-/* ── Character select group (in header) ─────────────────────── */
-#char-select-group {
-  margin-bottom: 0;
-}
-#char-select-group label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text-muted);
-  margin-bottom: 5px;
-  display: block;
-}
-
 /* ══════════════════════════════════════════════════════════════
    CREATIVE WORKSPACE SHELL
 ══════════════════════════════════════════════════════════════ */
@@ -579,11 +557,6 @@ button, input, select { font: inherit; }
   align-items: center;
 }
 .app-identity { gap: 9px; min-width: 0; }
-.app-mark {
-  display: grid; place-items: center; width: 27px; height: 27px;
-  color: #a9d2ff; background: #062f5f; border: 1px solid #2680eb;
-  font-size: 10px; font-weight: 700; letter-spacing: -.03em;
-}
 .app-title { display: flex; flex-direction: column; line-height: 1.1; }
 .app-title strong { color: var(--text-primary); font-size: 12px; font-weight: 600; }
 .app-title span { color: var(--text-muted); font-size: 9px; margin-top: 2px; text-transform: uppercase; letter-spacing: .08em; }
@@ -594,12 +567,14 @@ button, input, select { font: inherit; }
 #back-link:hover { color: #fff; background: var(--bg-hover); border-color: var(--border-subtle); }
 
 .document-controls { justify-content: center; gap: 8px; }
-.top-select { display: grid; grid-template-columns: auto 150px; align-items: center; gap: 7px; margin: 0; }
-.top-select label, #char-select-group label {
-  display: block; margin: 0; font-size: 10px; font-weight: 500;
-  color: var(--text-muted); letter-spacing: .04em; text-transform: uppercase;
+.top-select {
+  width: 224px;
+  display: grid;
+  grid-template-columns: 64px 150px;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
 }
-.top-select .control-group select, .top-select select { height: 27px; padding: 3px 27px 3px 8px; font-size: 11px; }
 #preview-actions { justify-content: flex-end; gap: 8px; margin: 0; }
 .history-actions { border: 1px solid #101010; }
 .history-actions .icon-btn { border: 0; }
@@ -659,10 +634,10 @@ button, input, select { font: inherit; }
 .tab-content::-webkit-scrollbar { width: 8px; }
 .tab-content::-webkit-scrollbar-track { background: #242424; }
 .tab-content::-webkit-scrollbar-thumb { background: #4c4c4c; border: 2px solid #242424; }
-.tab-description { margin: 0 0 13px; padding: 8px 9px; color: #9a9a9a; background: #242424; border-left: 2px solid #555; font-size: 10px; line-height: 1.45; }
 .section-divider { justify-content: flex-start; height: 28px; margin: 8px -12px 10px; padding: 0 12px; color: #d0d0d0; background: #242424; border-top: 1px solid #171717; border-bottom: 1px solid #171717; font-size: 9px; letter-spacing: .065em; }
 .section-divider::before, .section-divider::after { display: none; }
 .control-group { margin-bottom: 11px; }
+.document-controls .top-select { margin-bottom: 0; }
 .control-group label { margin-bottom: 5px; color: #bebebe; font-size: 10px; font-weight: 400; }
 .val-display { padding: 0; min-width: 0; color: #8d8d8d; background: transparent; font-size: 9px; }
 .control-hint { margin-top: 5px; color: #747474; font-size: 9px; line-height: 1.35; }
@@ -678,6 +653,25 @@ button, input, select { font: inherit; }
   height: 26px; padding: 4px 7px; color: #e0e0e0; background-color: #1d1d1d;
   border: 1px solid #0d0d0d; border-radius: 1px; font-size: 10px;
   box-shadow: 0 1px rgba(255,255,255,.04);
+}
+.document-controls .top-select label {
+  height: 27px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.document-controls .top-select select {
+  height: 27px;
+  padding: 3px 27px 3px 8px;
+  font-size: 11px;
 }
 .num-input { width: 55px; }
 .num-input:focus, .control-group input[type="text"]:focus, .control-group select:focus { background-color: #181818; border-color: var(--accent); box-shadow: 0 0 0 1px rgba(38,128,235,.25); }

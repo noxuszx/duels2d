@@ -409,7 +409,8 @@ export class CharacterStudio {
                   const weapon = this._currentConfig().weapon;
                   if (weapon?.type === "projectile") {
                         this.projectilePreviewAngle +=
-                              (weapon.projectile.rotationSpeed ?? 0) * elapsedFrames;
+                              (weapon.projectile.rotationSpeed ?? 0) *
+                              elapsedFrames;
                         this._draw();
                   }
                   requestAnimationFrame(animateProjectile);
@@ -442,10 +443,13 @@ export class CharacterStudio {
                   option.title = path;
                   this.projectileImageSelect.appendChild(option);
             });
-            if (images.includes(previous)) this.projectileImageSelect.value = previous;
+            if (images.includes(previous))
+                  this.projectileImageSelect.value = previous;
             const hasProjectile = images.length > 0;
-            requireElement<HTMLElement>("projectile-controls").hidden = !hasProjectile;
-            requireElement<HTMLElement>("no-projectile-message").hidden = hasProjectile;
+            requireElement<HTMLElement>("projectile-controls").hidden =
+                  !hasProjectile;
+            requireElement<HTMLElement>("no-projectile-message").hidden =
+                  hasProjectile;
             this._loadProjectilePreview();
             this._syncProjectileControls();
       }
@@ -470,10 +474,14 @@ export class CharacterStudio {
             this.projectileRotationSpeed.value = String(
                   weapon.projectile.rotationSpeed ?? 0,
             );
-            requireElement<HTMLElement>("val-projectileImageScale").textContent =
-                  Number(this.projectileImageScale.value).toFixed(2);
-            requireElement<HTMLElement>("val-projectileRotationSpeed").textContent =
-                  Number(this.projectileRotationSpeed.value).toFixed(2);
+            requireElement<HTMLElement>(
+                  "val-projectileImageScale",
+            ).textContent = Number(this.projectileImageScale.value).toFixed(2);
+            requireElement<HTMLElement>(
+                  "val-projectileRotationSpeed",
+            ).textContent = Number(this.projectileRotationSpeed.value).toFixed(
+                  2,
+            );
       }
 
       _updateProjectileConfig(): void {

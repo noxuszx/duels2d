@@ -10,32 +10,40 @@
 <body>
   <!-- Command Line UI -->
   <div id="command-line" class="hidden">
-    <div class="command-prompt">&gt;</div>
-    <input type="text" id="command-input" autocomplete="off" spellcheck="false" />
+    <div class="command-input-shell">
+      <div class="command-prompt">&gt;</div>
+      <input type="text" id="command-input" autocomplete="off" spellcheck="false" aria-label="Command" placeholder="Type a command…" />
+    </div>
     <div id="command-status"></div>
+    <div class="command-hint"><kbd>Enter</kbd> Run <kbd>Esc</kbd> Close</div>
   </div>
 
   <aside id="character-select-panel" class="character-select-panel hidden" aria-label="Character selection">
     <div class="character-select-header">
-      <div>
-        <div class="character-select-kicker">Roster</div>
-        <h2>Character Select</h2>
+      <div class="character-select-identity">
+        <div>
+          <div class="character-select-kicker">Duels2D / Match Setup</div>
+          <h2>Character Select</h2>
+        </div>
       </div>
-      <button type="button" id="character-select-close" aria-label="Close character selection">x</button>
+      <button type="button" id="character-select-close" aria-label="Close character selection">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
     </div>
 
-    <input
-      type="search"
-      id="character-select-search"
-      class="character-select-search"
-      placeholder="Search characters"
-      autocomplete="off"
-      spellcheck="false"
-    />
+    <div class="character-select-toolbar">
+      <label class="character-search-shell" for="character-select-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+        <input type="search" id="character-select-search" class="character-select-search" placeholder="Search roster" autocomplete="off" spellcheck="false" />
+      </label>
+      <span id="character-result-count" class="character-result-count"></span>
+    </div>
 
-    <div id="character-select-grid" class="character-select-grid"></div>
+    <div class="character-select-workspace">
+      <div class="roster-panel-heading"><span>Roster</span><span>Click to assign</span></div>
+      <div id="character-select-grid" class="character-select-grid"></div>
+    </div>
 
-    <div class="character-select-help">Click cards to assign P1, then P2. Two selected characters restart the fight.</div>
   </aside>
 
 
@@ -57,6 +65,18 @@
   <!-- Game Footer (Like & Subscribe text on the bottom of the arena) -->
   <div id="game-footer">
     Like & Subscribe
+  </div>
+
+  <div id="transport-controls" role="group" aria-label="Playback controls">
+    <button type="button" id="transport-play" class="transport-button" title="Play" aria-label="Play">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z" /></svg>
+    </button>
+    <button type="button" id="transport-pause" class="transport-button" title="Pause" aria-label="Pause">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" /></svg>
+    </button>
+    <button type="button" id="transport-restart" class="transport-button" title="Restart" aria-label="Restart">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V4h4" /><path d="M5.5 6.5A8 8 0 1 1 4 14" /></svg>
+    </button>
   </div>
 
   <script type="module" src="/src/boot/start-game.ts"></script>

@@ -783,21 +783,33 @@ export class GameManager {
 
             if (changed && this.selectedCharacterIds.length === 2) {
                   this._restart();
+                  this.pause();
             }
       }
 
       start() {
             if (this.gameOver) return;
             this.paused = false;
+            this._dispatchPlaybackState();
       }
 
       pause() {
             if (this.gameOver) return;
             this.paused = true;
+            this._dispatchPlaybackState();
       }
 
       restart() {
             this._restart();
+            this._dispatchPlaybackState();
+      }
+
+      private _dispatchPlaybackState(): void {
+            window.dispatchEvent(
+                  new CustomEvent("duels2d:playback", {
+                        detail: { paused: this.paused, gameOver: this.gameOver },
+                  }),
+            );
       }
 
       openCharacterSelect() {

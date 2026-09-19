@@ -6,6 +6,9 @@ export class FighterSelectPanel {
       private readonly searchInput: HTMLInputElement | null;
       private readonly grid: HTMLElement | null;
       private readonly closeButton: HTMLButtonElement | null;
+      private readonly resultCount: HTMLElement | null;
+      private readonly playerOne: HTMLElement | null;
+      private readonly playerTwo: HTMLElement | null;
       private query: string;
 
       constructor(private readonly game: GameManager) {
@@ -17,6 +20,9 @@ export class FighterSelectPanel {
             this.closeButton = document.getElementById(
                   "character-select-close",
             ) as HTMLButtonElement | null;
+            this.resultCount = document.getElementById("character-result-count");
+            this.playerOne = document.getElementById("selected-player-one");
+            this.playerTwo = document.getElementById("selected-player-two");
             this.query = "";
 
             if (
@@ -70,6 +76,28 @@ export class FighterSelectPanel {
             configs.forEach((config) => {
                   this.grid!.appendChild(this._createCard(config, selectedIds));
             });
+            if (configs.length === 0) {
+                  const empty = document.createElement("div");
+                  empty.className = "character-select-empty";
+                  empty.textContent = "No fighters match your search.";
+                  this.grid.appendChild(empty);
+            }
+            if (this.resultCount) {
+                  this.resultCount.textContent = `${configs.length} fighter${
+                        configs.length === 1 ? "" : "s"
+                  }`;
+            }
+            const selectedConfigs = selectedIds.map((id) =>
+                  this.game.fighterRoster.find((fighter) => fighter.id === id),
+            );
+            if (this.playerOne) {
+                  this.playerOne.textContent =
+                        selectedConfigs[0]?.name ?? "Select fighter";
+            }
+            if (this.playerTwo) {
+                  this.playerTwo.textContent =
+                        selectedConfigs[1]?.name ?? "Select fighter";
+            }
       }
 
       _bindEvents() {
@@ -78,6 +106,15 @@ export class FighterSelectPanel {
             this.searchInput.addEventListener("input", () => {
                   this.query = this.searchInput!.value;
                   this.render();
+            });
+            window.addEventListener("keydown", (event) => {
+                  if (
+                        event.key === "Escape" &&
+                        !this.root?.classList.contains("hidden")
+                  ) {
+                        event.preventDefault();
+                        this.close();
+                  }
             });
       }
 
@@ -90,6 +127,7 @@ export class FighterSelectPanel {
             card.type = "button";
             card.className = "character-card";
             card.dataset.characterId = config.id;
+            card.setAttribute("aria-pressed", String(selectedIndex !== -1));
 
             if (selectedIndex !== -1) {
                   card.classList.add(
@@ -124,7 +162,11 @@ export class FighterSelectPanel {
             name.className = "character-card-name";
             name.textContent = config.name;
 
-            card.append(preview, name);
+            const id = document.createElement("div");
+            id.className = "character-card-id";
+            id.textContent = config.id;
+
+            card.append(preview, name, id);
             card.addEventListener("click", () =>
                   this._selectCharacter(config.id),
             );
@@ -146,5 +188,6 @@ export class FighterSelectPanel {
 
             this.game.setSelectedCharacterIds(selectedIds);
             this.render();
+            this.close();
       }
 }

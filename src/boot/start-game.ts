@@ -7,6 +7,7 @@ import {
 import { loadRuntimeConfig } from "../config/runtime-config";
 import { GameManager } from "../engine/game-manager";
 import { CommandLineController } from "../ui/command-console";
+import { TransportControls } from "../ui/transport-controls";
 
 
 
@@ -20,6 +21,7 @@ window.addEventListener("DOMContentLoaded", async () => {
             installFighterConfigGlobals(fighterConfig);
             const game = new GameManager(fighterConfig.roster, runtimeConfig);
             const commandLine = new CommandLineController(game);
+            new TransportControls(game);
             window.game = game;
             window.commandLine = commandLine;
 

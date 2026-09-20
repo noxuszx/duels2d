@@ -11,7 +11,7 @@
       "animation": { "windupFrames": 4, "activeFrames": 4, "recoveryFrames": 8 },
       "projectile": {
         "radius": 24,
-        "speed": 2.5,
+        "speed": 2,
         "damage": 60,
         "knockback": false,
         "lifetimeMs": 3000,

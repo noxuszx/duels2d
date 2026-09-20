@@ -55,10 +55,9 @@ export class Fighter {
       readonly hitbox: NormalizedHitbox;
       readonly baseDamage: number;
       readonly baseSpeed: number;
-      velocityBoostMultiplier = 1;
-      velocityBoostUntil = 0;
       knockbackOwnerId: string | null = null;
-      knockbackUntil = 0;
+      private pendingForce: Point = { x: 0, y: 0 };
+      private uprightAssistAfter = 0;
       readonly hitboxOffset: Point;
       hitFlashTimer = 0;
       attackTimer = 0;
@@ -126,14 +125,15 @@ export class Fighter {
             this.faceTarget = config.faceTarget;
 
             const bodyOptions: Matter.IChamferableBodyDefinition = {
-                  restitution: 1,
+                  restitution: 0.82,
                   friction: 0,
-                  frictionAir: 0,
+                  frictionAir: 0.018,
                   frictionStatic: 0,
-                  inertia: Infinity,
-                  inverseInertia: 0,
                   label: this.id,
-                  collisionFilter: { category: 0x0001, mask: 0x0001 | 0x0002 },
+                  collisionFilter: {
+                        category: 0x0001,
+                        mask: 0x0001 | 0x0002,
+                  },
             };
             this.body =
                   this.hitbox.type === "box"
@@ -274,29 +274,95 @@ export class Fighter {
       markWeaponUsed(nowMs = performance.now()): void {
             this.lastWeaponUseTime = nowMs;
       }
-      getMovementSpeed(nowMs = performance.now()): number {
-            return nowMs < this.velocityBoostUntil
-                  ? this.baseSpeed * this.velocityBoostMultiplier
-                  : this.baseSpeed;
-      }
-
-      applyVelocityBoost(
+      applyForceKnockback(
             direction: Point,
-            speedMultiplier: number | undefined,
-            durationMs: number | undefined,
-            sourceOwnerId: string | null = null,
+            forceMagnitude: number,
+            sourceOwnerId: string,
       ): void {
             const length = Math.hypot(direction.x, direction.y) || 1;
-            const multiplier = Math.max(1, speedMultiplier ?? 1);
-            const now = performance.now();
-            const duration = Math.max(0, durationMs ?? 0);
-            this.velocityBoostMultiplier = multiplier;
-            this.velocityBoostUntil = now + duration;
             this.knockbackOwnerId = sourceOwnerId;
-            this.knockbackUntil = sourceOwnerId ? now + duration : 0;
-            Matter.Body.setVelocity(this.body, {
-                  x: (direction.x / length) * this.baseSpeed * multiplier,
-                  y: (direction.y / length) * this.baseSpeed * multiplier,
+            this.noteImpact();
+            this.pendingForce.x +=
+                  (direction.x / length) * forceMagnitude;
+            this.pendingForce.y +=
+                  (direction.y / length) * forceMagnitude;
+      }
+
+      applyPendingForce(): void {
+            if (this.pendingForce.x === 0 && this.pendingForce.y === 0) return;
+            Matter.Body.applyForce(
+                  this.body,
+                  this.body.position,
+                  this.pendingForce,
+            );
+            this.pendingForce = { x: 0, y: 0 };
+      }
+
+      noteImpact(nowMs = performance.now()): void {
+            const gracePeriodMs = 500 + Math.random() * 1500;
+            this.uprightAssistAfter = nowMs + gracePeriodMs;
+      }
+
+      applyUprightTorque(nowMs = performance.now()): void {
+            if (nowMs < this.uprightAssistAfter) return;
+
+            const angleError = Math.atan2(
+                  Math.sin(-this.body.angle),
+                  Math.cos(-this.body.angle),
+            );
+            const springTorque =
+                  angleError * this.body.inertia * 0.000036;
+            const dampingTorque =
+                  this.body.angularVelocity * this.body.inertia * 0.00043;
+            const maxTorque = this.body.inertia * 0.00008;
+            this.body.torque += Math.max(
+                  -maxTorque,
+                  Math.min(maxTorque, springTorque - dampingTorque),
+            );
+      }
+
+      applyCruiseForce(): void {
+            const speed = Math.hypot(
+                  this.body.velocity.x,
+                  this.body.velocity.y,
+            );
+            if (speed >= this.baseSpeed * 0.98) return;
+
+            const direction =
+                  speed > 0.01
+                        ? {
+                                x: this.body.velocity.x / speed,
+                                y: this.body.velocity.y / speed,
+                          }
+                        : { x: this.facing === "left" ? -1 : 1, y: 0 };
+            const deficit = this.baseSpeed - speed;
+            const forceMagnitude =
+                  (this.body.mass * deficit * 0.25) /
+                  ((1000 / 60) * (1000 / 60));
+            Matter.Body.applyForce(this.body, this.body.position, {
+                  x: direction.x * forceMagnitude,
+                  y: direction.y * forceMagnitude,
+            });
+      }
+
+      applyChargeForce(
+            direction: Point,
+            forceMagnitude: number,
+            speedMultiplier: number,
+      ): void {
+            const length = Math.hypot(direction.x, direction.y) || 1;
+            const unitX = direction.x / length;
+            const unitY = direction.y / length;
+            const forwardSpeed =
+                  this.body.velocity.x * unitX +
+                  this.body.velocity.y * unitY;
+            const targetSpeed = this.baseSpeed * Math.max(1, speedMultiplier);
+            if (forwardSpeed >= targetSpeed) return;
+            const remaining = Math.max(0, 1 - forwardSpeed / targetSpeed);
+            this.knockbackOwnerId = null;
+            Matter.Body.applyForce(this.body, this.body.position, {
+                  x: unitX * forceMagnitude * remaining,
+                  y: unitY * forceMagnitude * remaining,
             });
       }
 
@@ -310,6 +376,14 @@ export class Fighter {
 
       updateWeaponState(): void {
             if (!this.weapon || this.weaponTimer <= 0) return;
+            if (
+                  this.weaponState === "active" &&
+                  this.weapon.type === "proximity-melee" &&
+                  this.weapon.dash &&
+                  "untilCollision" in this.weapon.dash &&
+                  this.weapon.dash.untilCollision
+            )
+                  return;
             this.weaponTimer--;
             if (this.weaponState === "windup" && this.weaponTimer <= 0) {
                   this.weaponState = "active";
@@ -321,6 +395,13 @@ export class Fighter {
                   this.weaponTimer = this.weapon.animation?.recoveryFrames ?? 0;
             } else if (this.weaponState === "recovery" && this.weaponTimer <= 0)
                   this.weaponState = "idle";
+      }
+
+      finishWeaponActive(): void {
+            if (this.weaponState !== "active") return;
+            this.weaponState = "recovery";
+            this.weaponTimer = this.weapon?.animation?.recoveryFrames ?? 0;
+            if (this.weaponTimer <= 0) this.weaponState = "idle";
       }
 
       updateAudio(nowMs: number): void {
@@ -522,10 +603,15 @@ export class Fighter {
             sound.play();
       }
       isKnockbackFrom(ownerId: string, nowMs = performance.now()): boolean {
-            if (nowMs >= this.knockbackUntil) {
+            void nowMs;
+            const speed = Math.hypot(
+                  this.body.velocity.x,
+                  this.body.velocity.y,
+            );
+            const hasPendingForce =
+                  this.pendingForce.x !== 0 || this.pendingForce.y !== 0;
+            if (!hasPendingForce && speed <= this.baseSpeed * 1.1) {
                   this.knockbackOwnerId = null;
-                  this.knockbackUntil = 0;
-                  return false;
             }
             return this.knockbackOwnerId === ownerId;
       }

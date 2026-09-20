@@ -10,7 +10,7 @@
                   "cooldownMs": 1000,
                   "damage": 100,
                   "rangePadding": 22,
-                  "knockback": { "speedMultiplier": 4.2, "durationMs": 650 },
+                  "knockback": { "forceMagnitude": 0.12 },
                   "animation": {
                         "windupFrames": 10,
                         "activeFrames": 26,

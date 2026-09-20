@@ -7,11 +7,12 @@
     "faceTarget": { "mode": "always" },
     "weapon": {
       "type": "proximity-melee",
-      "cooldownMs": 1500,
+      "cooldownMs": 3000,
       "damage": 140,
       "rangePadding": 0,
-      "dash": { "speedMultiplier": 5, "durationMs": 350 },
-      "animation": { "windupFrames": 18, "activeFrames": 22, "recoveryFrames": 18 }
+      "knockback": { "forceMagnitude": 0.45 },
+      "dash": { "speedMultiplier": 5, "accelerationForce": 0.018, "untilCollision": true },
+      "animation": { "windupFrames": 105, "activeFrames": 22, "recoveryFrames": 18 }
     }
   },
   "presentation": {

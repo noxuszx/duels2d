@@ -17,6 +17,7 @@ interface WeaponSystemGameManager {
 export class WeaponSystem {
       private readonly gm: WeaponSystemGameManager;
       private readonly dashTargets = new Map<Fighter, Fighter>();
+      private readonly dashDirections = new Map<Fighter, Matter.Vector>();
       private readonly dashHits = new Set<Fighter>();
 
       constructor(gameManager: WeaponSystemGameManager) {
@@ -53,19 +54,30 @@ export class WeaponSystem {
                   ) {
                         const target = this.dashTargets.get(character);
                         if (target && !target.isDead) {
-                              character.applyVelocityBoost(
-                                    {
-                                          x:
-                                                target.body.position.x -
-                                                character.body.position.x,
-                                          y:
-                                                target.body.position.y -
-                                                character.body.position.y,
-                                    },
-                                    character.weapon.dash.speedMultiplier,
-                                    character.weapon.dash.durationMs,
-                              );
+                              const direction = {
+                                    x:
+                                          target.body.position.x -
+                                          character.body.position.x,
+                                    y:
+                                          target.body.position.y -
+                                          character.body.position.y,
+                              };
+                              this.dashDirections.set(character, direction);
                         }
+                  }
+
+                  if (
+                        character.weapon?.type === "proximity-melee" &&
+                        character.weapon.dash &&
+                        character.weaponState === "active"
+                  ) {
+                        const direction = this.dashDirections.get(character);
+                        if (direction)
+                              character.applyChargeForce(
+                                    direction,
+                                    character.weapon.dash.accelerationForce,
+                                    character.weapon.dash.speedMultiplier,
+                              );
                   }
 
                   if (
@@ -83,13 +95,13 @@ export class WeaponSystem {
                                     this.getCharacterBox(target),
                               )
                         ) {
-                              this.applyMeleeHit(character, target);
-                              this.dashHits.add(character);
+                              this.tryApplyDashHit(character, target);
                         }
                   }
 
                   if (character.weaponState === "idle") {
                         this.dashTargets.delete(character);
+                        this.dashDirections.delete(character);
                         this.dashHits.delete(character);
                   }
                   if (
@@ -120,6 +132,43 @@ export class WeaponSystem {
                               );
                   }
             });
+      }
+
+      handleCharacterCollision(first: Fighter, second: Fighter): void {
+            this.tryApplyDashHit(first, second);
+            this.tryApplyDashHit(second, first);
+            this.finishCollisionDash(first);
+            this.finishCollisionDash(second);
+      }
+
+      handleWallCollision(character: Fighter): void {
+            this.finishCollisionDash(character);
+      }
+
+      private finishCollisionDash(character: Fighter): void {
+            if (
+                  character.weapon?.type !== "proximity-melee" ||
+                  !character.weapon.dash ||
+                  !("untilCollision" in character.weapon.dash) ||
+                  !character.weapon.dash.untilCollision ||
+                  character.weaponState !== "active"
+            )
+                  return;
+            character.finishWeaponActive();
+      }
+
+      private tryApplyDashHit(attacker: Fighter, target: Fighter): void {
+            if (
+                  attacker.weapon?.type !== "proximity-melee" ||
+                  !attacker.weapon.dash ||
+                  attacker.weaponState !== "active" ||
+                  attacker.isDead ||
+                  target.isDead ||
+                  this.dashHits.has(attacker)
+            )
+                  return;
+            this.applyMeleeHit(attacker, target);
+            this.dashHits.add(attacker);
       }
 
       updateFaceTargeting(): void {
@@ -234,11 +283,15 @@ export class WeaponSystem {
                   ? (character.weapon.damage ?? character.baseDamage)
                   : character.baseDamage,
       ): void {
-            if (!target.takeDamage(damage, Date.now(), this.collisionCooldown))
-                  return;
-            target.playSound("hurt");
+            const didDamage = target.takeDamage(
+                  damage,
+                  Date.now(),
+                  this.collisionCooldown,
+            );
             if (character.weapon?.type === "proximity-melee")
                   this.applyWeaponKnockback(character, target, character.weapon);
+            if (!didDamage) return;
+            target.playSound("hurt");
             this.indicators.spawnDamageIndicator(target, damage);
             this.indicators.spawnHitSpark(target.body.position, target.color);
             this.indicators.spawnCharacterLine(character, "weaponHit");
@@ -251,13 +304,12 @@ export class WeaponSystem {
       ): void {
             if (!weapon.knockback) return;
             const knockback = weapon.knockback;
-            target.applyVelocityBoost(
+            target.applyForceKnockback(
                   {
                         x: target.body.position.x - character.body.position.x,
                         y: target.body.position.y - character.body.position.y,
                   },
-                  knockback === true ? undefined : knockback.speedMultiplier,
-                  knockback === true ? undefined : knockback.durationMs,
+                  knockback === true ? 0.12 : knockback.forceMagnitude,
                   character.id,
             );
       }

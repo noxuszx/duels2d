@@ -68,14 +68,25 @@
             },
             "knockbackConfig": {
                   "type": "object",
-                  "required": ["speedMultiplier", "durationMs"],
+                  "required": ["forceMagnitude"],
+                  "properties": {
+                        "forceMagnitude": {
+                              "$ref": "#/$defs/positiveNumber"
+                        }
+                  },
+                  "additionalProperties": false
+            },
+            "dashConfig": {
+                  "type": "object",
+                  "required": ["speedMultiplier", "accelerationForce"],
                   "properties": {
                         "speedMultiplier": {
                               "$ref": "#/$defs/positiveNumber"
                         },
-                        "durationMs": {
+                        "accelerationForce": {
                               "$ref": "#/$defs/positiveNumber"
-                        }
+                        },
+                        "untilCollision": { "type": "boolean" }
                   },
                   "additionalProperties": false
             },
@@ -151,7 +162,7 @@
                                           "$ref": "#/$defs/knockback"
                                     },
                                     "dash": {
-                                          "$ref": "#/$defs/knockbackConfig"
+                                          "$ref": "#/$defs/dashConfig"
                                     },
                                     "animation": { "$ref": "#/$defs/animation" }
                               },

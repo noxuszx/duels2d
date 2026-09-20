@@ -4,12 +4,17 @@ export interface WeaponAnimation {
   recoveryFrames: number;
 }
 
-export interface KnockbackConfig {
-  speedMultiplier: number;
-  durationMs: number;
+export interface ForceKnockbackConfig {
+  forceMagnitude: number;
 }
 
-export type Knockback = boolean | KnockbackConfig;
+export interface ForceDashConfig {
+  speedMultiplier: number;
+  accelerationForce: number;
+  untilCollision?: boolean;
+}
+
+export type Knockback = boolean | ForceKnockbackConfig;
 
 export interface ProjectileConfig {
   radius: number;
@@ -38,7 +43,7 @@ export interface ProximityMeleeWeapon extends BaseWeaponConfig {
   damage?: number;
   rangePadding?: number;
   knockback?: Knockback;
-  dash?: KnockbackConfig;
+  dash?: ForceDashConfig;
 }
 
 export type WeaponConfig = ProjectileWeapon | ProximityMeleeWeapon;

@@ -225,7 +225,12 @@ export class GameManager {
                   if (this.gameOver) return;
                   const now = Date.now();
 
-                  event.pairs.forEach(({ bodyA, bodyB }) => {
+                  event.pairs.forEach(({ bodyA, bodyB, collision }) => {
+                        const impactSpeed = this._getNormalImpactSpeed(
+                              bodyA,
+                              bodyB,
+                              collision.normal,
+                        );
                         const projectile =
                               this._projectileFromBody(bodyA) ??
                               this._projectileFromBody(bodyB);
@@ -269,7 +274,18 @@ export class GameManager {
                         }
 
                         if (charA && charB && charA !== charB) {
-                              this._handleCharacterImpact(charA, charB, now);
+                              charA.noteImpact();
+                              charB.noteImpact();
+                              this.weaponSystem.handleCharacterCollision(
+                                    charA,
+                                    charB,
+                              );
+                              this._handleCharacterImpact(
+                                    charA,
+                                    charB,
+                                    now,
+                                    impactSpeed,
+                              );
                         }
                   });
             });
@@ -277,104 +293,65 @@ export class GameManager {
             Events.on(this.engine, "beforeUpdate", () => {
                   const now = performance.now();
                   const { ax, ay, aw, ah } = this._getArena();
-                  const bPadding = this.ARENA_BORDER || 0;
-
+                  const padding = this.ARENA_BORDER;
                   this.characters.forEach((char) => {
                         if (char.isDead) return;
+                        char.applyPendingForce();
+                        char.applyCruiseForce();
+                        char.applyUprightTorque(now);
 
-                        let pos = char.body.position;
-                        const vel = { ...char.body.velocity };
-                        const incomingSpeed = Math.hypot(vel.x, vel.y);
-                        const minX = ax + char.hitbox.halfWidth + bPadding;
-                        const maxX = ax + aw - char.hitbox.halfWidth - bPadding;
-                        const minY = ay + char.hitbox.halfHeight + bPadding;
-                        const maxY =
-                              ay + ah - char.hitbox.halfHeight - bPadding;
-                        let hitWall = false;
-                        let hitLeftRight = false;
-                        let hitTopBottom = false;
+                        const position = char.body.position;
+                        const velocity = { ...char.body.velocity };
+                        const minX = ax + char.hitbox.halfWidth + padding;
+                        const maxX = ax + aw - char.hitbox.halfWidth - padding;
+                        const minY = ay + char.hitbox.halfHeight + padding;
+                        const maxY = ay + ah - char.hitbox.halfHeight - padding;
+                        let correctedX = position.x;
+                        let correctedY = position.y;
+                        let hitHorizontalWall = false;
+                        let hitVerticalWall = false;
+                        let impactSpeed = 0;
 
-                        if (pos.x < minX) {
-                              Body.setPosition(char.body, {
-                                    x: minX,
-                                    y: pos.y,
-                              });
-                              vel.x = Math.abs(vel.x);
-                              hitWall = true;
-                              hitLeftRight = true;
-                        } else if (pos.x > maxX) {
-                              Body.setPosition(char.body, {
-                                    x: maxX,
-                                    y: pos.y,
-                              });
-                              vel.x = -Math.abs(vel.x);
-                              hitWall = true;
-                              hitLeftRight = true;
+                        if (position.x < minX) {
+                              correctedX = minX;
+                              impactSpeed = Math.max(impactSpeed, Math.abs(velocity.x));
+                              velocity.x = Math.abs(velocity.x);
+                              hitVerticalWall = true;
+                        } else if (position.x > maxX) {
+                              correctedX = maxX;
+                              impactSpeed = Math.max(impactSpeed, Math.abs(velocity.x));
+                              velocity.x = -Math.abs(velocity.x);
+                              hitVerticalWall = true;
                         }
 
-                        pos = char.body.position;
-                        if (pos.y < minY) {
-                              Body.setPosition(char.body, {
-                                    x: pos.x,
-                                    y: minY,
-                              });
-                              vel.y = Math.abs(vel.y);
-                              hitWall = true;
-                              hitTopBottom = true;
-                        } else if (pos.y > maxY) {
-                              Body.setPosition(char.body, {
-                                    x: pos.x,
-                                    y: maxY,
-                              });
-                              vel.y = -Math.abs(vel.y);
-                              hitWall = true;
-                              hitTopBottom = true;
+                        if (position.y < minY) {
+                              correctedY = minY;
+                              impactSpeed = Math.max(impactSpeed, Math.abs(velocity.y));
+                              velocity.y = Math.abs(velocity.y);
+                              hitHorizontalWall = true;
+                        } else if (position.y > maxY) {
+                              correctedY = maxY;
+                              impactSpeed = Math.max(impactSpeed, Math.abs(velocity.y));
+                              velocity.y = -Math.abs(velocity.y);
+                              hitHorizontalWall = true;
                         }
 
-                        const minWallExitSpeed = char.baseSpeed * 0.2;
-                        if (hitLeftRight) {
-                              vel.x =
-                                    vel.x > 0
-                                          ? Math.max(vel.x, minWallExitSpeed)
-                                          : Math.min(vel.x, -minWallExitSpeed);
-                        }
-                        if (hitTopBottom) {
-                              vel.y =
-                                    vel.y > 0
-                                          ? Math.max(vel.y, minWallExitSpeed)
-                                          : Math.min(vel.y, -minWallExitSpeed);
-                        }
+                        if (!hitVerticalWall && !hitHorizontalWall) return;
 
-                        if (hitWall) {
-                              char.playSound("body-bounce");
-                              this._applyImpactDamage(
-                                    char,
-                                    incomingSpeed,
-                                    Date.now(),
-                              );
-                              const currentAngle = Math.atan2(vel.y, vel.x);
-                              const jitter =
-                                    (Math.random() - 0.5) *
-                                    ((16 * Math.PI) / 180);
-                              const newAngle = currentAngle + jitter;
-                              const speed =
-                                    Math.sqrt(vel.x * vel.x + vel.y * vel.y) ||
-                                    char.getMovementSpeed(now);
-                              vel.x = Math.cos(newAngle) * speed;
-                              vel.y = Math.sin(newAngle) * speed;
-                        }
-
-                        const currentSpeed = Math.sqrt(
-                              vel.x * vel.x + vel.y * vel.y,
+                        Body.setPosition(char.body, {
+                              x: correctedX,
+                              y: correctedY,
+                        });
+                        this._enforceMinimumDepartureAngle(
+                              velocity,
+                              hitVerticalWall,
+                              hitHorizontalWall,
                         );
-                        if (currentSpeed > 0) {
-                              const ratio =
-                                    char.getMovementSpeed(now) / currentSpeed;
-                              vel.x *= ratio;
-                              vel.y *= ratio;
-                        }
-
-                        Body.setVelocity(char.body, { x: vel.x, y: vel.y });
+                        Body.setVelocity(char.body, velocity);
+                        this.weaponSystem.handleWallCollision(char);
+                        char.noteImpact();
+                        char.playSound("body-bounce");
+                        this._applyImpactDamage(char, impactSpeed, Date.now());
                   });
             });
       }
@@ -385,6 +362,51 @@ export class GameManager {
 
       _projectileFromBody(body: Body): Projectile | null {
             return this.projectiles.find((p) => p.body === body) || null;
+      }
+
+      _getNormalImpactSpeed(
+            bodyA: Body,
+            bodyB: Body,
+            normal: Point,
+      ): number {
+            const relativeVelocityX =
+                  bodyA.velocity.x - bodyB.velocity.x;
+            const relativeVelocityY =
+                  bodyA.velocity.y - bodyB.velocity.y;
+            return Math.abs(
+                  relativeVelocityX * normal.x +
+                        relativeVelocityY * normal.y,
+            );
+      }
+
+      _enforceMinimumDepartureAngle(
+            velocity: Point,
+            hitVerticalWall: boolean,
+            hitHorizontalWall: boolean,
+      ): void {
+            if (hitVerticalWall === hitHorizontalWall) return;
+            const speed = Math.hypot(velocity.x, velocity.y);
+            if (speed <= 0) return;
+            const minimumNormalSpeed = speed * Math.sin((25 * Math.PI) / 180);
+
+            if (hitVerticalWall && Math.abs(velocity.x) < minimumNormalSpeed) {
+                  const normalSign = Math.sign(velocity.x) || 1;
+                  const tangentSign = Math.sign(velocity.y) || 1;
+                  velocity.x = normalSign * minimumNormalSpeed;
+                  velocity.y =
+                        tangentSign *
+                        Math.sqrt(speed * speed - minimumNormalSpeed * minimumNormalSpeed);
+            } else if (
+                  hitHorizontalWall &&
+                  Math.abs(velocity.y) < minimumNormalSpeed
+            ) {
+                  const normalSign = Math.sign(velocity.y) || 1;
+                  const tangentSign = Math.sign(velocity.x) || 1;
+                  velocity.y = normalSign * minimumNormalSpeed;
+                  velocity.x =
+                        tangentSign *
+                        Math.sqrt(speed * speed - minimumNormalSpeed * minimumNormalSpeed);
+            }
       }
 
       _applyImpactDamage(
@@ -399,9 +421,17 @@ export class GameManager {
             const minSpeed =
                   cfg.minSpeed ??
                   character.baseSpeed * (cfg.minSpeedMultiplier ?? 2.8);
-            if (speed < minSpeed) return false;
+            if (speed <= minSpeed) return false;
 
-            const damage = cfg.damage ?? 45;
+            const baseDamage = cfg.damage ?? 45;
+            const excessSpeedRatio = (speed - minSpeed) / minSpeed;
+            const damage = Math.max(
+                  1,
+                  Math.min(
+                        baseDamage * 4,
+                        Math.round(baseDamage * excessSpeedRatio),
+                  ),
+            );
             const didDamage = character.takeDamage(
                   damage,
                   nowMs,
@@ -422,22 +452,15 @@ export class GameManager {
             charA: Fighter,
             charB: Fighter,
             nowMs: number,
+            impactSpeed: number,
       ): void {
-            const speedA = Math.hypot(
-                  charA.body.velocity.x,
-                  charA.body.velocity.y,
-            );
-            const speedB = Math.hypot(
-                  charB.body.velocity.x,
-                  charB.body.velocity.y,
-            );
             // Suppress impact damage when the fast-moving fighter was launched by the
             // potential victim — prevents slap-into-self-bounce damage.
             if (!charB.isKnockbackFrom(charA.id, nowMs)) {
-                  this._applyImpactDamage(charA, speedB, nowMs);
+                  this._applyImpactDamage(charA, impactSpeed, nowMs);
             }
             if (!charA.isKnockbackFrom(charB.id, nowMs)) {
-                  this._applyImpactDamage(charB, speedA, nowMs);
+                  this._applyImpactDamage(charB, impactSpeed, nowMs);
             }
       }
 
@@ -585,12 +608,25 @@ export class GameManager {
                               imageCrop,
                               drawR,
                         );
+                        const isAngryManWindingUp =
+                              char.id === "angryman" &&
+                              char.weaponState === "windup";
+                        const shakeTime = performance.now();
+                        const shakeX = isAngryManWindingUp
+                              ? Math.sin(shakeTime * 0.18) * 1.25
+                              : 0;
+                        const shakeY = isAngryManWindingUp
+                              ? Math.cos(shakeTime * 0.21) * 1
+                              : 0;
+                        const shakeRotation = isAngryManWindingUp
+                              ? Math.sin(shakeTime * 0.23) * 0.0125
+                              : 0;
                         ctx.save();
                         ctx.translate(
-                              pos.x + imageOffset.x,
-                              pos.y + imageOffset.y,
+                              pos.x + imageOffset.x + shakeX,
+                              pos.y + imageOffset.y + shakeY,
                         );
-                        ctx.rotate(ang);
+                        ctx.rotate(ang + shakeRotation);
                         ctx.scale(shouldFlip ? -1 : 1, 1);
                         ctx.drawImage(
                               image,

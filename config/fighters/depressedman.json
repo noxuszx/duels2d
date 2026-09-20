@@ -15,7 +15,7 @@
                   },
                   "projectile": {
                         "radius": 30,
-                        "speed": 3,
+                        "speed": 2.4,
                         "damage": 50,
                         "knockback": false,
                         "lifetimeMs": 2500,

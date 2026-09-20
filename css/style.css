@@ -59,9 +59,9 @@ body {
 }
 
 /* ============================================================================
-   PLAN 1: 9:16 Game Container
-   Locks the simulator to a YouTube-Shorts / TikTok-ready aspect ratio.
-   The container shrinks to fit the viewport while preserving the ratio.
+   Square Game Container
+   Locks the simulator to a 1:1 square aspect ratio arena.
+   The container shrinks to fit the viewport while preserving the square ratio.
    Physics walls in game.js are built against this container's dimensions.
    ============================================================================ */
 #game-container {
@@ -69,14 +69,15 @@ body {
       background: #ffffff;
 
       /*
-   * Constrain width, let height follow aspect ratio, accounting for top/bottom margins.
-   * On very wide screens the game won't stretch beyond 1080px wide.
-   * On tall/narrow screens it leaves a 40px vertical safety margin (20px top + 20px bottom).
+   * Constrain size to fit both viewport width and height (accounting for margins/HUD),
+   * maintaining a strict 1:1 square aspect ratio.
    */
-      width: min(100vw, calc((100vh - 40px) * 9 / 16));
-      height: min(100vh - 400px, calc(100vw * 16 / 9));
-      max-width: 1080px;
-      max-height: calc(1080px * 16 / 9);
+      width: min(calc(100vh - 200px), calc(100vw - 32px), 500px);
+      height: min(calc(100vh - 200px), calc(100vw - 32px), 500px);
+      aspect-ratio: 1 / 1;
+      max-width: 500px;
+      max-height: 500px;
+      flex-shrink: 0;
 
       /* Rounded corners and shadow for premium feel since it's now detached from edges */
       border-radius: 2px;

@@ -46,14 +46,16 @@
                   },
                   "additionalProperties": false
             },
-            "animation": {
+            "abilityTiming": {
                   "type": "object",
                   "required": [
+                        "cooldownMs",
                         "windupFrames",
                         "activeFrames",
                         "recoveryFrames"
                   ],
                   "properties": {
+                        "cooldownMs": { "$ref": "#/$defs/positiveNumber" },
                         "windupFrames": { "type": "integer", "minimum": 0 },
                         "activeFrames": { "type": "integer", "minimum": 0 },
                         "recoveryFrames": { "type": "integer", "minimum": 0 }
@@ -73,20 +75,6 @@
                         "forceMagnitude": {
                               "$ref": "#/$defs/positiveNumber"
                         }
-                  },
-                  "additionalProperties": false
-            },
-            "dashConfig": {
-                  "type": "object",
-                  "required": ["speedMultiplier", "accelerationForce"],
-                  "properties": {
-                        "speedMultiplier": {
-                              "$ref": "#/$defs/positiveNumber"
-                        },
-                        "accelerationForce": {
-                              "$ref": "#/$defs/positiveNumber"
-                        },
-                        "untilCollision": { "type": "boolean" }
                   },
                   "additionalProperties": false
             },
@@ -125,50 +113,99 @@
                   },
                   "additionalProperties": false
             },
-            "weapon": {
+            "abilityTrigger": {
                   "oneOf": [
                         {
                               "type": "object",
-                              "required": ["type", "cooldownMs", "projectile"],
+                              "required": ["type"],
                               "properties": {
-                                    "type": { "const": "projectile" },
-                                    "cooldownMs": {
-                                          "$ref": "#/$defs/positiveNumber"
-                                    },
-                                    "animation": {
-                                          "$ref": "#/$defs/animation"
-                                    },
-                                    "projectile": {
-                                          "$ref": "#/$defs/projectile"
+                                    "type": { "const": "nearest-enemy" }
+                              },
+                              "additionalProperties": false
+                        },
+                        {
+                              "type": "object",
+                              "required": ["type", "rangePadding"],
+                              "properties": {
+                                    "type": { "const": "enemy-in-range" },
+                                    "rangePadding": {
+                                          "$ref": "#/$defs/nonNegativeNumber"
+                                    }
+                              },
+                              "additionalProperties": false
+                        }
+                  ]
+            },
+            "abilityAction": {
+                  "oneOf": [
+                        {
+                              "type": "object",
+                              "required": ["type", "amount"],
+                              "properties": {
+                                    "type": { "const": "damage" },
+                                    "amount": { "$ref": "#/$defs/nonNegativeNumber" }
+                              },
+                              "additionalProperties": false
+                        },
+                        {
+                              "type": "object",
+                              "required": ["type", "forceMagnitude"],
+                              "properties": {
+                                    "type": { "const": "knockback" },
+                                    "forceMagnitude": { "$ref": "#/$defs/positiveNumber" }
+                              },
+                              "additionalProperties": false
+                        },
+                        {
+                              "type": "object",
+                              "required": ["type", "speedMultiplier", "accelerationForce", "endOn"],
+                              "properties": {
+                                    "type": { "const": "dash" },
+                                    "speedMultiplier": { "$ref": "#/$defs/positiveNumber" },
+                                    "accelerationForce": { "$ref": "#/$defs/positiveNumber" },
+                                    "endOn": {
+                                          "type": "array",
+                                          "items": { "enum": ["fighter-collision", "wall-collision"] },
+                                          "uniqueItems": true
                                     }
                               },
                               "additionalProperties": false
                         },
                         {
                               "type": "object",
-                              "required": ["type", "cooldownMs"],
+                              "required": ["type", "startDegrees", "endDegrees"],
                               "properties": {
-                                    "type": { "const": "proximity-melee" },
-                                    "cooldownMs": {
-                                          "$ref": "#/$defs/positiveNumber"
-                                    },
-                                    "damage": {
-                                          "$ref": "#/$defs/nonNegativeNumber"
-                                    },
-                                    "rangePadding": {
-                                          "$ref": "#/$defs/nonNegativeNumber"
-                                    },
-                                    "knockback": {
-                                          "$ref": "#/$defs/knockback"
-                                    },
-                                    "dash": {
-                                          "$ref": "#/$defs/dashConfig"
-                                    },
-                                    "animation": { "$ref": "#/$defs/animation" }
+                                    "type": { "const": "swing" },
+                                    "startDegrees": { "type": "number" },
+                                    "endDegrees": { "type": "number" }
+                              },
+                              "additionalProperties": false
+                        },
+                        {
+                              "type": "object",
+                              "required": ["type", "projectile"],
+                              "properties": {
+                                    "type": { "const": "spawn-projectile" },
+                                    "projectile": { "$ref": "#/$defs/projectile" }
                               },
                               "additionalProperties": false
                         }
                   ]
+            },
+            "ability": {
+                  "type": "object",
+                  "required": ["id", "trigger", "timing", "actions"],
+                  "properties": {
+                        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+                        "trigger": { "$ref": "#/$defs/abilityTrigger" },
+                        "timing": { "$ref": "#/$defs/abilityTiming" },
+                        "actions": {
+                              "type": "array",
+                              "items": { "$ref": "#/$defs/abilityAction" },
+                              "minItems": 1
+                        }
+                  },
+                  "additionalProperties": false
             },
             "combat": {
                   "type": "object",
@@ -177,11 +214,9 @@
                         "speed": { "$ref": "#/$defs/positiveNumber" },
                         "baseDamage": { "$ref": "#/$defs/nonNegativeNumber" },
                         "faceTarget": { "$ref": "#/$defs/faceTarget" },
-                        "weapon": {
-                              "oneOf": [
-                                    { "type": "null" },
-                                    { "$ref": "#/$defs/weapon" }
-                              ]
+                        "abilities": {
+                              "type": "array",
+                              "items": { "$ref": "#/$defs/ability" }
                         }
                   },
                   "additionalProperties": false
@@ -265,6 +300,7 @@
                         "healthBarOffset": { "$ref": "#/$defs/vector" },
                         "weaponScale": { "$ref": "#/$defs/positiveNumber" },
                         "weaponOffset": { "$ref": "#/$defs/vector" },
+                        "weaponPivot": { "$ref": "#/$defs/vector" },
                         "weaponIdle": { "type": ["string", "null"] },
                         "weaponAttack": { "type": ["string", "null"] },
                         "defaultFacing": { "enum": ["left", "right"] },

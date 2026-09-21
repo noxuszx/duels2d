@@ -5,35 +5,36 @@
   "color": "#d94a38",
   "combat": {
     "faceTarget": { "mode": "always" },
-    "weapon": {
-      "type": "proximity-melee",
-      "cooldownMs": 3000,
-      "damage": 140,
-      "rangePadding": 0,
-      "knockback": { "forceMagnitude": 0.45 },
-      "dash": { "speedMultiplier": 5, "accelerationForce": 0.018, "untilCollision": true },
-      "animation": { "windupFrames": 105, "activeFrames": 22, "recoveryFrames": 18 }
-    }
+    "abilities": [{
+      "id": "charge",
+      "trigger": { "type": "nearest-enemy" },
+      "timing": { "cooldownMs": 3000, "windupFrames": 105, "activeFrames": 22, "recoveryFrames": 18 },
+      "actions": [
+        { "type": "dash", "speedMultiplier": 5, "accelerationForce": 0.018, "endOn": ["fighter-collision", "wall-collision"] },
+        { "type": "damage", "amount": 140 },
+        { "type": "knockback", "forceMagnitude": 0.45 }
+      ]
+    }]
   },
   "presentation": {
-    "image": "assets/fighters/angryguy/sprites/angryguy.png",
+    "image": "assets/fighters/angryman/sprites/angryman.png",
     "imageScale": 3,
     "imageOffset": { "x": 1, "y": 6 },
     "poses": {
       "idle": {
-        "image": "assets/fighters/angryguy/sprites/angryguy.png",
+        "image": "assets/fighters/angryman/sprites/angryman.png",
         "imageCrop": { "x": 0, "y": 0, "width": 1086, "height": 1128 },
         "imageScale": 2.6,
         "imageOffset": { "x": -1, "y": -3 }
       },
       "attackWindup": {
-        "image": "assets/fighters/angryguy/sprites/angryguy-windup.png",
+        "image": "assets/fighters/angryman/sprites/angryman-windup.png",
         "imageCrop": { "x": 0, "y": 0, "width": 1086, "height": 1060 },
         "imageScale": 3,
         "imageOffset": { "x": -1, "y": 3 }
       },
       "attackActive": {
-        "image": "assets/fighters/angryguy/sprites/angryguy-dash.png",
+        "image": "assets/fighters/angryman/sprites/angryman-dash.png",
         "imageCrop": { "x": 0, "y": 0, "width": 1086, "height": 1066 },
         "imageScale": 3,
         "imageOffset": { "x": 23, "y": -1 }
@@ -41,19 +42,5 @@
     },
     "imageCrop": { "x": 0, "y": 0, "width": 1086, "height": 1023 },
     "defaultFacing": "left"
-  },
-  "lines": {
-    "weaponHit": [
-      "RAAAGH!",
-      "Get out of my way!",
-      "You asked for it!"
-    ],
-    "ambient": [
-      "Don't test me.",
-      "I'm still standing.",
-      "Come closer."
-    ],
-    "ambientIntervalMs": 5000,
-    "ambientChance": 0.3
   }
 }

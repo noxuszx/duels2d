@@ -5,32 +5,36 @@
       "color": "#5f7ea8",
       "combat": {
             "faceTarget": { "mode": "always" },
-            "weapon": {
-                  "type": "projectile",
-                  "cooldownMs": 900,
-                  "animation": {
+            "abilities": [{
+                  "id": "throw-tear",
+                  "trigger": { "type": "nearest-enemy" },
+                  "timing": {
+                        "cooldownMs": 900,
                         "windupFrames": 4,
                         "activeFrames": 4,
                         "recoveryFrames": 8
                   },
-                  "projectile": {
-                        "radius": 30,
-                        "speed": 2.4,
-                        "damage": 50,
-                        "knockback": false,
-                        "lifetimeMs": 2500,
-                        "image": "assets/fighters/depressedguy/projectiles/tear.png"
-                  }
-            }
+                  "actions": [{
+                        "type": "spawn-projectile",
+                        "projectile": {
+                              "radius": 30,
+                              "speed": 2.4,
+                              "damage": 50,
+                              "knockback": false,
+                              "lifetimeMs": 2500,
+                              "image": "assets/fighters/depressedman/projectiles/tear.png"
+                        }
+                  }]
+            }]
       },
       "presentation": {
-            "image": "assets/fighters/depressedguy/sprites/depressedguy.out.png",
+            "image": "assets/fighters/depressedman/sprites/depressedman.out.png",
             "imageScale": 2.8,
             "imageOffset": { "x": 8, "y": -11 },
             "imageCrop": { "x": 242, "y": 124, "width": 744, "height": 901 },
             "poses": {
                   "idle": {
-                        "image": "assets/fighters/depressedguy/sprites/depressedguy.out.png",
+                        "image": "assets/fighters/depressedman/sprites/depressedman.out.png",
                         "imageCrop": {
                               "x": 242,
                               "y": 124,
@@ -39,7 +43,7 @@
                         }
                   },
                   "attackActive": {
-                        "image": "assets/fighters/depressedguy/sprites/depressedguy.out.png",
+                        "image": "assets/fighters/depressedman/sprites/depressedman.out.png",
                         "imageCrop": {
                               "x": 242,
                               "y": 124,

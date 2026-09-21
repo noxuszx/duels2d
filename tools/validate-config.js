@@ -63,7 +63,7 @@ function composeFighter(defaults, definition) {
             maxHealth: fighter.combat.maxHealth,
             speed: fighter.combat.speed,
             baseDamage: fighter.combat.baseDamage,
-            weapon: fighter.combat.weapon,
+            abilities: fighter.combat.abilities,
             faceTarget: fighter.combat.faceTarget,
             radius: fighter.body.radius,
             hitbox: fighter.body.hitbox,
@@ -75,6 +75,7 @@ function composeFighter(defaults, definition) {
             healthBarOffset: fighter.presentation.healthBarOffset,
             weaponScale: fighter.presentation.weaponScale,
             weaponOffset: fighter.presentation.weaponOffset,
+            weaponPivot: fighter.presentation.weaponPivot,
             weaponIdle: fighter.presentation.weaponIdle,
             weaponAttack: fighter.presentation.weaponAttack,
             poses: fighter.presentation.poses,
@@ -134,7 +135,6 @@ const roster = definitions.map((definition) =>
 
 const ids = new Set();
 const faceModes = new Set(["never", "always", "range"]);
-const weaponTypes = new Set(["projectile", "proximity-melee"]);
 const facingDirections = new Set(["left", "right"]);
 
 function checkVector(location, value) {
@@ -245,6 +245,11 @@ definitions.forEach((definition, index) => {
                   checkVector(
                         `${location}.presentation.weaponOffset`,
                         presentation.weaponOffset,
+                  );
+            if (presentation.weaponPivot)
+                  checkVector(
+                        `${location}.presentation.weaponPivot`,
+                        presentation.weaponPivot,
                   );
             checkCrop(
                   `${location}.presentation.imageCrop`,
@@ -359,96 +364,46 @@ roster.forEach((fighter) => {
                   );
       });
 
-      const weapon = fighter.weapon;
-      if (!weapon) return;
-      if (!weaponTypes.has(weapon.type)) {
-            fail(location, `unsupported weapon type: ${weapon.type}`);
+      if (!Array.isArray(fighter.abilities)) {
+            fail(location, "abilities must be an array");
+            return;
       }
-      if (!isPositive(weapon.cooldownMs)) {
-            fail(location, "weapon.cooldownMs must be greater than 0");
-      }
-      checkAnimation(`${location}.weapon.animation`, weapon.animation);
-      if (weapon.type === "projectile") {
-            if (!weapon.projectile) {
-                  fail(
-                        location,
-                        "projectile weapon requires a projectile block",
-                  );
-            } else {
-                  if (!isPositive(weapon.projectile.speed))
-                        fail(
-                              location,
-                              "projectile.speed must be greater than 0",
-                        );
-                  if (!isPositive(weapon.projectile.radius))
-                        fail(
-                              location,
-                              "projectile.radius must be greater than 0",
-                        );
-                  if (
-                        !Number.isFinite(weapon.projectile.damage) ||
-                        weapon.projectile.damage < 0
-                  ) {
-                        fail(
-                              location,
-                              "projectile.damage must be 0 or greater",
-                        );
-                  }
-                  if (!isPositive(weapon.projectile.lifetimeMs)) {
-                        fail(
-                              location,
-                              "projectile.lifetimeMs must be greater than 0",
-                        );
-                  }
-                  const projectileImages = Array.isArray(
-                        weapon.projectile.image,
-                  )
-                        ? weapon.projectile.image
-                        : [weapon.projectile.image];
-                  projectileImages.forEach((imagePath, imageIndex) =>
+      const abilityIds = new Set();
+      fighter.abilities.forEach((ability, abilityIndex) => {
+            const abilityLocation = `${location}.abilities[${abilityIndex}]`;
+            if (typeof ability.id !== "string" || !ability.id) {
+                  fail(abilityLocation, "id must be a non-empty string");
+            } else if (abilityIds.has(ability.id)) {
+                  fail(abilityLocation, `duplicate ability id: ${ability.id}`);
+            }
+            abilityIds.add(ability.id);
+            if (!isPositive(ability.timing?.cooldownMs))
+                  fail(abilityLocation, "timing.cooldownMs must be greater than 0");
+            checkAnimation(abilityLocation, ability.timing);
+            if (!Array.isArray(ability.actions) || ability.actions.length === 0)
+                  fail(abilityLocation, "actions must be a non-empty array");
+
+            (ability.actions || []).forEach((action, actionIndex) => {
+                  if (action.type !== "spawn-projectile") return;
+                  const projectile = action.projectile;
+                  const actionLocation = `${abilityLocation}.actions[${actionIndex}].projectile`;
+                  if (!isPositive(projectile?.speed))
+                        fail(actionLocation, "speed must be greater than 0");
+                  if (!isPositive(projectile?.radius))
+                        fail(actionLocation, "radius must be greater than 0");
+                  if (!isPositive(projectile?.lifetimeMs))
+                        fail(actionLocation, "lifetimeMs must be greater than 0");
+                  const images = Array.isArray(projectile?.image)
+                        ? projectile.image
+                        : [projectile?.image];
+                  images.forEach((imagePath, imageIndex) =>
                         checkAsset(
-                              `${location}.combat.weapon.projectile.image${
-                                    projectileImages.length > 1
-                                          ? `[${imageIndex}]`
-                                          : ""
-                              }`,
+                              `${actionLocation}.image${images.length > 1 ? `[${imageIndex}]` : ""}`,
                               imagePath,
                         ),
                   );
-                  if (weapon.projectile.imageScales) {
-                        Object.entries(weapon.projectile.imageScales).forEach(
-                              ([imagePath, scale]) => {
-                                    if (!projectileImages.includes(imagePath)) {
-                                          fail(
-                                                `${location}.combat.weapon.projectile.imageScales`,
-                                                `references an unconfigured image: ${imagePath}`,
-                                          );
-                                    }
-                                    if (!isPositive(scale)) {
-                                          fail(
-                                                `${location}.combat.weapon.projectile.imageScales.${imagePath}`,
-                                                "must be greater than 0",
-                                          );
-                                    }
-                              },
-                        );
-                  }
-            }
-      } else if (weapon.type === "proximity-melee") {
-            if (
-                  weapon.damage !== undefined &&
-                  (!Number.isFinite(weapon.damage) || weapon.damage < 0)
-            ) {
-                  fail(location, "weapon.damage must be 0 or greater");
-            }
-            if (
-                  weapon.rangePadding !== undefined &&
-                  (!Number.isFinite(weapon.rangePadding) ||
-                        weapon.rangePadding < 0)
-            ) {
-                  fail(location, "weapon.rangePadding must be 0 or greater");
-            }
-      }
+            });
+      });
 });
 
 const game = JSON.parse(

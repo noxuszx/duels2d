@@ -6,7 +6,7 @@ Runtime behavior lives in `src/`; routine balance and presentation changes belon
 
 | Change | File |
 | --- | --- |
-| Fighter stats, weapons, sprites, hitboxes, poses, or dialogue | `fighters/<fighter-id>.json` |
+| Fighter stats, abilities, sprites, hitboxes, poses, or dialogue | `fighters/<fighter-id>.json` |
 | Defaults shared by every fighter | `fighters/defaults.json` |
 | Fighter load order | `fighters/index.json` |
 | Overall speed, collision damage, sound volume, or arena appearance | `game-settings.json` |
@@ -36,7 +36,20 @@ Every fighter file references `fighter.schema.json`, which documents the support
     "speed": 8,
     "baseDamage": 125,
     "faceTarget": { "mode": "always" },
-    "weapon": null
+    "abilities": [{
+      "id": "shove",
+      "trigger": { "type": "enemy-in-range", "rangePadding": 16 },
+      "timing": {
+        "cooldownMs": 1200,
+        "windupFrames": 8,
+        "activeFrames": 12,
+        "recoveryFrames": 10
+      },
+      "actions": [
+        { "type": "damage", "amount": 80 },
+        { "type": "knockback", "forceMagnitude": 0.1 }
+      ]
+    }]
   },
   "body": {
     "radius": 34,
@@ -54,13 +67,13 @@ Every fighter file references `fighter.schema.json`, which documents the support
 }
 ```
 
-Only values that differ from `fighters/defaults.json` need to be included. `faceTarget.mode` accepts `never`, `always`, or `range`. Supported weapon types are `projectile` and `proximity-melee`. Values ending in `Ms` are milliseconds; values ending in `Frames` are render frames.
+Only values that differ from `fighters/defaults.json` need to be included. `faceTarget.mode` accepts `never`, `always`, or `range`. Abilities combine a trigger, timing, and reusable actions such as `damage`, `knockback`, `dash`, `swing`, and `spawn-projectile`. A `swing` rotates `presentation.weaponIdle` from `startDegrees` to `endDegrees` around the fighter-relative `presentation.weaponPivot`; its damage and knockback occur when active frames begin. Values ending in `Ms` are milliseconds; values ending in `Frames` are render frames.
 
 ### Multiple character sprites
 
 Use Character Studio's **Sprite** selector to tune separate images for the
 `idle`, `attackWindup`, and `attackActive` animation phases. Crop, scale, and
-image offset are stored per sprite; hitbox, health bar, facing, and weapon
+image offset are stored per sprite; hitbox, health bar, facing, and ability
 settings remain shared by the fighter. The Image tab can add, rename, remove,
 or change the file path of these sprites. A new sprite starts with the base
 presentation values, then keeps its own crop, scale, and offset independently.
@@ -73,4 +86,4 @@ presentation values, then keeps its own crop, scale, and offset independently.
 4. Run `node tools/validate-config.js`.
 5. Open Character Studio for visual tuning and save back to the same JSON file.
 
-The validator catches malformed manifests, duplicate or mismatched IDs, invalid ranges, unsupported modes and weapons, malformed geometry and poses, bad dialogue, missing weapon fields, and missing assets.
+The validator catches malformed manifests, duplicate or mismatched IDs, invalid ranges, unsupported modes and actions, malformed geometry and poses, bad dialogue, missing ability fields, and missing assets.

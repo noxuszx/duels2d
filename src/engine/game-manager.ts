@@ -2,9 +2,10 @@
 // collaborators are migrated in parallel. Its public module boundary is typed.
 import { Body, Engine, Events, Runner, World } from "matter-js";
 import { Fighter } from "../entities/fighter";
+import { FighterAudio } from "../entities/fighter-audio";
 import { Projectile } from "../entities/projectile";
 import { IndicatorSystem } from "../systems/indicator-system";
-import { WeaponSystem } from "../systems/weapon-system";
+import { AbilitySystem } from "../abilities/ability-system";
 import { FighterSelectPanel } from "../ui/fighter-select-panel";
 import type { FighterConfig } from "../types/fighter";
 import type { RuntimeConfig } from "../config/runtime-config";
@@ -35,7 +36,7 @@ export class GameManager {
       private readonly canvas: HTMLCanvasElement;
       private readonly ctx: CanvasRenderingContext2D;
       private readonly hudEls: { status: HTMLElement };
-      private readonly weaponSystem: WeaponSystem;
+      private readonly abilitySystem: AbilitySystem;
       private readonly characterSelectPanel: FighterSelectPanel;
       private arenaW = 0;
       private arenaH = 0;
@@ -89,7 +90,7 @@ export class GameManager {
             this.canvas = canvas;
             this.ctx = context;
             this.hudEls = { status };
-            this.weaponSystem = new WeaponSystem(this);
+            this.abilitySystem = new AbilitySystem(this);
             this.characterSelectPanel = new FighterSelectPanel(this);
 
             this._resizeCanvas();
@@ -163,12 +164,11 @@ export class GameManager {
       }
 
       _playSharedSound(type: string): void {
-            const pool = Fighter._getSharedSoundPools(
+            FighterAudio.playShared(
+                  type,
                   this.runtimeConfig.sounds,
                   this.runtimeConfig.game,
-            )[type];
-            if (!pool || pool.length === 0) return;
-            pool[Math.floor(Math.random() * pool.length)].play();
+            );
       }
 
       _spawnCharacters() {
@@ -276,7 +276,7 @@ export class GameManager {
                         if (charA && charB && charA !== charB) {
                               charA.noteImpact();
                               charB.noteImpact();
-                              this.weaponSystem.handleCharacterCollision(
+                              this.abilitySystem.handleCharacterCollision(
                                     charA,
                                     charB,
                               );
@@ -314,24 +314,36 @@ export class GameManager {
 
                         if (position.x < minX) {
                               correctedX = minX;
-                              impactSpeed = Math.max(impactSpeed, Math.abs(velocity.x));
+                              impactSpeed = Math.max(
+                                    impactSpeed,
+                                    Math.abs(velocity.x),
+                              );
                               velocity.x = Math.abs(velocity.x);
                               hitVerticalWall = true;
                         } else if (position.x > maxX) {
                               correctedX = maxX;
-                              impactSpeed = Math.max(impactSpeed, Math.abs(velocity.x));
+                              impactSpeed = Math.max(
+                                    impactSpeed,
+                                    Math.abs(velocity.x),
+                              );
                               velocity.x = -Math.abs(velocity.x);
                               hitVerticalWall = true;
                         }
 
                         if (position.y < minY) {
                               correctedY = minY;
-                              impactSpeed = Math.max(impactSpeed, Math.abs(velocity.y));
+                              impactSpeed = Math.max(
+                                    impactSpeed,
+                                    Math.abs(velocity.y),
+                              );
                               velocity.y = Math.abs(velocity.y);
                               hitHorizontalWall = true;
                         } else if (position.y > maxY) {
                               correctedY = maxY;
-                              impactSpeed = Math.max(impactSpeed, Math.abs(velocity.y));
+                              impactSpeed = Math.max(
+                                    impactSpeed,
+                                    Math.abs(velocity.y),
+                              );
                               velocity.y = -Math.abs(velocity.y);
                               hitHorizontalWall = true;
                         }
@@ -348,7 +360,7 @@ export class GameManager {
                               hitHorizontalWall,
                         );
                         Body.setVelocity(char.body, velocity);
-                        this.weaponSystem.handleWallCollision(char);
+                        this.abilitySystem.handleWallCollision(char);
                         char.noteImpact();
                         char.playSound("body-bounce");
                         this._applyImpactDamage(char, impactSpeed, Date.now());
@@ -364,18 +376,11 @@ export class GameManager {
             return this.projectiles.find((p) => p.body === body) || null;
       }
 
-      _getNormalImpactSpeed(
-            bodyA: Body,
-            bodyB: Body,
-            normal: Point,
-      ): number {
-            const relativeVelocityX =
-                  bodyA.velocity.x - bodyB.velocity.x;
-            const relativeVelocityY =
-                  bodyA.velocity.y - bodyB.velocity.y;
+      _getNormalImpactSpeed(bodyA: Body, bodyB: Body, normal: Point): number {
+            const relativeVelocityX = bodyA.velocity.x - bodyB.velocity.x;
+            const relativeVelocityY = bodyA.velocity.y - bodyB.velocity.y;
             return Math.abs(
-                  relativeVelocityX * normal.x +
-                        relativeVelocityY * normal.y,
+                  relativeVelocityX * normal.x + relativeVelocityY * normal.y,
             );
       }
 
@@ -395,7 +400,10 @@ export class GameManager {
                   velocity.x = normalSign * minimumNormalSpeed;
                   velocity.y =
                         tangentSign *
-                        Math.sqrt(speed * speed - minimumNormalSpeed * minimumNormalSpeed);
+                        Math.sqrt(
+                              speed * speed -
+                                    minimumNormalSpeed * minimumNormalSpeed,
+                        );
             } else if (
                   hitHorizontalWall &&
                   Math.abs(velocity.y) < minimumNormalSpeed
@@ -405,7 +413,10 @@ export class GameManager {
                   velocity.y = normalSign * minimumNormalSpeed;
                   velocity.x =
                         tangentSign *
-                        Math.sqrt(speed * speed - minimumNormalSpeed * minimumNormalSpeed);
+                        Math.sqrt(
+                              speed * speed -
+                                    minimumNormalSpeed * minimumNormalSpeed,
+                        );
             }
       }
 
@@ -508,8 +519,8 @@ export class GameManager {
                   this._animId = requestAnimationFrame(loop);
 
                   if (!this.paused) {
-                        this.weaponSystem.update();
-                        this.weaponSystem.updateFaceTargeting();
+                        this.abilitySystem.update();
+                        this.abilitySystem.updateFaceTargeting();
                         this._updateCharacterAudio();
                         this._updateCharacterLines();
                         Runner.tick(
@@ -527,6 +538,7 @@ export class GameManager {
                   this._drawArenaBorder(ctx);
                   this._drawProjectiles(ctx);
                   this._drawCharacters(ctx);
+                  this._drawHeldWeapons(ctx);
                   this.indicators.drawDamageIndicators(ctx);
                   this.indicators.drawDialogueIndicators(ctx);
                   this.indicators.drawHitSparks(ctx);
@@ -597,28 +609,33 @@ export class GameManager {
 
                   const shouldFlip = char.facing !== char.defaultFacing;
                   const isFlashing = char.hitFlashTimer > 0;
-                  const spriteVisual = char.getCurrentSprite();
+                  const spriteVisual = char.presentation.getCurrentSprite(
+                        char.abilityState,
+                  );
 
                   if (spriteVisual) {
                         const { image, imageScale, imageOffset, imageCrop } =
                               spriteVisual;
                         const drawR = r * imageScale;
-                        const { crop, dx, dy, dw, dh } = char._getCropDrawRect(
-                              image,
-                              imageCrop,
-                              drawR,
-                        );
-                        const isAngryManWindingUp =
-                              char.id === "angryman" &&
-                              char.weaponState === "windup";
+                        const { crop, dx, dy, dw, dh } =
+                              char.presentation.getCropDrawRect(
+                                    image,
+                                    imageCrop,
+                                    drawR,
+                              );
+                        const isDashWindingUp =
+                              char.abilityState === "windup" &&
+                              char.activeAbility?.actions.some(
+                                    (action) => action.type === "dash",
+                              );
                         const shakeTime = performance.now();
-                        const shakeX = isAngryManWindingUp
+                        const shakeX = isDashWindingUp
                               ? Math.sin(shakeTime * 0.18) * 1.25
                               : 0;
-                        const shakeY = isAngryManWindingUp
+                        const shakeY = isDashWindingUp
                               ? Math.cos(shakeTime * 0.21) * 1
                               : 0;
-                        const shakeRotation = isAngryManWindingUp
+                        const shakeRotation = isDashWindingUp
                               ? Math.sin(shakeTime * 0.23) * 0.0125
                               : 0;
                         ctx.save();
@@ -680,6 +697,55 @@ export class GameManager {
             });
       }
 
+      _drawHeldWeapons(ctx: CanvasRenderingContext2D): void {
+            this.characters.forEach((character) => {
+                  if (character.isDead) return;
+                  this._drawHeldWeapon(
+                        ctx,
+                        character,
+                        character.visualPosition,
+                        character.radius,
+                  );
+            });
+      }
+
+      _drawHeldWeapon(
+            ctx: CanvasRenderingContext2D,
+            character: Fighter,
+            position: Point,
+            radius: number,
+      ): void {
+            if (character.abilityState === "idle") return;
+            const presentation = character.presentation;
+            const image = presentation.weaponAttack ?? presentation.weaponIdle;
+            if (!image || image.naturalWidth <= 0 || image.naturalHeight <= 0)
+                  return;
+
+            const maxSide = Math.max(image.naturalWidth, image.naturalHeight);
+            const scale = (radius * 2 * presentation.weaponScale) / maxSide;
+            const width = image.naturalWidth * scale;
+            const height = image.naturalHeight * scale;
+            const pivot = presentation.weaponPivot;
+            const offset = presentation.weaponOffset;
+
+            ctx.save();
+            ctx.translate(position.x, position.y);
+            ctx.rotate(character.body.angle);
+            const weaponFacing = character.abilityFacing ?? character.facing;
+            const shouldFlipWeapon = weaponFacing !== character.defaultFacing;
+            ctx.scale(shouldFlipWeapon ? -1 : 1, 1);
+            ctx.translate(pivot.x, pivot.y);
+            ctx.rotate(character.getSwingAngle() ?? 0);
+            ctx.drawImage(
+                  image,
+                  offset.x - pivot.x - width / 2,
+                  offset.y - pivot.y - height / 2,
+                  width,
+                  height,
+            );
+            ctx.restore();
+      }
+
       _tracePlusPath(
             ctx: CanvasRenderingContext2D,
             x: number,
@@ -712,8 +778,8 @@ export class GameManager {
             const indicatorCfg = this.runtimeConfig.indicators;
             const ratio = char.healthRatio;
             const size = r * 2;
-            const x = pos.x - size / 2 + char.healthBarOffset.x;
-            const y = pos.y - r - 20 + char.healthBarOffset.y;
+            const x = pos.x - size / 2 + char.presentation.healthBarOffset.x;
+            const y = pos.y - r - 20 + char.presentation.healthBarOffset.y;
             const hue = ratio > 0.5 ? 120 : ratio > 0.25 ? 50 : 0;
             const fill = `hsl(${hue}, 90%, 40%)`;
             const fillHeight = Math.max(0, Math.round(ratio * size));
@@ -843,7 +909,10 @@ export class GameManager {
       private _dispatchPlaybackState(): void {
             window.dispatchEvent(
                   new CustomEvent("duels2d:playback", {
-                        detail: { paused: this.paused, gameOver: this.gameOver },
+                        detail: {
+                              paused: this.paused,
+                              gameOver: this.gameOver,
+                        },
                   }),
             );
       }

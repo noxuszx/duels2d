@@ -131,6 +131,7 @@ export class CharacterStudio {
       projectileImageSelect: HTMLSelectElement;
       projectileImageScale: HTMLInputElement;
       projectileRotationSpeed: HTMLInputElement;
+      weaponImagePath: HTMLInputElement;
       projectilePreviewAngle = 0;
       projectilePreviewTime = performance.now();
       controls: Record<ControlName, NumericInput>;
@@ -222,6 +223,8 @@ export class CharacterStudio {
             this.projectileRotationSpeed = requireElement<HTMLInputElement>(
                   "projectileRotationSpeed",
             );
+            this.weaponImagePath =
+                  requireElement<HTMLInputElement>("weaponImagePath");
 
             this.controls = {
                   hitboxWidth: requireElement<NumericInput>("hitboxWidth"),
@@ -239,6 +242,12 @@ export class CharacterStudio {
                   weaponScale: requireElement<NumericInput>("weaponScale"),
                   weaponOffsetX: requireElement<NumericInput>("weaponOffsetX"),
                   weaponOffsetY: requireElement<NumericInput>("weaponOffsetY"),
+                  weaponPivotX: requireElement<NumericInput>("weaponPivotX"),
+                  weaponPivotY: requireElement<NumericInput>("weaponPivotY"),
+                  swingStartDegrees:
+                        requireElement<NumericInput>("swingStartDegrees"),
+                  swingEndDegrees:
+                        requireElement<NumericInput>("swingEndDegrees"),
                   imageCropX: requireElement<NumericInput>("imageCropX"),
                   imageCropY: requireElement<NumericInput>("imageCropY"),
                   imageCropWidth:
@@ -261,6 +270,11 @@ export class CharacterStudio {
                   weaponScale: requireElement("val-weaponScale"),
                   weaponOffsetX: requireElement("val-weaponOffsetX"),
                   weaponOffsetY: requireElement("val-weaponOffsetY"),
+                  weaponPivotX: requireElement("val-weaponPivotX"),
+                  weaponPivotY: requireElement("val-weaponPivotY"),
+                  swingStartDegrees:
+                        requireElement("val-swingStartDegrees"),
+                  swingEndDegrees: requireElement("val-swingEndDegrees"),
                   imageCropX: requireElement("val-imageCropX"),
                   imageCropY: requireElement("val-imageCropY"),
                   imageCropWidth: requireElement("val-imageCropWidth"),
@@ -416,6 +430,22 @@ export class CharacterStudio {
                   },
             );
 
+            const updateWeaponImage = () => {
+                  const config = this._currentConfig();
+                  config.weaponIdle = this.weaponImagePath.value.trim() || null;
+                  this.images.weaponIdle.src = config.weaponIdle
+                        ? "../../" + config.weaponIdle
+                        : "";
+                  this._draw();
+                  this._saveState();
+            };
+            this.weaponImagePath.addEventListener("change", updateWeaponImage);
+            this.weaponImagePath.addEventListener("keydown", (event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  updateWeaponImage();
+            });
+
             this.saveBtn.addEventListener("click", async () => {
                   const config = this._currentConfig();
                   if (!this.fileHandles.has(config.id)) {
@@ -496,10 +526,10 @@ export class CharacterStudio {
                         4,
                   );
                   this.projectilePreviewTime = now;
-                  const weapon = this._currentConfig().weapon;
-                  if (weapon?.type === "projectile") {
+                  const action = this._projectileAction();
+                  if (action) {
                         this.projectilePreviewAngle +=
-                              (weapon.projectile.rotationSpeed ?? 0) *
+                              (action.projectile.rotationSpeed ?? 0) *
                               elapsedFrames;
                         this._draw();
                   }
@@ -514,12 +544,40 @@ export class CharacterStudio {
             return this.configs[this.activeConfigIndex];
       }
 
+      _projectileAction() {
+            for (const ability of this._currentConfig().abilities) {
+                  const action = ability.actions.find(
+                        (candidate) => candidate.type === "spawn-projectile",
+                  );
+                  if (action?.type === "spawn-projectile") return action;
+            }
+            return null;
+      }
+
+      _swingAction() {
+            for (const ability of this._currentConfig().abilities) {
+                  const action = ability.actions.find(
+                        (candidate) => candidate.type === "swing",
+                  );
+                  if (action?.type === "swing") return action;
+            }
+            return null;
+      }
+
+      _syncSwingControls(): void {
+            const action = this._swingAction();
+            this.controls.swingStartDegrees.disabled = !action;
+            this.controls.swingEndDegrees.disabled = !action;
+            this.controls.swingStartDegrees.value = action?.startDegrees ?? 0;
+            this.controls.swingEndDegrees.value = action?.endDegrees ?? 0;
+      }
+
       _projectileImages(): string[] {
-            const weapon = this._currentConfig().weapon;
-            if (weapon?.type !== "projectile") return [];
-            return Array.isArray(weapon.projectile.image)
-                  ? weapon.projectile.image
-                  : [weapon.projectile.image];
+            const action = this._projectileAction();
+            if (!action) return [];
+            return Array.isArray(action.projectile.image)
+                  ? action.projectile.image
+                  : [action.projectile.image];
       }
 
       _populateProjectileSelect(): void {
@@ -552,17 +610,17 @@ export class CharacterStudio {
       }
 
       _syncProjectileControls(): void {
-            const weapon = this._currentConfig().weapon;
+            const action = this._projectileAction();
             const path = this.projectileImageSelect.value;
-            const enabled = weapon?.type === "projectile" && Boolean(path);
+            const enabled = Boolean(action && path);
             this.projectileImageScale.disabled = !enabled;
             this.projectileRotationSpeed.disabled = !enabled;
-            if (weapon?.type !== "projectile") return;
+            if (!action) return;
             this.projectileImageScale.value = String(
-                  weapon.projectile.imageScales?.[path] ?? 1,
+                  action.projectile.imageScales?.[path] ?? 1,
             );
             this.projectileRotationSpeed.value = String(
-                  weapon.projectile.rotationSpeed ?? 0,
+                  action.projectile.rotationSpeed ?? 0,
             );
             requireElement<HTMLElement>(
                   "val-projectileImageScale",
@@ -575,14 +633,14 @@ export class CharacterStudio {
       }
 
       _updateProjectileConfig(): void {
-            const weapon = this._currentConfig().weapon;
+            const action = this._projectileAction();
             const path = this.projectileImageSelect.value;
-            if (weapon?.type !== "projectile" || !path) return;
-            weapon.projectile.imageScales ??= {};
-            weapon.projectile.imageScales[path] = Number(
+            if (!action || !path) return;
+            action.projectile.imageScales ??= {};
+            action.projectile.imageScales[path] = Number(
                   this.projectileImageScale.value,
             );
-            weapon.projectile.rotationSpeed = Number(
+            action.projectile.rotationSpeed = Number(
                   this.projectileRotationSpeed.value,
             );
             this._syncProjectileControls();
@@ -999,6 +1057,9 @@ export class CharacterStudio {
             config.weaponOffset ??= structuredClone(
                   this.defaults?.presentation.weaponOffset ?? { x: 0, y: 0 },
             );
+            config.weaponPivot ??= structuredClone(
+                  this.defaults?.presentation.weaponPivot ?? { x: 0, y: 0 },
+            );
             config.defaultFacing ??=
                   this.defaults?.presentation.defaultFacing ?? "right";
             config.hitbox ??= structuredClone(
@@ -1100,6 +1161,10 @@ export class CharacterStudio {
             this.controls.weaponScale.value = config.weaponScale;
             this.controls.weaponOffsetX.value = config.weaponOffset.x;
             this.controls.weaponOffsetY.value = config.weaponOffset.y;
+            this.controls.weaponPivotX.value = config.weaponPivot.x;
+            this.controls.weaponPivotY.value = config.weaponPivot.y;
+            this._syncSwingControls();
+            this.weaponImagePath.value = config.weaponIdle ?? "";
 
             // Load base image (activePoseKey == "base" at this point)
             const imagePath = this._getPoseImagePath(config, "base");
@@ -1287,7 +1352,13 @@ export class CharacterStudio {
             config.healthBarOffset = { ...state.healthBarOffset };
             config.weaponScale = state.weaponScale;
             config.weaponOffset = { ...state.weaponOffset };
-            config.weapon = state.weapon ? structuredClone(state.weapon) : null;
+            config.weaponPivot = { ...state.weaponPivot };
+            config.weaponIdle = state.weaponIdle;
+            this.weaponImagePath.value = config.weaponIdle ?? "";
+            this.images.weaponIdle.src = config.weaponIdle
+                  ? "../../" + config.weaponIdle
+                  : "";
+            config.abilities = structuredClone(state.abilities);
 
             // Restore poses with deep copies
             if (state.poses) {
@@ -1320,6 +1391,9 @@ export class CharacterStudio {
             this.controls.weaponScale.value = config.weaponScale;
             this.controls.weaponOffsetX.value = config.weaponOffset.x;
             this.controls.weaponOffsetY.value = config.weaponOffset.y;
+            this.controls.weaponPivotX.value = config.weaponPivot.x;
+            this.controls.weaponPivotY.value = config.weaponPivot.y;
+            this._syncSwingControls();
             this._populateProjectileSelect();
 
             // Update body image if pose changed
@@ -1402,6 +1476,19 @@ export class CharacterStudio {
                   x: Math.round(numberValue(this.controls.weaponOffsetX)),
                   y: Math.round(numberValue(this.controls.weaponOffsetY)),
             };
+            config.weaponPivot = {
+                  x: Math.round(numberValue(this.controls.weaponPivotX)),
+                  y: Math.round(numberValue(this.controls.weaponPivotY)),
+            };
+            const swing = this._swingAction();
+            if (swing) {
+                  swing.startDegrees = numberValue(
+                        this.controls.swingStartDegrees,
+                  );
+                  swing.endDegrees = numberValue(
+                        this.controls.swingEndDegrees,
+                  );
+            }
 
             // Crop: pose-aware
             const visual = this._getPoseVisual(config, this.activePoseKey);

@@ -621,6 +621,15 @@
           <div class="section-divider"><span>Held Weapon</span></div>
 
           <div class="control-group">
+            <label for="weaponImagePath">Image path</label>
+            <input
+              type="text"
+              id="weaponImagePath"
+              placeholder="assets/fighters/example/weapons/weapon.png"
+            />
+          </div>
+
+          <div class="control-group">
             <label>
               <span>Scale</span>
               <span class="val-display" id="val-weaponScale"></span>
@@ -690,6 +699,56 @@
                 step="1"
               />
             </div>
+          </div>
+
+          <div class="section-divider"><span>Rotation Pivot</span></div>
+
+          <div class="control-group">
+            <label>
+              <span>Pivot X</span>
+              <span class="val-display" id="val-weaponPivotX"></span>
+            </label>
+            <div class="slider-row">
+              <input type="range" id="weaponPivotX" min="-200" max="200" step="1" />
+              <input type="number" class="num-input" data-for="weaponPivotX" min="-200" max="200" step="1" />
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <span>Pivot Y</span>
+              <span class="val-display" id="val-weaponPivotY"></span>
+            </label>
+            <div class="slider-row">
+              <input type="range" id="weaponPivotY" min="-200" max="200" step="1" />
+              <input type="number" class="num-input" data-for="weaponPivotY" min="-200" max="200" step="1" />
+            </div>
+            <p class="control-hint">The weapon rotates around this fighter-relative point.</p>
+          </div>
+
+          <div class="section-divider"><span>Swing Motion</span></div>
+
+          <div class="control-group">
+            <label>
+              <span>Start Angle</span>
+              <span class="val-display" id="val-swingStartDegrees"></span>
+            </label>
+            <div class="slider-row">
+              <input type="range" id="swingStartDegrees" min="-360" max="360" step="1" />
+              <input type="number" class="num-input" data-for="swingStartDegrees" min="-360" max="360" step="1" />
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>
+              <span>End Angle</span>
+              <span class="val-display" id="val-swingEndDegrees"></span>
+            </label>
+            <div class="slider-row">
+              <input type="range" id="swingEndDegrees" min="-360" max="360" step="1" />
+              <input type="number" class="num-input" data-for="swingEndDegrees" min="-360" max="360" step="1" />
+            </div>
+            <p class="control-hint">These controls are enabled when the fighter has a swing action.</p>
           </div>
         </div>
       </div>

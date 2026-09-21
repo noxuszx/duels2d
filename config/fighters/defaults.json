@@ -3,7 +3,7 @@
             "maxHealth": 1000,
             "speed": 10,
             "baseDamage": 100,
-            "weapon": null,
+            "abilities": [],
             "faceTarget": { "mode": "never" }
       },
       "body": {
@@ -19,6 +19,7 @@
             "healthBarOffset": { "x": 0, "y": -76 },
             "weaponScale": 1,
             "weaponOffset": { "x": 0, "y": 0 },
+            "weaponPivot": { "x": 0, "y": 0 },
             "defaultFacing": "right",
             "poses": null
       },

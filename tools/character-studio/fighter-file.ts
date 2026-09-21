@@ -11,7 +11,7 @@ export const DEFAULT_FIGHTER_DEFAULTS: FighterDefaults = {
             maxHealth: 1000,
             speed: 10,
             baseDamage: 100,
-            weapon: null,
+            abilities: [],
             faceTarget: { mode: "never" },
       },
       body: {
@@ -27,6 +27,7 @@ export const DEFAULT_FIGHTER_DEFAULTS: FighterDefaults = {
             healthBarOffset: { x: 0, y: -76 },
             weaponScale: 1,
             weaponOffset: { x: 0, y: 0 },
+            weaponPivot: { x: 0, y: 0 },
             weaponIdle: null,
             weaponAttack: null,
             defaultFacing: "right",
@@ -108,12 +109,10 @@ export function syncFighterDefinition(
       }
 
       definition.combat = definition.combat || {};
-      if (!isEqual(config.weapon, defaults.combat.weapon)) {
-            definition.combat.weapon = config.weapon
-                  ? structuredClone(config.weapon)
-                  : null;
+      if (!isEqual(config.abilities, defaults.combat.abilities)) {
+            definition.combat.abilities = structuredClone(config.abilities);
       } else {
-            delete definition.combat.weapon;
+            delete definition.combat.abilities;
       }
 
       // Presentation: strip fields equal to defaults
@@ -196,6 +195,25 @@ export function syncFighterDefinition(
             };
       } else {
             delete definition.presentation.weaponOffset;
+      }
+      if (
+            config.weaponPivot &&
+            !isEqual(config.weaponPivot, defaults.presentation.weaponPivot)
+      ) {
+            definition.presentation.weaponPivot = {
+                  x: cleanNumber(config.weaponPivot.x),
+                  y: cleanNumber(config.weaponPivot.y),
+            };
+      } else {
+            delete definition.presentation.weaponPivot;
+      }
+      if (
+            config.weaponIdle &&
+            !isEqual(config.weaponIdle, defaults.presentation.weaponIdle)
+      ) {
+            definition.presentation.weaponIdle = config.weaponIdle;
+      } else {
+            delete definition.presentation.weaponIdle;
       }
 
       if (

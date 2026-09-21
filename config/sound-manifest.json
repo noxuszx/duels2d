@@ -1,70 +1,86 @@
 {
-      "shared": {
-            "body-bounce": [
-                  {
-                        "id": "body-bounce-hard-01",
-                        "path": "assets/sfx/shared/body-bounce/body-bounce-hard-01.mp3"
-                  },
-                  {
-                        "id": "body-bounce-light-01",
-                        "path": "assets/sfx/shared/body-bounce/body-bounce-light-01.mp3"
-                  },
-                  {
-                        "id": "body-bounce-medium-01",
-                        "path": "assets/sfx/shared/body-bounce/body-bounce-medium-01.mp3"
-                  },
-                  {
-                        "id": "body-bounce-wall-01",
-                        "path": "assets/sfx/shared/body-bounce/body-bounce-wall-01.mp3"
-                  }
-            ],
-            "hurt": [
-                  {
-                        "id": "hurt-medium-01",
-                        "path": "assets/sfx/shared/hurt/hurt-medium-01.mp3"
-                  }
-            ],
-            "victory": [
-                  {
-                        "id": "victory-sting-01",
-                        "path": "assets/sfx/shared/victory/victory-sting-01.mp3"
-                  }
-            ]
+  "shared": {
+    "body-bounce": [
+      {
+        "id": "body-bounce-hard-01",
+        "path": "assets/sfx/shared/body-bounce/body-bounce-hard-01.mp3"
       },
-      "characters": {
-            "depressedman": {
-                  "ambient": [
-                        {
-                              "id": "depressedman-sigh-01",
-                              "path": "assets/sfx/characters/depressedguy/ambient/depressedguy-sigh-01.mp3"
-                        }
-                  ]
-            },
-            "happyman": {
-                  "ambient": [
-                        {
-                              "id": "happyman-cheer-01",
-                              "path": "assets/sfx/characters/happyguy/ambient/happyguy-cheer-01.mp3"
-                        },
-                        {
-                              "id": "happyman-greeting-01",
-                              "path": "assets/sfx/characters/happyguy/ambient/happyguy-greeting-01.mp3"
-                        },
-                        {
-                              "id": "happyman-hello-01",
-                              "path": "assets/sfx/characters/happyguy/ambient/happyguy-hello-01.mp3"
-                        },
-                        {
-                              "id": "happyman-laugh-short-01",
-                              "path": "assets/sfx/characters/happyguy/ambient/happyguy-laugh-short-01.mp3"
-                        }
-                  ],
-                  "weaponSlap": [
-                        {
-                              "id": "happyman-slap-impact-01",
-                              "path": "assets/sfx/characters/happyguy/weapon-slap/happyguy-slap-impact-01.mp3"
-                        }
-                  ]
-            }
+      {
+        "id": "body-bounce-light-01",
+        "path": "assets/sfx/shared/body-bounce/body-bounce-light-01.mp3"
+      },
+      {
+        "id": "body-bounce-medium-01",
+        "path": "assets/sfx/shared/body-bounce/body-bounce-medium-01.mp3"
+      },
+      {
+        "id": "body-bounce-wall-01",
+        "path": "assets/sfx/shared/body-bounce/body-bounce-wall-01.mp3"
       }
+    ],
+    "hurt": [
+      {
+        "id": "hurt-medium-01",
+        "path": "assets/sfx/shared/hurt/hurt-medium-01.mp3"
+      }
+    ],
+    "victory": [
+      {
+        "id": "victory-sting-01",
+        "path": "assets/sfx/shared/victory/victory-sting-01.mp3"
+      }
+    ]
+  },
+  "characters": {
+    "angryman": {
+      "attackWindup": [
+        {
+          "id": "angryman-dash-01",
+          "path": "assets/sfx/characters/angryman/attack-windup/angryman-dash-01.mp3"
+        }
+      ]
+    },
+    "depressedman": {
+      "ambient": [
+        {
+          "id": "depressedman-sigh-01",
+          "path": "assets/sfx/characters/depressedman/ambient/depressedman-sigh-01.mp3"
+        }
+      ]
+    },
+    "happyman": {
+      "ambient": [
+        {
+          "id": "happyman-cheer-01",
+          "path": "assets/sfx/characters/happyman/ambient/happyman-cheer-01.mp3"
+        },
+        {
+          "id": "happyman-greeting-01",
+          "path": "assets/sfx/characters/happyman/ambient/happyman-greeting-01.mp3"
+        },
+        {
+          "id": "happyman-hello-01",
+          "path": "assets/sfx/characters/happyman/ambient/happyman-hello-01.mp3"
+        },
+        {
+          "id": "happyman-laugh-short-01",
+          "path": "assets/sfx/characters/happyman/ambient/happyman-laugh-short-01.mp3"
+        }
+      ],
+      "weaponSlap": [
+        {
+          "id": "happyman-slap-impact-01",
+          "path": "assets/sfx/characters/happyman/weapon-slap/happyman-slap-impact-01.mp3"
+        }
+      ]
+    },
+    "womanman": {
+      "attackActive": [
+        {
+          "id": "womanman-attack-01",
+          "path": "assets/sfx/characters/womanman/attack-active/womanman-attack-01.mp3"
+        }
+      ]
+    }
+  }
 }

@@ -1,12 +1,30 @@
 {
-      "$schema": "./fighter.schema.json",
-      "id": "womanman",
-      "name": "Woman Man",
-      "color": "#00d4ff",
-      "presentation": {
-            "image": "assets/fighters/womanguy/sprites/womanguy.out.png",
-            "imageScale": 2.6,
-            "imageOffset": { "x": 0, "y": -4 },
-            "imageCrop": { "x": 216, "y": 39, "width": 585, "height": 768 }
+  "$schema": "./fighter.schema.json",
+  "id": "womanman",
+  "name": "Woman Man",
+  "color": "#00d4ff",
+  "combat": {
+    "abilities": [
+      {
+        "id": "handbag-swing",
+        "trigger": { "type": "enemy-in-range", "rangePadding": 28 },
+        "timing": { "cooldownMs": 1400, "windupFrames": 14, "activeFrames": 12, "recoveryFrames": 18 },
+        "actions": [
+          { "type": "swing", "startDegrees": -177, "endDegrees": -48 },
+          { "type": "damage", "amount": 100 },
+          { "type": "knockback", "forceMagnitude": 0.12 }
+        ]
       }
+    ]
+  },
+  "presentation": {
+    "image": "assets/fighters/womanman/sprites/womanman.out.png",
+    "imageScale": 2.6,
+    "imageOffset": { "x": 0, "y": -4 },
+    "imageCrop": { "x": 216, "y": 39, "width": 585, "height": 768 },
+    "weaponIdle": "assets/fighters/womanman/weapons/handbag.png",
+    "weaponScale": 1.9,
+    "weaponOffset": { "x": 28, "y": 28 },
+    "weaponPivot": { "x": 30, "y": -18 }
+  }
 }

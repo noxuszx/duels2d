@@ -31,6 +31,10 @@ export type ControlName =
       | "weaponScale"
       | "weaponOffsetX"
       | "weaponOffsetY"
+      | "weaponPivotX"
+      | "weaponPivotY"
+      | "swingStartDegrees"
+      | "swingEndDegrees"
       | "imageCropX"
       | "imageCropY"
       | "imageCropWidth"
@@ -52,7 +56,9 @@ export type StudioState = Pick<
       | "healthBarOffset"
       | "weaponScale"
       | "weaponOffset"
-      | "weapon"
+      | "weaponPivot"
+      | "weaponIdle"
+      | "abilities"
       | "poses"
 > & { activePoseKey: string };
 export type JSONValue =

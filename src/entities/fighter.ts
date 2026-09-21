@@ -1,23 +1,19 @@
-import { Howl } from "howler";
 import * as Matter from "matter-js";
 import type {
       Facing,
       FighterConfig,
       FighterLines,
-      ImageCrop,
-      PoseOverrides,
       Vector2,
 } from "../types/fighter";
-import { getAspectFitCropDrawRect } from "../rendering/sprite-geometry";
-import type { WeaponConfig } from "../types/weapon";
+import type { AbilityConfig, AbilityState } from "../abilities/types";
 import type { GameConfig, SoundManifest } from "../types/game";
+import { FighterAudio } from "./fighter-audio";
+import { FighterPresentation } from "./fighter-presentation";
+
+export { getRandomPitch } from "./fighter-audio";
+export type { PitchVariationOptions } from "./fighter-audio";
 
 type Point = Vector2;
-type WeaponState = "idle" | "windup" | "active" | "recovery";
-type SoundEntry = string | { path: string };
-type SoundPools = Record<string, Howl[]>;
-
-type PoseVisual = Partial<PoseOverrides>;
 
 type NormalizedHitbox =
       | {
@@ -34,69 +30,44 @@ type NormalizedHitbox =
               halfHeight: number;
         };
 
-interface CurrentSprite {
-      image: HTMLImageElement;
-      imageScale: number;
-      imageOffset: Point;
-      imageCrop: ImageCrop | null;
-}
-
 export class Fighter {
-      private static sharedSoundPoolCache: SoundPools | null = null;
-      private readonly gameConfig: GameConfig;
-      private readonly soundManifest: SoundManifest;
+      private readonly lastAbilityUseTimes = new Map<string, number>();
 
       readonly id: string;
       readonly name: string;
       readonly maxHealth: number;
-      currentHealth: number;
+
       readonly color: string;
       readonly radius: number;
       readonly hitbox: NormalizedHitbox;
       readonly baseDamage: number;
       readonly baseSpeed: number;
-      knockbackOwnerId: string | null = null;
+      readonly defaultFacing: Facing;
+      readonly hitboxOffset: Point;
+      readonly abilities: AbilityConfig[];
+
       private pendingForce: Point = { x: 0, y: 0 };
       private uprightAssistAfter = 0;
-      readonly hitboxOffset: Point;
+      private lastHitTime = 0;
+
+      readonly body: Matter.Body;
+      readonly presentation: FighterPresentation;
+      readonly audio: FighterAudio;
+      readonly lines: FighterLines;
+      readonly faceTarget: { mode: "never" | "always" | "range" };
+
+      abilityState: AbilityState = "idle";
+      abilityFacing: Facing | null = null;
+      activeAbility: AbilityConfig | null = null;
+      knockbackOwnerId: string | null = null;
+
+      abilityTimer = 0;
       hitFlashTimer = 0;
       attackTimer = 0;
-      private lastHitTime = 0;
-      readonly weapon: WeaponConfig | null;
-      weaponState: WeaponState = "idle";
-      weaponTimer = 0;
-      lastWeaponUseTime = -Infinity;
-      lastIdleSoundTime = performance.now();
-      readonly defaultFacing: Facing;
+      currentHealth: number;
       facing: Facing;
-      readonly faceTarget: { mode: "never" | "always" | "range" };
-      readonly body: Matter.Body;
-      readonly imageScale: number;
-      readonly imageOffset: Point;
-      readonly imageCrop: ImageCrop | null;
-      sprite: HTMLImageElement | null = null;
-      readonly sprites: Record<
-            "idle" | "attackWindup" | "attackActive",
-            HTMLImageElement | null
-      > = {
-            idle: null,
-            attackWindup: null,
-            attackActive: null,
-      };
-      private readonly poseVisuals: Partial<
-            Record<"idle" | "attackWindup" | "attackActive", PoseVisual>
-      > = {};
-      readonly weaponOffset: Point;
-      readonly weaponScale: number;
-      weaponIdle: HTMLImageElement | null = null;
-      weaponAttack: HTMLImageElement | null = null;
-      readonly healthBarOffset: Point;
-      readonly soundPools: SoundPools;
-      readonly sharedSoundPools: SoundPools;
-      private readonly soundCooldowns: Record<string, number> = {};
-      readonly lines: FighterLines;
+
       lastAmbientLineTime = performance.now();
-      lastAmbientSoundTime = performance.now();
 
       constructor(
             config: FighterConfig,
@@ -107,8 +78,6 @@ export class Fighter {
             gameConfig: GameConfig,
             soundManifest: SoundManifest,
       ) {
-            this.gameConfig = gameConfig;
-            this.soundManifest = soundManifest;
             this.id = config.id;
             this.name = config.name;
             this.maxHealth = config.maxHealth;
@@ -119,7 +88,7 @@ export class Fighter {
             this.baseDamage = config.baseDamage;
             this.baseSpeed = Math.hypot(velX, velY);
             this.hitboxOffset = config.hitboxOffset;
-            this.weapon = config.weapon;
+            this.abilities = config.abilities;
             this.defaultFacing = config.defaultFacing;
             this.facing = this.defaultFacing;
             this.faceTarget = config.faceTarget;
@@ -152,127 +121,41 @@ export class Fighter {
                           );
             Matter.Body.setVelocity(this.body, { x: velX, y: velY });
 
-            this.imageScale = config.imageScale;
-            this.imageOffset = config.imageOffset;
-            this.imageCrop = config.imageCrop;
-            if (config.image) this.loadImage("sprite", config.image);
-
-            this.loadPose("idle", config.poses?.idle, config.image);
-            this.loadPose(
-                  "attackWindup",
-                  config.poses?.attackWindup,
-                  config.image,
-            );
-            this.loadPose(
-                  "attackActive",
-                  config.poses?.attackActive,
-                  config.image,
-            );
-
-            this.weaponOffset = config.weaponOffset;
-            this.weaponScale = config.weaponScale;
-            if (config.weaponIdle)
-                  this.loadImage("weaponIdle", config.weaponIdle);
-            if (config.weaponAttack)
-                  this.loadImage("weaponAttack", config.weaponAttack);
-            this.healthBarOffset = config.healthBarOffset;
-            this.soundPools = this.createSoundPools();
-            this.sharedSoundPools = Fighter._getSharedSoundPools(
-                  this.soundManifest,
-                  this.gameConfig,
-            );
+            this.presentation = new FighterPresentation(config);
+            this.audio = new FighterAudio(this.id, gameConfig, soundManifest);
             this.lines = config.lines ?? {};
       }
 
-      private loadPose(
-            key: "idle" | "attackWindup" | "attackActive",
-            value: string | PoseVisual | undefined,
-            fallbackImage: string | null,
-      ): void {
-            if (!value) return;
-            const path =
-                  typeof value === "string"
-                        ? value
-                        : (value.image ?? fallbackImage);
-            if (path) this.loadImage(`sprites.${key}`, path);
-            this.poseVisuals[key] = typeof value === "object" ? value : {};
-      }
-
-      private loadImage(
-            key:
-                  | "sprite"
-                  | "weaponIdle"
-                  | "weaponAttack"
-                  | `sprites.${"idle" | "attackWindup" | "attackActive"}`,
-            src: string,
-      ): void {
-            const image = new Image();
-            image.onload = () => {
-                  if (key.startsWith("sprites."))
-                        this.sprites[
-                              key.slice(8) as
-                                    | "idle"
-                                    | "attackWindup"
-                                    | "attackActive"
-                        ] = image;
-                  else if (key === "sprite") this.sprite = image;
-                  else if (key === "weaponIdle") this.weaponIdle = image;
-                  else this.weaponAttack = image;
-            };
-            image.onerror = () =>
-                  console.warn(`[Duels2D] Could not load image: ${src}`);
-            image.src = src;
-      }
-
-      getCurrentSprite(): CurrentSprite | null {
-            const poseKey =
-                  this.weaponState === "windup"
-                        ? this.sprites.attackWindup
-                              ? "attackWindup"
-                              : this.sprites.idle
-                                ? "idle"
-                                : null
-                        : this.weaponState === "active"
-                          ? this.sprites.attackActive
-                                ? "attackActive"
-                                : this.sprites.attackWindup
-                                  ? "attackWindup"
-                                  : this.sprites.idle
-                                    ? "idle"
-                                    : null
-                          : this.sprites.idle
-                            ? "idle"
-                            : null;
-            const image =
-                  this.weaponState === "windup"
-                        ? (this.sprites.attackWindup ??
-                          this.sprites.idle ??
-                          this.sprite)
-                        : this.weaponState === "active"
-                          ? (this.sprites.attackActive ??
-                            this.sprites.attackWindup ??
-                            this.sprites.idle ??
-                            this.sprite)
-                          : (this.sprites.idle ?? this.sprite);
-            if (!image) return null;
-            const pose = poseKey ? (this.poseVisuals[poseKey] ?? {}) : {};
-            return {
-                  image,
-                  imageScale: pose.imageScale ?? this.imageScale,
-                  imageOffset: pose.imageOffset ?? this.imageOffset,
-                  imageCrop: pose.imageCrop ?? this.imageCrop,
-            };
-      }
-
-      canUseWeapon(nowMs: number): boolean {
-            return (
-                  this.weapon !== null &&
-                  nowMs - this.lastWeaponUseTime >=
-                        (this.weapon.cooldownMs ?? 0)
+      getSwingAngle(): number | null {
+            const swing = this.activeAbility?.actions.find(
+                  (action) => action.type === "swing",
             );
+            if (!swing || swing.type !== "swing") return null;
+
+            let degrees = swing.startDegrees;
+            if (this.abilityState === "active") {
+                  const totalFrames = Math.max(
+                        1,
+                        this.activeAbility?.timing.activeFrames ?? 1,
+                  );
+                  const progress = Math.max(
+                        0,
+                        Math.min(1, 1 - this.abilityTimer / totalFrames),
+                  );
+                  degrees += (swing.endDegrees - swing.startDegrees) * progress;
+            } else if (this.abilityState === "recovery") {
+                  degrees = swing.endDegrees;
+            }
+            return (degrees * Math.PI) / 180;
       }
-      markWeaponUsed(nowMs = performance.now()): void {
-            this.lastWeaponUseTime = nowMs;
+
+      canUseAbility(ability: AbilityConfig, nowMs: number): boolean {
+            return (
+                  nowMs -
+                        (this.lastAbilityUseTimes.get(ability.id) ??
+                              -Infinity) >=
+                  ability.timing.cooldownMs
+            );
       }
       applyForceKnockback(
             direction: Point,
@@ -282,10 +165,8 @@ export class Fighter {
             const length = Math.hypot(direction.x, direction.y) || 1;
             this.knockbackOwnerId = sourceOwnerId;
             this.noteImpact();
-            this.pendingForce.x +=
-                  (direction.x / length) * forceMagnitude;
-            this.pendingForce.y +=
-                  (direction.y / length) * forceMagnitude;
+            this.pendingForce.x += (direction.x / length) * forceMagnitude;
+            this.pendingForce.y += (direction.y / length) * forceMagnitude;
       }
 
       applyPendingForce(): void {
@@ -310,8 +191,7 @@ export class Fighter {
                   Math.sin(-this.body.angle),
                   Math.cos(-this.body.angle),
             );
-            const springTorque =
-                  angleError * this.body.inertia * 0.000036;
+            const springTorque = angleError * this.body.inertia * 0.000036;
             const dampingTorque =
                   this.body.angularVelocity * this.body.inertia * 0.00043;
             const maxTorque = this.body.inertia * 0.00008;
@@ -354,8 +234,7 @@ export class Fighter {
             const unitX = direction.x / length;
             const unitY = direction.y / length;
             const forwardSpeed =
-                  this.body.velocity.x * unitX +
-                  this.body.velocity.y * unitY;
+                  this.body.velocity.x * unitX + this.body.velocity.y * unitY;
             const targetSpeed = this.baseSpeed * Math.max(1, speedMultiplier);
             if (forwardSpeed >= targetSpeed) return;
             const remaining = Math.max(0, 1 - forwardSpeed / targetSpeed);
@@ -366,102 +245,77 @@ export class Fighter {
             });
       }
 
-      startWeaponAnimation(): void {
-            if (!this.weapon?.animation) return;
-            this.weaponState = "windup";
-            this.weaponTimer = this.weapon.animation.windupFrames ?? 0;
-            this.attackTimer = this.weapon.animation.windupFrames ?? 0;
+      startAbility(ability: AbilityConfig, nowMs = performance.now()): void {
+            this.activeAbility = ability;
+            this.abilityFacing = this.facing;
+            this.lastAbilityUseTimes.set(ability.id, nowMs);
+            this.abilityState = "windup";
+            this.abilityTimer = ability.timing.windupFrames;
+            this.attackTimer = ability.timing.windupFrames;
             this.playSound("attackWindup", 0);
       }
 
-      updateWeaponState(): void {
-            if (!this.weapon || this.weaponTimer <= 0) return;
-            if (
-                  this.weaponState === "active" &&
-                  this.weapon.type === "proximity-melee" &&
-                  this.weapon.dash &&
-                  "untilCollision" in this.weapon.dash &&
-                  this.weapon.dash.untilCollision
-            )
-                  return;
-            this.weaponTimer--;
-            if (this.weaponState === "windup" && this.weaponTimer <= 0) {
-                  this.weaponState = "active";
-                  this.weaponTimer = this.weapon.animation?.activeFrames ?? 0;
-                  this.attackTimer = this.weapon.animation?.activeFrames ?? 0;
-                  this.playSound("attackActive", 0);
-            } else if (this.weaponState === "active" && this.weaponTimer <= 0) {
-                  this.weaponState = "recovery";
-                  this.weaponTimer = this.weapon.animation?.recoveryFrames ?? 0;
-            } else if (this.weaponState === "recovery" && this.weaponTimer <= 0)
-                  this.weaponState = "idle";
+      lockAbilityFacingToward(target: Fighter): void {
+            this.abilityFacing =
+                  target.body.position.x < this.body.position.x
+                        ? "left"
+                        : "right";
       }
 
-      finishWeaponActive(): void {
-            if (this.weaponState !== "active") return;
-            this.weaponState = "recovery";
-            this.weaponTimer = this.weapon?.animation?.recoveryFrames ?? 0;
-            if (this.weaponTimer <= 0) this.weaponState = "idle";
+      updateAbilityState(): void {
+            if (!this.activeAbility || this.abilityTimer <= 0) return;
+            if (
+                  this.abilityState === "active" &&
+                  this.activeAbility.actions.some(
+                        (action) =>
+                              action.type === "dash" && action.endOn.length > 0,
+                  )
+            )
+                  return;
+            this.abilityTimer--;
+            if (this.abilityState === "windup" && this.abilityTimer <= 0) {
+                  this.abilityState = "active";
+                  this.abilityTimer = this.activeAbility.timing.activeFrames;
+                  this.attackTimer = this.activeAbility.timing.activeFrames;
+                  this.playSound("attackActive", 0);
+            } else if (
+                  this.abilityState === "active" &&
+                  this.abilityTimer <= 0
+            ) {
+                  this.abilityState = "recovery";
+                  this.abilityTimer = this.activeAbility.timing.recoveryFrames;
+            } else if (
+                  this.abilityState === "recovery" &&
+                  this.abilityTimer <= 0
+            ) {
+                  this.abilityState = "idle";
+                  this.activeAbility = null;
+                  this.abilityFacing = null;
+            }
+      }
+
+      finishAbilityActive(): void {
+            if (this.abilityState !== "active" || !this.activeAbility) return;
+            this.abilityState = "recovery";
+            this.abilityTimer = this.activeAbility.timing.recoveryFrames;
+            if (this.abilityTimer <= 0) {
+                  this.abilityState = "idle";
+                  this.activeAbility = null;
+                  this.abilityFacing = null;
+            }
       }
 
       updateAudio(nowMs: number): void {
-            if (this.isDead || this.weaponState !== "idle") return;
-            this.updateAmbientAudio(nowMs);
-            if (
-                  nowMs - this.lastIdleSoundTime <
-                  (this.gameConfig.audio?.idleIntervalMs ?? 4000)
-            )
-                  return;
-            this.lastIdleSoundTime = nowMs;
-            this.playSound("idle", 0);
-      }
-
-      private updateAmbientAudio(nowMs: number): void {
-            const pool = this.soundPools.ambient;
-            if (
-                  !pool ||
-                  pool.length === 0 ||
-                  pool.some((sound) => sound.playing())
-            )
-                  return;
-            const audio = this.gameConfig.audio ?? {};
-            if (
-                  nowMs - this.lastAmbientSoundTime <
-                  (audio.ambientIntervalMs ?? audio.idleIntervalMs ?? 4000)
-            )
-                  return;
-            this.lastAmbientSoundTime = nowMs;
-            this.playSound("ambient", 0);
+            this.audio.update(
+                  nowMs,
+                  !this.isDead && this.abilityState === "idle",
+            );
       }
 
       get visualPosition(): Point {
             return {
                   x: this.body.position.x - this.hitboxOffset.x,
                   y: this.body.position.y - this.hitboxOffset.y,
-            };
-      }
-
-      _getCropDrawRect(
-            image: HTMLImageElement,
-            crop: ImageCrop | null,
-            drawRadius: number,
-      ): {
-            dx: number;
-            dy: number;
-            dw: number;
-            dh: number;
-            crop: Required<ImageCrop>;
-      } {
-            const safeCrop = this.getImageCrop(image, crop);
-            const destination = getAspectFitCropDrawRect(
-                  image.naturalWidth,
-                  image.naturalHeight,
-                  safeCrop,
-                  drawRadius,
-            );
-            return {
-                  ...destination,
-                  crop: safeCrop,
             };
       }
 
@@ -488,92 +342,6 @@ export class Fighter {
             };
       }
 
-      private getImageCrop(
-            image: HTMLImageElement,
-            crop: ImageCrop | null,
-      ): Required<ImageCrop> {
-            const fallback = {
-                  x: 0,
-                  y: 0,
-                  width: image.naturalWidth,
-                  height: image.naturalHeight,
-            };
-            if (!crop) return fallback;
-            const naturalWidth = image.naturalWidth || fallback.width || 1;
-            const naturalHeight = image.naturalHeight || fallback.height || 1;
-            const x = Math.max(0, Math.min(crop.x ?? 0, naturalWidth - 1));
-            const y = Math.max(0, Math.min(crop.y ?? 0, naturalHeight - 1));
-            return {
-                  x,
-                  y,
-                  width: Math.max(
-                        1,
-                        Math.min(crop.width ?? naturalWidth, naturalWidth - x),
-                  ),
-                  height: Math.max(
-                        1,
-                        Math.min(
-                              crop.height ?? naturalHeight,
-                              naturalHeight - y,
-                        ),
-                  ),
-            };
-      }
-
-      private static resolveSoundSource(entry: SoundEntry): string {
-            return typeof entry === "string" ? entry : entry.path;
-      }
-      private createSoundPools(): SoundPools {
-            return Fighter.buildSoundPools(
-                  this.soundManifest.characters[this.id] ?? {},
-                  this.gameConfig,
-            );
-      }
-      static _getSharedSoundPools(
-            soundManifest: SoundManifest,
-            gameConfig: GameConfig,
-      ): SoundPools {
-            if (!Fighter.sharedSoundPoolCache)
-                  Fighter.sharedSoundPoolCache = Fighter.buildSoundPools(
-                        soundManifest.shared,
-                        gameConfig,
-                  );
-            return Fighter.sharedSoundPoolCache;
-      }
-      private static buildSoundPools(
-            manifest: Record<string, SoundEntry[]>,
-            gameConfig: GameConfig,
-      ): SoundPools {
-            const pools: SoundPools = {};
-            Object.entries(manifest).forEach(([type, entries]) => {
-                  if (entries.length > 0)
-                        pools[type] = entries.map(
-                              (entry) =>
-                                    new Howl({
-                                          src: [
-                                                Fighter.resolveSoundSource(
-                                                      entry,
-                                                ),
-                                          ],
-                                          volume: Fighter.volumeForSoundType(
-                                                type,
-                                                gameConfig,
-                                          ),
-                                    }),
-                        );
-            });
-            return pools;
-      }
-      private static volumeForSoundType(
-            type: string,
-            gameConfig: GameConfig,
-      ): number {
-            const audio = gameConfig.audio ?? {};
-            if (audio.volumes?.[type] != null) return audio.volumes[type];
-            if (type === "body-bounce") return audio.bounceVolume ?? 0.55;
-            return type === "death" ? 0.9 : 0.65;
-      }
-
       setFacingToward(target: Fighter | null): void {
             if (target)
                   this.facing =
@@ -582,25 +350,7 @@ export class Fighter {
                               : "right";
       }
       playSound(type: string, cooldownMs: number | null = null): void {
-            const pool = this.soundPools[type] ?? this.sharedSoundPools[type];
-            if (!pool || pool.length === 0) return;
-            const audio = this.gameConfig.audio ?? {};
-            const cooldown =
-                  cooldownMs ??
-                  audio.defaultCooldownMs ??
-                  audio.bounceCooldownMs ??
-                  80;
-            const now = performance.now();
-            if (
-                  cooldown > 0 &&
-                  now - (this.soundCooldowns[type] ?? 0) < cooldown
-            )
-                  return;
-            this.soundCooldowns[type] = now;
-            const sound = pool[Math.floor(Math.random() * pool.length)];
-            if (type === "hurt")
-                  sound.rate([0.85, 1, 1.15][Math.floor(Math.random() * 3)]);
-            sound.play();
+            this.audio.play(type, cooldownMs);
       }
       isKnockbackFrom(ownerId: string, nowMs = performance.now()): boolean {
             void nowMs;
@@ -624,12 +374,7 @@ export class Fighter {
             return true;
       }
       destroy(): void {
-            Object.values(this.soundPools).forEach((pool) =>
-                  pool.forEach((sound) => {
-                        sound.stop();
-                        sound.unload();
-                  }),
-            );
+            this.audio.destroy();
       }
       onDeath(): void {
             this.playSound("death", 0);

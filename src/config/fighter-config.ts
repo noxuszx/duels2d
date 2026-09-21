@@ -62,18 +62,16 @@ function materializePoses(
       if (!presentation.poses) return null;
       return Object.fromEntries(
             Object.entries(presentation.poses).map(([key, pose]) => {
-                  const poseObject =
-                        typeof pose === "string" ? null : pose;
-                  const image =
-                        typeof pose === "string" ? pose : pose.image;
-                  const imageCrop = poseObject && "imageCrop" in poseObject
-                        ? poseObject.imageCrop
-                        : presentation.imageCrop;
+                  const poseObject = typeof pose === "string" ? null : pose;
+                  const image = typeof pose === "string" ? pose : pose.image;
+                  const imageCrop =
+                        poseObject && "imageCrop" in poseObject
+                              ? poseObject.imageCrop
+                              : presentation.imageCrop;
                   const materialized: Exclude<PoseConfig, string> = {
                         image,
                         imageScale:
-                              poseObject?.imageScale ??
-                              presentation.imageScale,
+                              poseObject?.imageScale ?? presentation.imageScale,
                         imageOffset: {
                               ...(poseObject?.imageOffset ??
                                     presentation.imageOffset),
@@ -101,7 +99,7 @@ export function composeFighter(
             maxHealth: merged.combat.maxHealth,
             speed: merged.combat.speed,
             baseDamage: merged.combat.baseDamage,
-            weapon: merged.combat.weapon,
+            abilities: merged.combat.abilities,
             faceTarget: merged.combat.faceTarget,
             radius: merged.body.radius,
             hitbox: merged.body.hitbox,
@@ -113,6 +111,7 @@ export function composeFighter(
             healthBarOffset: merged.presentation.healthBarOffset,
             weaponScale: merged.presentation.weaponScale,
             weaponOffset: merged.presentation.weaponOffset,
+            weaponPivot: merged.presentation.weaponPivot,
             weaponIdle: merged.presentation.weaponIdle,
             weaponAttack: merged.presentation.weaponAttack,
             poses: materializePoses(merged.presentation),

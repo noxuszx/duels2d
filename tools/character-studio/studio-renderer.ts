@@ -276,18 +276,19 @@ export function drawStudio(studio: CharacterStudio): void {
             drawHitboxEditOverlay(studio, config, centerX, centerY);
       }
 
-      const projectileWeapon =
-            config.weapon?.type === "projectile" ? config.weapon : null;
+      const projectileAction = config.abilities
+            .flatMap((ability) => ability.actions)
+            .find((action) => action.type === "spawn-projectile");
       if (
-            projectileWeapon &&
+            projectileAction?.type === "spawn-projectile" &&
             studio.images.projectile.complete &&
             studio.images.projectile.naturalWidth > 0
       ) {
             const imagePath = studio.projectileImageSelect.value;
             const imageScale =
-                  projectileWeapon.projectile.imageScales?.[imagePath] ?? 1;
+                  projectileAction.projectile.imageScales?.[imagePath] ?? 1;
             const previewDiameter =
-                  projectileWeapon.projectile.radius * 2 * imageScale;
+                  projectileAction.projectile.radius * 2 * imageScale;
             const maxSide = Math.max(
                   studio.images.projectile.naturalWidth,
                   studio.images.projectile.naturalHeight,
@@ -345,19 +346,55 @@ export function drawStudio(studio: CharacterStudio): void {
             studio.images.weaponIdle.complete &&
             studio.images.weaponIdle.naturalWidth > 0
       ) {
-            const weaponRadius = radius * config.weaponScale;
+            const maxSide = Math.max(
+                  studio.images.weaponIdle.naturalWidth,
+                  studio.images.weaponIdle.naturalHeight,
+            );
+            const weaponScale =
+                  (radius * 2 * config.weaponScale) / maxSide;
+            const weaponWidth =
+                  studio.images.weaponIdle.naturalWidth * weaponScale;
+            const weaponHeight =
+                  studio.images.weaponIdle.naturalHeight * weaponScale;
+            const swing = config.abilities
+                  .flatMap((ability) => ability.actions)
+                  .find((action) => action.type === "swing");
+            const previewAngle =
+                  swing?.type === "swing"
+                        ? (swing.startDegrees * Math.PI) / 180
+                        : 0;
             ctx.save();
             ctx.translate(
-                  centerX + config.weaponOffset.x,
-                  centerY + config.weaponOffset.y,
+                  centerX + config.weaponPivot.x,
+                  centerY + config.weaponPivot.y,
             );
+            ctx.rotate(previewAngle);
             ctx.drawImage(
                   studio.images.weaponIdle,
-                  -weaponRadius,
-                  -weaponRadius,
-                  weaponRadius * 2,
-                  weaponRadius * 2,
+                  config.weaponOffset.x -
+                        config.weaponPivot.x -
+                        weaponWidth / 2,
+                  config.weaponOffset.y -
+                        config.weaponPivot.y -
+                        weaponHeight / 2,
+                  weaponWidth,
+                  weaponHeight,
             );
+            ctx.restore();
+
+            ctx.save();
+            ctx.translate(
+                  centerX + config.weaponPivot.x,
+                  centerY + config.weaponPivot.y,
+            );
+            ctx.strokeStyle = "#ff5a5f";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-7, 0);
+            ctx.lineTo(7, 0);
+            ctx.moveTo(0, -7);
+            ctx.lineTo(0, 7);
+            ctx.stroke();
             ctx.restore();
       }
 

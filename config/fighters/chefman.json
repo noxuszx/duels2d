@@ -8,6 +8,7 @@
     "abilities": [{
       "id": "throw-kitchen-tool",
       "trigger": { "type": "nearest-enemy" },
+      "audio": { "windup": "weaponFire" },
       "timing": { "cooldownMs": 800, "windupFrames": 4, "activeFrames": 4, "recoveryFrames": 8 },
       "actions": [{
         "type": "spawn-projectile",

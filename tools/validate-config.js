@@ -132,6 +132,9 @@ const definitions = fighterFiles.map((file) =>
 const roster = definitions.map((definition) =>
       composeFighter(defaults, definition),
 );
+const sounds = JSON.parse(
+      fs.readFileSync(path.join(root, "config", "sound-manifest.json"), "utf8"),
+);
 
 const ids = new Set();
 const faceModes = new Set(["never", "always", "range"]);
@@ -169,6 +172,49 @@ function checkAnimation(location, animation) {
                         "must be a non-negative integer",
                   );
             }
+      });
+}
+
+function checkVolume(location, value) {
+      if (!Number.isFinite(value) || value < 0 || value > 1)
+            fail(location, "must be between 0 and 1");
+}
+
+function checkSoundCue(location, cue) {
+      if (!cue || typeof cue !== "object") {
+            fail(location, "must be a cue object");
+            return;
+      }
+      if (typeof cue.category !== "string" || !cue.category)
+            fail(`${location}.category`, "must be a non-empty string");
+      else if (game.audio?.categories?.[cue.category] === undefined)
+            fail(
+                  `${location}.category`,
+                  `references unknown category: ${cue.category}`,
+            );
+      if (cue.volume !== undefined) checkVolume(`${location}.volume`, cue.volume);
+      if (
+            cue.cooldownMs !== undefined &&
+            (!Number.isFinite(cue.cooldownMs) || cue.cooldownMs < 0)
+      )
+            fail(`${location}.cooldownMs`, "must be 0 or greater");
+      if (
+            cue.intervalMs !== undefined &&
+            (!Number.isFinite(cue.intervalMs) || cue.intervalMs < 0)
+      )
+            fail(`${location}.intervalMs`, "must be 0 or greater");
+      if (
+            cue.pitchVariation !== undefined &&
+            typeof cue.pitchVariation !== "boolean"
+      )
+            fail(`${location}.pitchVariation`, "must be a boolean");
+      if (!Array.isArray(cue.clips) || cue.clips.length === 0) {
+            fail(`${location}.clips`, "must be a non-empty array");
+            return;
+      }
+      cue.clips.forEach((clip, index) => {
+            const clipPath = typeof clip === "string" ? clip : clip?.path;
+            checkAsset(`${location}.clips[${index}]`, clipPath);
       });
 }
 
@@ -383,6 +429,20 @@ roster.forEach((fighter) => {
             if (!Array.isArray(ability.actions) || ability.actions.length === 0)
                   fail(abilityLocation, "actions must be a non-empty array");
 
+            const availableCues = new Set([
+                  ...Object.keys(sounds.shared || {}),
+                  ...Object.keys(sounds.characters?.[fighter.id]?.cues || {}),
+            ]);
+            Object.entries(ability.audio || {}).forEach(([event, cue]) => {
+                  if (!new Set(["windup", "active", "hit"]).has(event))
+                        fail(`${abilityLocation}.audio.${event}`, "is not supported");
+                  if (typeof cue !== "string" || !availableCues.has(cue))
+                        fail(
+                              `${abilityLocation}.audio.${event}`,
+                              `references unknown sound cue: ${String(cue)}`,
+                        );
+            });
+
             (ability.actions || []).forEach((action, actionIndex) => {
                   if (action.type !== "spawn-projectile") return;
                   const projectile = action.projectile;
@@ -409,6 +469,7 @@ roster.forEach((fighter) => {
 const game = JSON.parse(
       fs.readFileSync(path.join(root, "config", "game-settings.json"), "utf8"),
 );
+checkVolume("game-settings.json.audio.masterVolume", game.audio?.masterVolume);
 if (
       !isPositive(game.rendering?.scale) ||
       game.rendering.scale > 4
@@ -433,13 +494,25 @@ if (
             "physics.collisionCooldownMs must be 0 or greater",
       );
 }
-Object.entries(game.audio?.volumes || {}).forEach(([name, volume]) => {
-      if (!Number.isFinite(volume) || volume < 0 || volume > 1) {
-            fail(
-                  "game-settings.json",
-                  `audio.volumes.${name} must be between 0 and 1`,
+Object.entries(game.audio?.categories || {}).forEach(([name, volume]) =>
+      checkVolume(`game-settings.json.audio.categories.${name}`, volume),
+);
+
+Object.entries(sounds.shared || {}).forEach(([cueName, cue]) =>
+      checkSoundCue(`sound-manifest.json.shared.${cueName}`, cue),
+);
+Object.entries(sounds.characters || {}).forEach(([fighterId, profile]) => {
+      if (profile?.volume !== undefined)
+            checkVolume(
+                  `sound-manifest.json.characters.${fighterId}.volume`,
+                  profile.volume,
             );
-      }
+      Object.entries(profile?.cues || {}).forEach(([cueName, cue]) =>
+            checkSoundCue(
+                  `sound-manifest.json.characters.${fighterId}.cues.${cueName}`,
+                  cue,
+            ),
+      );
 });
 
 if (errors.length > 0) {

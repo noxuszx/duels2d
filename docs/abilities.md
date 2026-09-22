@@ -4,6 +4,7 @@ Fighters declare `combat.abilities` in their JSON. Each ability contains:
 
 - a `trigger` that selects when and where it can activate;
 - `timing` for cooldown, windup, active, and recovery phases;
+- optional `audio` hooks that map phases and successful hits to sound cues;
 - an ordered set of reusable `actions`.
 
 Current triggers:
@@ -33,6 +34,11 @@ actions are applied once when the active phase begins.
     "activeFrames": 10,
     "recoveryFrames": 12
   },
+  "audio": {
+    "windup": "swing-windup",
+    "active": "swing-whoosh",
+    "hit": "swing-hit"
+  },
   "actions": [
     { "type": "swing", "startDegrees": -70, "endDegrees": 70 },
     { "type": "damage", "amount": 12 },
@@ -40,6 +46,11 @@ actions are applied once when the active phase begins.
   ]
 }
 ```
+
+Audio hooks support `windup`, `active`, and `hit`. The first two fire when the
+ability enters that phase; `hit` fires only when target actions connect. Their
+values are cue names from the fighter's sound profile or the shared profile,
+not asset paths.
 
 The Weapon tab in Character Studio configures `weaponIdle`, `weaponOffset`,
 and `weaponPivot`. The pivot is fighter-relative; the image rotates around

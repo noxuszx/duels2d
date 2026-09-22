@@ -45,12 +45,17 @@ export class AbilitySystem {
                               !target.isDead &&
                               !this.swingHits.has(fighter)
                         ) {
-                              this.actions.executeTargetActions(
-                                    fighter,
-                                    target,
-                                    ability,
-                              );
-                              fighter.playSound("weaponSlap");
+                              if (
+                                    this.actions.executeTargetActions(
+                                          fighter,
+                                          target,
+                                          ability,
+                                    )
+                              )
+                                    fighter.audio.playAbilityCue(
+                                          ability,
+                                          "hit",
+                                    );
                               this.swingHits.add(fighter);
                         }
                         if (target && !target.isDead)
@@ -168,15 +173,20 @@ export class AbilitySystem {
                   this.actions.executeProjectileAction(
                         fighter,
                         target,
+                        ability,
                         projectile,
                   );
 
             const dash = this.action<"dash">(ability, "dash");
-            if (dash) fighter.playSound("weaponSlap");
-            else if (!projectile && !this.action(ability, "swing")) {
-                  this.actions.executeTargetActions(fighter, target, ability);
-                  fighter.playSound("weaponSlap");
-            }
+            if (!dash && !projectile && !this.action(ability, "swing"))
+                  if (
+                        this.actions.executeTargetActions(
+                              fighter,
+                              target,
+                              ability,
+                        )
+                  )
+                        fighter.audio.playAbilityCue(ability, "hit");
       }
 
       private tryApplyDashHit(attacker: Fighter, target: Fighter): void {
@@ -190,7 +200,10 @@ export class AbilitySystem {
                   this.dashHits.has(attacker)
             )
                   return;
-            this.actions.executeTargetActions(attacker, target, ability);
+            if (
+                  this.actions.executeTargetActions(attacker, target, ability)
+            )
+                  attacker.audio.playAbilityCue(ability, "hit");
             this.dashHits.add(attacker);
       }
 

@@ -1,11 +1,19 @@
 import { Howl } from "howler";
+import type { AbilityAudioEvent, AbilityConfig } from "../abilities/types";
 import type {
+      CharacterSoundProfile,
       GameConfig,
+      SoundCueConfig,
       SoundManifest,
       SoundManifestEntry,
 } from "../types/game";
 
-type SoundPools = Record<string, Howl[]>;
+interface LoadedCue {
+      config: SoundCueConfig;
+      sounds: Howl[];
+}
+
+type SoundCues = Record<string, LoadedCue>;
 
 export interface PitchVariationOptions {
       minDelta?: number;
@@ -41,41 +49,39 @@ export function getRandomPitch(
 
 /** Owns sound assets, playback rules, and ambient scheduling for a fighter. */
 export class FighterAudio {
-      private static sharedSoundPoolCache: SoundPools | null = null;
+      private static sharedSoundCueCache: SoundCues | null = null;
       private static readonly sharedLastPitchRates: Record<string, number> = {};
 
-      private readonly soundPools: SoundPools;
-      private readonly sharedSoundPools: SoundPools;
+      private readonly soundCues: SoundCues;
+      private readonly sharedSoundCues: SoundCues;
+      private readonly characterVolume: number;
       private readonly soundCooldowns: Record<string, number> = {};
       private readonly characterLastPitchRates: Record<string, number> = {};
       private lastIdleSoundTime = performance.now();
       private lastAmbientSoundTime = performance.now();
-      lastAmbientLineTime = performance.now();
-
       constructor(
             fighterId: string,
             private readonly gameConfig: GameConfig,
             soundManifest: SoundManifest,
       ) {
-            this.soundPools = FighterAudio.buildSoundPools(
-                  soundManifest.characters[fighterId] ?? {},
-                  gameConfig,
-            );
-            this.sharedSoundPools = FighterAudio.getSharedSoundPools(
+            const profile: CharacterSoundProfile = soundManifest.characters[
+                  fighterId
+            ] ?? { cues: {} };
+            this.characterVolume = profile.volume ?? 1;
+            this.soundCues = FighterAudio.buildSoundCues(profile.cues);
+            this.sharedSoundCues = FighterAudio.getSharedSoundCues(
                   soundManifest,
-                  gameConfig,
             );
       }
 
       play(type: string, cooldownMs: number | null = null): void {
-            const pool = this.soundPools[type] ?? this.sharedSoundPools[type];
-            if (!pool || pool.length === 0) return;
-            const audio = this.gameConfig.audio ?? {};
+            const characterCue = this.soundCues[type];
+            const cue = characterCue ?? this.sharedSoundCues[type];
+            if (!cue || cue.sounds.length === 0) return;
             const cooldown =
                   cooldownMs ??
-                  audio.defaultCooldownMs ??
-                  audio.bounceCooldownMs ??
-                  80;
+                  cue.config.cooldownMs ??
+                  this.gameConfig.audio.defaultCooldownMs;
             const now = performance.now();
             if (
                   cooldown > 0 &&
@@ -83,25 +89,39 @@ export class FighterAudio {
             )
                   return;
             this.soundCooldowns[type] = now;
-            const sound = pool[Math.floor(Math.random() * pool.length)];
-            this.applyPitchVariation(type, sound);
-            sound.play();
+            const sound =
+                  cue.sounds[Math.floor(Math.random() * cue.sounds.length)];
+            const playbackId = sound.play();
+            sound.volume(this.volumeForCue(cue.config), playbackId);
+            this.applyPitchVariation(
+                  type,
+                  cue.config,
+                  sound,
+                  playbackId,
+                  characterCue === undefined,
+            );
+      }
+
+      playAbilityCue(ability: AbilityConfig, event: AbilityAudioEvent): void {
+            const cue = ability.audio?.[event];
+            if (cue) this.play(cue);
       }
 
       update(nowMs: number, canPlayIdleAudio: boolean): void {
             if (!canPlayIdleAudio) return;
             this.updateAmbient(nowMs);
 
-            const idlePool = this.soundPools.idle;
+            const idleCue = this.soundCues.idle ?? this.sharedSoundCues.idle;
             if (
-                  !idlePool ||
-                  idlePool.length === 0 ||
-                  idlePool.some((sound) => sound.playing())
+                  !idleCue ||
+                  idleCue.sounds.length === 0 ||
+                  idleCue.sounds.some((sound) => sound.playing())
             )
                   return;
             if (
                   nowMs - this.lastIdleSoundTime <
-                  (this.gameConfig.audio?.idleIntervalMs ?? 4000)
+                  (idleCue.config.intervalMs ??
+                        this.gameConfig.audio.idleIntervalMs)
             )
                   return;
             this.lastIdleSoundTime = nowMs;
@@ -109,8 +129,8 @@ export class FighterAudio {
       }
 
       destroy(): void {
-            Object.values(this.soundPools).forEach((pool) =>
-                  pool.forEach((sound) => {
+            Object.values(this.soundCues).forEach((cue) =>
+                  cue.sounds.forEach((sound) => {
                         sound.stop();
                         sound.unload();
                   }),
@@ -122,46 +142,47 @@ export class FighterAudio {
             soundManifest: SoundManifest,
             gameConfig: GameConfig,
       ): void {
-            const pool = this.getSharedSoundPools(soundManifest, gameConfig)[
-                  type
-            ];
-            if (!pool || pool.length === 0) return;
-            pool[Math.floor(Math.random() * pool.length)].play();
+            const cue = this.getSharedSoundCues(soundManifest)[type];
+            if (!cue || cue.sounds.length === 0) return;
+            const sound =
+                  cue.sounds[Math.floor(Math.random() * cue.sounds.length)];
+            const playbackId = sound.play();
+            sound.volume(
+                  this.calculateVolume(cue.config, gameConfig, 1),
+                  playbackId,
+            );
       }
 
       private updateAmbient(nowMs: number): void {
-            const pool = this.soundPools.ambient;
+            const cue = this.soundCues.ambient ?? this.sharedSoundCues.ambient;
             if (
-                  !pool ||
-                  pool.length === 0 ||
-                  pool.some((sound) => sound.playing())
+                  !cue ||
+                  cue.sounds.length === 0 ||
+                  cue.sounds.some((sound) => sound.playing())
             )
                   return;
-            const audio = this.gameConfig.audio ?? {};
             if (
                   nowMs - this.lastAmbientSoundTime <
-                  (audio.ambientIntervalMs ?? audio.idleIntervalMs ?? 4000)
+                  (cue.config.intervalMs ??
+                        this.gameConfig.audio.idleIntervalMs)
             )
                   return;
             this.lastAmbientSoundTime = nowMs;
             this.play("ambient", 0);
       }
 
-      private applyPitchVariation(type: string, sound: Howl): void {
-            const shouldVary =
-                  type === "hurt" ||
-                  type === "body-bounce" ||
-                  type === "idle" ||
-                  type === "ambient" ||
-                  type === "attackActive" ||
-                  type === "attackWindup";
-
-            if (!shouldVary) {
-                  sound.rate(1);
+      private applyPitchVariation(
+            type: string,
+            config: SoundCueConfig,
+            sound: Howl,
+            playbackId: number,
+            isShared: boolean,
+      ): void {
+            if (!config.pitchVariation) {
+                  sound.rate(1, playbackId);
                   return;
             }
 
-            const isShared = type === "hurt" || type === "body-bounce";
             const lastRate = isShared
                   ? (FighterAudio.sharedLastPitchRates[type] ?? null)
                   : (this.characterLastPitchRates[type] ?? null);
@@ -169,53 +190,70 @@ export class FighterAudio {
 
             if (isShared) FighterAudio.sharedLastPitchRates[type] = nextRate;
             else this.characterLastPitchRates[type] = nextRate;
-            sound.rate(nextRate);
+            sound.rate(nextRate, playbackId);
       }
 
-      private static getSharedSoundPools(
+      private volumeForCue(config: SoundCueConfig): number {
+            return FighterAudio.calculateVolume(
+                  config,
+                  this.gameConfig,
+                  this.characterVolume,
+            );
+      }
+
+      private static calculateVolume(
+            config: SoundCueConfig,
+            gameConfig: GameConfig,
+            characterVolume: number,
+      ): number {
+            const audio = gameConfig.audio;
+            const categoryVolume = audio.categories[config.category] ?? 1;
+            return Math.max(
+                  0,
+                  Math.min(
+                        1,
+                        audio.masterVolume *
+                              categoryVolume *
+                              characterVolume *
+                              (config.volume ?? 1),
+                  ),
+            );
+      }
+
+      private static getSharedSoundCues(
             soundManifest: SoundManifest,
-            gameConfig: GameConfig,
-      ): SoundPools {
-            if (!this.sharedSoundPoolCache)
-                  this.sharedSoundPoolCache = this.buildSoundPools(
+      ): SoundCues {
+            if (!this.sharedSoundCueCache)
+                  this.sharedSoundCueCache = this.buildSoundCues(
                         soundManifest.shared,
-                        gameConfig,
                   );
-            return this.sharedSoundPoolCache;
+            return this.sharedSoundCueCache;
       }
 
-      private static buildSoundPools(
-            manifest: Record<string, SoundManifestEntry[]>,
-            gameConfig: GameConfig,
-      ): SoundPools {
-            const pools: SoundPools = {};
-            Object.entries(manifest).forEach(([type, entries]) => {
-                  if (entries.length > 0)
-                        pools[type] = entries.map(
-                              (entry) =>
-                                    new Howl({
-                                          src: [this.resolveSoundSource(entry)],
-                                          volume: this.volumeForSoundType(
-                                                type,
-                                                gameConfig,
-                                          ),
-                                    }),
-                        );
+      private static buildSoundCues(
+            manifest: Record<string, SoundCueConfig>,
+      ): SoundCues {
+            const cues: SoundCues = {};
+            Object.entries(manifest).forEach(([type, config]) => {
+                  if (config.clips.length > 0)
+                        cues[type] = {
+                              config,
+                              sounds: config.clips.map(
+                                    (entry) =>
+                                          new Howl({
+                                                src: [
+                                                      this.resolveSoundSource(
+                                                            entry,
+                                                      ),
+                                                ],
+                                          }),
+                              ),
+                        };
             });
-            return pools;
+            return cues;
       }
 
       private static resolveSoundSource(entry: SoundManifestEntry): string {
             return typeof entry === "string" ? entry : entry.path;
-      }
-
-      private static volumeForSoundType(
-            type: string,
-            gameConfig: GameConfig,
-      ): number {
-            const audio = gameConfig.audio ?? {};
-            if (audio.volumes?.[type] != null) return audio.volumes[type];
-            if (type === "body-bounce") return audio.bounceVolume ?? 0.55;
-            return type === "death" ? 0.9 : 0.65;
       }
 }

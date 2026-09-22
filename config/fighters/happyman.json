@@ -8,6 +8,7 @@
             "abilities": [{
                   "id": "slap",
                   "trigger": { "type": "enemy-in-range", "rangePadding": 22 },
+                  "audio": { "hit": "weaponSlap" },
                   "timing": {
                         "cooldownMs": 1000,
                         "windupFrames": 10,

@@ -1,7 +1,7 @@
 import * as Matter from "matter-js";
 import type { Fighter } from "../../entities/fighter";
 import { Projectile } from "../../entities/projectile";
-import type { SpawnProjectileAction } from "../types";
+import type { AbilityConfig, SpawnProjectileAction } from "../types";
 import type { ActionExecutionContext } from "./types";
 
 /** Instantiates, launches, and registers a projectile into the physics world. */
@@ -9,6 +9,7 @@ export function executeProjectileAction(
       action: SpawnProjectileAction,
       source: Fighter,
       target: Fighter,
+      ability: AbilityConfig,
       context: ActionExecutionContext,
 ): Projectile {
       const config = action.projectile;
@@ -30,10 +31,10 @@ export function executeProjectileAction(
             spawnY,
             (dx / length) * config.speed,
             (dy / length) * config.speed,
+            ability.audio?.hit ?? null,
       );
 
       context.projectiles.push(projectile);
       Matter.World.add(context.world, projectile.body);
-      source.playSound("weaponFire");
       return projectile;
 }

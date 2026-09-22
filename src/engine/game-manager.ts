@@ -259,11 +259,16 @@ export class GameManager {
                                     const owner = this.characters.find(
                                           (c) => c.id === projectile.ownerId,
                                     );
-                                    if (owner)
+                                    if (owner) {
+                                          if (projectile.hitSoundCue)
+                                                owner.audio.play(
+                                                      projectile.hitSoundCue,
+                                                );
                                           this.indicators.spawnCharacterLine(
                                                 owner,
                                                 "weaponHit",
                                           );
+                                    }
                               }
                               projectile.dead = true;
                               World.remove(this.world, projectile.body);
@@ -506,9 +511,9 @@ export class GameManager {
                         return;
                   const interval = lines.ambientIntervalMs ?? 6000;
                   const chance = lines.ambientChance ?? 0.25;
-                  if (now - character.audio.lastAmbientLineTime < interval)
+                  if (now - character.lastAmbientLineTime < interval)
                         return;
-                  character.audio.lastAmbientLineTime = now;
+                  character.lastAmbientLineTime = now;
                   if (Math.random() > chance) return;
                   this.indicators.spawnCharacterLine(character, "ambient");
             });

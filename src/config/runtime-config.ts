@@ -1,9 +1,33 @@
 import type { GameConfig, IndicatorConfig, SoundManifest } from "../types/game";
+import type { FighterConfig } from "../types/fighter";
 
 export interface RuntimeConfig {
       game: GameConfig;
       indicators: IndicatorConfig;
       sounds: SoundManifest;
+}
+
+export function validateFighterSoundCues(
+      fighters: readonly FighterConfig[],
+      sounds: SoundManifest,
+): void {
+      for (const fighter of fighters) {
+            const characterCues = sounds.characters[fighter.id]?.cues ?? {};
+            for (const ability of fighter.abilities) {
+                  for (const [event, cueName] of Object.entries(
+                        ability.audio ?? {},
+                  )) {
+                        if (
+                              cueName &&
+                              !characterCues[cueName] &&
+                              !sounds.shared[cueName]
+                        )
+                              throw new Error(
+                                    `Fighter "${fighter.id}" ability "${ability.id}" audio.${event} references unknown cue "${cueName}".`,
+                              );
+                  }
+            }
+      }
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -44,6 +68,12 @@ function requireNumber(
 function requireString(value: unknown, location: string): void {
       if (typeof value !== "string" || value.length === 0)
             throw new Error(`${location} must be a non-empty string.`);
+}
+
+function requireVolume(value: unknown, location: string): void {
+      requireNumber(value, location, 0);
+      if ((value as number) > 1)
+            throw new Error(`${location} must not exceed 1.`);
 }
 
 function validateGameConfig(value: unknown): GameConfig {
@@ -88,19 +118,19 @@ function validateGameConfig(value: unknown): GameConfig {
                   "game settings.effects.hitSpark must be a boolean.",
             );
       const audio = requireRecord(game.audio, "game settings.audio");
+      requireVolume(
+            audio.masterVolume,
+            "game settings.audio.masterVolume",
+      );
       requireNumber(
             audio.defaultCooldownMs,
             "game settings.audio.defaultCooldownMs",
       );
       requireNumber(audio.idleIntervalMs, "game settings.audio.idleIntervalMs");
       for (const [name, volume] of Object.entries(
-            requireRecord(audio.volumes, "game settings.audio.volumes"),
+            requireRecord(audio.categories, "game settings.audio.categories"),
       )) {
-            requireNumber(volume, `game settings.audio.volumes.${name}`, 0);
-            if ((volume as number) > 1)
-                  throw new Error(
-                        `game settings.audio.volumes.${name} must not exceed 1.`,
-                  );
+            requireVolume(volume, `game settings.audio.categories.${name}`);
       }
       const arena = requireRecord(game.arena, "game settings.arena");
       requireNumber(arena.borderWidth, "game settings.arena.borderWidth");
@@ -169,36 +199,60 @@ function validateIndicatorConfig(value: unknown): IndicatorConfig {
 
 function validateSoundManifest(value: unknown): SoundManifest {
       const manifest = requireRecord(value, "sound manifest");
-      for (const section of ["shared", "characters"]) {
-            const groups = requireRecord(
-                  manifest[section],
-                  `sound manifest.${section}`,
-            );
-            const collections =
-                  section === "characters"
-                        ? Object.values(groups).flatMap((character) =>
-                                Object.values(
-                                      requireRecord(
-                                            character,
-                                            "sound manifest character",
-                                      ),
-                                ),
-                          )
-                        : Object.values(groups);
-            for (const entries of collections) {
-                  if (!Array.isArray(entries))
-                        throw new Error(
-                              "sound manifest groups must be arrays.",
-                        );
-                  for (const entry of entries) {
+      const validateCue = (value: unknown, location: string): void => {
+            const cue = requireRecord(value, location);
+            requireString(cue.category, `${location}.category`);
+            if (cue.volume !== undefined)
+                  requireVolume(cue.volume, `${location}.volume`);
+            if (cue.cooldownMs !== undefined)
+                  requireNumber(cue.cooldownMs, `${location}.cooldownMs`, 0);
+            if (cue.intervalMs !== undefined)
+                  requireNumber(cue.intervalMs, `${location}.intervalMs`, 0);
+            if (
+                  cue.pitchVariation !== undefined &&
+                  typeof cue.pitchVariation !== "boolean"
+            )
+                  throw new Error(`${location}.pitchVariation must be boolean.`);
+            if (!Array.isArray(cue.clips) || cue.clips.length === 0)
+                  throw new Error(`${location}.clips must be a non-empty array.`);
+            for (const entry of cue.clips) {
                         if (typeof entry === "string") continue;
                         const file = requireRecord(
                               entry,
-                              "sound manifest entry",
+                              `${location}.clips entry`,
                         );
-                        requireString(file.id, "sound manifest entry.id");
-                        requireString(file.path, "sound manifest entry.path");
+                        requireString(file.id, `${location}.clips entry.id`);
+                        requireString(file.path, `${location}.clips entry.path`);
                   }
+      };
+
+      const shared = requireRecord(manifest.shared, "sound manifest.shared");
+      for (const [cueName, cue] of Object.entries(shared))
+            validateCue(cue, `sound manifest.shared.${cueName}`);
+
+      const characters = requireRecord(
+            manifest.characters,
+            "sound manifest.characters",
+      );
+      for (const [fighterId, value] of Object.entries(characters)) {
+            const profile = requireRecord(
+                  value,
+                  `sound manifest.characters.${fighterId}`,
+            );
+            if (profile.volume !== undefined)
+                  requireVolume(
+                        profile.volume,
+                        `sound manifest.characters.${fighterId}.volume`,
+                  );
+            const cues = requireRecord(
+                  profile.cues,
+                  `sound manifest.characters.${fighterId}.cues`,
+            );
+            for (const [cueName, cue] of Object.entries(cues)) {
+                  validateCue(
+                        cue,
+                        `sound manifest.characters.${fighterId}.cues.${cueName}`,
+                  );
             }
       }
       return manifest as unknown as SoundManifest;
@@ -214,9 +268,23 @@ export async function loadRuntimeConfig(
             loadJson(`${base}/indicator-settings.json`),
             loadJson(`${base}/sound-manifest.json`),
       ]);
+      const validatedGame = validateGameConfig(game);
+      const validatedSounds = validateSoundManifest(sounds);
+      const cues = [
+            ...Object.entries(validatedSounds.shared),
+            ...Object.values(validatedSounds.characters).flatMap((profile) =>
+                  Object.entries(profile.cues),
+            ),
+      ];
+      for (const [cueName, cue] of cues) {
+            if (validatedGame.audio.categories[cue.category] === undefined)
+                  throw new Error(
+                        `Sound cue "${cueName}" references unknown audio category "${cue.category}".`,
+                  );
+      }
       return {
-            game: validateGameConfig(game),
+            game: validatedGame,
             indicators: validateIndicatorConfig(indicators),
-            sounds: validateSoundManifest(sounds),
+            sounds: validatedSounds,
       };
 }

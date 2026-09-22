@@ -8,6 +8,10 @@
       {
         "id": "handbag-swing",
         "trigger": { "type": "enemy-in-range", "rangePadding": 28 },
+        "audio": {
+          "active": "attackActive",
+          "hit": "weaponSlap"
+        },
         "timing": { "cooldownMs": 1400, "windupFrames": 14, "activeFrames": 12, "recoveryFrames": 18 },
         "actions": [
           { "type": "swing", "startDegrees": -177, "endDegrees": -48 },

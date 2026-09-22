@@ -38,7 +38,39 @@ function stripExt(file) {
       return path.parse(file).name;
 }
 
+function readExistingManifest() {
+      if (!fs.existsSync(OUT_FILE)) return { shared: {}, characters: {} };
+      return JSON.parse(fs.readFileSync(OUT_FILE, "utf8"));
+}
+
+function defaultCategory(cueName) {
+      if (cueName === "victory") return "ui";
+      if (cueName === "hurt" || cueName === "ambient" || cueName === "idle")
+            return "voice";
+      if (cueName === "body-bounce" || cueName === "weaponSlap")
+            return "impact";
+      if (cueName === "attackWindup") return "movement";
+      return "weapon";
+}
+
+function buildCue(existingCue, cueName, clips) {
+      const settings =
+            existingCue && !Array.isArray(existingCue)
+                  ? Object.fromEntries(
+                          Object.entries(existingCue).filter(
+                                ([key]) => key !== "clips",
+                          ),
+                    )
+                  : {};
+      return {
+            category: settings.category ?? defaultCategory(cueName),
+            ...settings,
+            clips,
+      };
+}
+
 function buildManifest() {
+      const existing = readExistingManifest();
       const manifest = { shared: {}, characters: {} };
 
       for (const soundType of sortedDirectories(SFX_SHARED_DIR)) {
@@ -48,12 +80,17 @@ function buildManifest() {
                   path: `assets/sfx/shared/${soundType}/${file}`,
             }));
 
-            if (files.length > 0) manifest.shared[soundType] = files;
+            if (files.length > 0)
+                  manifest.shared[soundType] = buildCue(
+                        existing.shared?.[soundType],
+                        soundType,
+                        files,
+                  );
       }
 
       for (const fighterId of sortedDirectories(SFX_FIGHTER_DIR)) {
             const fighterDir = path.join(SFX_FIGHTER_DIR, fighterId);
-            const soundTypes = {};
+            const cues = {};
 
             for (const soundType of sortedDirectories(fighterDir)) {
                   const typeDir = path.join(fighterDir, soundType);
@@ -62,12 +99,24 @@ function buildManifest() {
                         path: `assets/sfx/characters/${fighterId}/${soundType}/${file}`,
                   }));
 
-                  if (files.length > 0)
-                        soundTypes[toCamelCase(soundType)] = files;
+                  if (files.length > 0) {
+                        const cueName = toCamelCase(soundType);
+                        cues[cueName] = buildCue(
+                              existing.characters?.[fighterId]?.cues?.[
+                                    cueName
+                              ],
+                              cueName,
+                              files,
+                        );
+                  }
             }
 
-            if (Object.keys(soundTypes).length > 0) {
-                  manifest.characters[fighterId] = soundTypes;
+            if (Object.keys(cues).length > 0) {
+                  manifest.characters[fighterId] = {
+                        volume:
+                              existing.characters?.[fighterId]?.volume ?? 1,
+                        cues,
+                  };
             }
       }
 

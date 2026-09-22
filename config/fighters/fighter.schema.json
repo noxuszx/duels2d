@@ -136,6 +136,15 @@
                         }
                   ]
             },
+            "abilityAudio": {
+                  "type": "object",
+                  "properties": {
+                        "windup": { "type": "string", "minLength": 1 },
+                        "active": { "type": "string", "minLength": 1 },
+                        "hit": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
+            },
             "abilityAction": {
                   "oneOf": [
                         {
@@ -198,6 +207,7 @@
                   "properties": {
                         "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
                         "trigger": { "$ref": "#/$defs/abilityTrigger" },
+                        "audio": { "$ref": "#/$defs/abilityAudio" },
                         "timing": { "$ref": "#/$defs/abilityTiming" },
                         "actions": {
                               "type": "array",

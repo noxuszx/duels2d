@@ -52,6 +52,9 @@ export interface SpawnProjectileAction {
       projectile: ProjectileConfig;
 }
 
+export type AbilityAudioEvent = "windup" | "active" | "hit";
+export type AbilityAudioConfig = Partial<Record<AbilityAudioEvent, string>>;
+
 export type AbilityAction =
       | DamageAction
       | KnockbackAction
@@ -64,6 +67,7 @@ export interface AbilityConfig {
       trigger: AbilityTrigger;
       timing: AbilityTiming;
       actions: AbilityAction[];
+      audio?: AbilityAudioConfig;
 }
 
 export type AbilityState = "idle" | "windup" | "active" | "recovery";

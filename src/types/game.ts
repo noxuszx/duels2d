@@ -14,12 +14,10 @@ export interface GameConfig {
   };
   effects: { hitSpark: boolean };
   audio: {
+    masterVolume: number;
     defaultCooldownMs: number;
     idleIntervalMs: number;
-    ambientIntervalMs?: number;
-    bounceCooldownMs?: number;
-    bounceVolume?: number;
-    volumes: Record<string, number>;
+    categories: Record<string, number>;
   };
   arena: {
     borderWidth: number;
@@ -63,7 +61,21 @@ export interface SoundManifestFile {
 
 export type SoundManifestEntry = string | SoundManifestFile;
 
+export interface SoundCueConfig {
+  category: string;
+  clips: SoundManifestEntry[];
+  volume?: number;
+  cooldownMs?: number;
+  intervalMs?: number;
+  pitchVariation?: boolean;
+}
+
+export interface CharacterSoundProfile {
+  volume?: number;
+  cues: Record<string, SoundCueConfig>;
+}
+
 export interface SoundManifest {
-  shared: Record<string, SoundManifestEntry[]>;
-  characters: Record<string, Record<string, SoundManifestEntry[]>>;
+  shared: Record<string, SoundCueConfig>;
+  characters: Record<string, CharacterSoundProfile>;
 }

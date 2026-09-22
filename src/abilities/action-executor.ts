@@ -19,22 +19,38 @@ export class ActionExecutor {
             source: Fighter,
             target: Fighter,
             ability: AbilityConfig,
-      ): void {
+      ): boolean {
+            let connected = false;
             for (const action of ability.actions) {
                   if (action.type === "damage") {
-                        executeDamageAction(action, source, target, this.context);
+                        connected =
+                              executeDamageAction(
+                                    action,
+                                    source,
+                                    target,
+                                    this.context,
+                              ) || connected;
                   } else if (action.type === "knockback") {
                         executeKnockbackAction(action, source, target);
+                        connected = true;
                   }
             }
+            return connected;
       }
 
       executeProjectileAction(
             source: Fighter,
             target: Fighter,
+            ability: AbilityConfig,
             action: Extract<AbilityAction, { type: "spawn-projectile" }>,
       ): void {
-            executeProjectileAction(action, source, target, this.context);
+            executeProjectileAction(
+                  action,
+                  source,
+                  target,
+                  ability,
+                  this.context,
+            );
       }
 
       applyDash(

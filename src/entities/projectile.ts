@@ -18,6 +18,7 @@ export class Projectile {
       dead = false;
       readonly body: Matter.Body;
       readonly rotationSpeed: number;
+      readonly hitSoundCue: string | null;
       angle: number;
 
       constructor(
@@ -27,6 +28,7 @@ export class Projectile {
             y: number,
             vx: number,
             vy: number,
+            hitSoundCue: string | null = null,
       ) {
             this.ownerId = owner.id;
             this.damage = config.damage;
@@ -48,6 +50,7 @@ export class Projectile {
             });
             Matter.Body.setVelocity(this.body, { x: vx, y: vy });
             this.rotationSpeed = config.rotationSpeed || 0;
+            this.hitSoundCue = hitSoundCue;
             this.angle = 0;
             if (config.image) {
                   const images = Array.isArray(config.image)

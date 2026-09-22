@@ -42,6 +42,7 @@ export class Fighter {
       currentHealth: number;
       facing: Facing;
       knockbackOwnerId: string | null = null;
+      lastAmbientLineTime = performance.now();
 
       constructor(
             config: FighterConfig,
@@ -89,8 +90,8 @@ export class Fighter {
 
             this.presentation = new FighterPresentation(config);
             this.audio = new FighterAudio(this.id, gameConfig, soundManifest);
-            this.abilities = new FighterAbilities((sound) =>
-                  this.playSound(sound, 0),
+            this.abilities = new FighterAbilities((ability, event) =>
+                  this.audio.playAbilityCue(ability, event),
             );
       }
       applyForceKnockback(

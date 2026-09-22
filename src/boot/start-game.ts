@@ -4,7 +4,10 @@ import {
 } from "../config/fighter-loader";
 
 
-import { loadRuntimeConfig } from "../config/runtime-config";
+import {
+      loadRuntimeConfig,
+      validateFighterSoundCues,
+} from "../config/runtime-config";
 import { GameManager } from "../engine/game-manager";
 import { CommandLineController } from "../ui/command-console";
 import { TransportControls } from "../ui/transport-controls";
@@ -18,6 +21,10 @@ window.addEventListener("DOMContentLoaded", async () => {
                   loadFighterConfig("config/fighters"),
                   loadRuntimeConfig(),
             ]);
+            validateFighterSoundCues(
+                  fighterConfig.roster,
+                  runtimeConfig.sounds,
+            );
             installFighterConfigGlobals(fighterConfig);
             const game = new GameManager(fighterConfig.roster, runtimeConfig);
             const commandLine = new CommandLineController(game);

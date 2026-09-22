@@ -1,100 +1,163 @@
 {
   "shared": {
-    "body-bounce": [
-      {
-        "id": "body-bounce-hard-01",
-        "path": "assets/sfx/shared/body-bounce/body-bounce-hard-01.mp3"
-      },
-      {
-        "id": "body-bounce-light-01",
-        "path": "assets/sfx/shared/body-bounce/body-bounce-light-01.mp3"
-      },
-      {
-        "id": "body-bounce-medium-01",
-        "path": "assets/sfx/shared/body-bounce/body-bounce-medium-01.mp3"
-      },
-      {
-        "id": "body-bounce-wall-01",
-        "path": "assets/sfx/shared/body-bounce/body-bounce-wall-01.mp3"
-      }
-    ],
-    "hurt": [
-      {
-        "id": "hurt-medium-01",
-        "path": "assets/sfx/shared/hurt/hurt-medium-01.mp3"
-      }
-    ],
-    "victory": [
-      {
-        "id": "victory-sting-01",
-        "path": "assets/sfx/shared/victory/victory-sting-01.mp3"
-      }
-    ]
+    "body-bounce": {
+      "category": "impact",
+      "volume": 1,
+      "pitchVariation": true,
+      "clips": [
+        {
+          "id": "body-bounce-hard-01",
+          "path": "assets/sfx/shared/body-bounce/body-bounce-hard-01.mp3"
+        },
+        {
+          "id": "body-bounce-light-01",
+          "path": "assets/sfx/shared/body-bounce/body-bounce-light-01.mp3"
+        },
+        {
+          "id": "body-bounce-medium-01",
+          "path": "assets/sfx/shared/body-bounce/body-bounce-medium-01.mp3"
+        },
+        {
+          "id": "body-bounce-wall-01",
+          "path": "assets/sfx/shared/body-bounce/body-bounce-wall-01.mp3"
+        }
+      ]
+    },
+    "hurt": {
+      "category": "voice",
+      "volume": 0.3,
+      "pitchVariation": true,
+      "clips": [
+        {
+          "id": "hurt-medium-01",
+          "path": "assets/sfx/shared/hurt/hurt-medium-01.mp3"
+        }
+      ]
+    },
+    "victory": {
+      "category": "ui",
+      "volume": 0.9,
+      "clips": [
+        {
+          "id": "victory-sting-01",
+          "path": "assets/sfx/shared/victory/victory-sting-01.mp3"
+        }
+      ]
+    }
   },
   "characters": {
     "angryman": {
-      "attackWindup": [
-        {
-          "id": "angryman-dash-01",
-          "path": "assets/sfx/characters/angryman/attack-windup/angryman-dash-01.mp3"
+      "volume": 1,
+      "cues": {
+        "attackWindup": {
+          "category": "movement",
+          "volume": 0.7,
+          "pitchVariation": true,
+          "clips": [
+            {
+              "id": "angryman-dash-01",
+              "path": "assets/sfx/characters/angryman/attack-windup/angryman-dash-01.mp3"
+            }
+          ]
         }
-      ]
+      }
     },
     "chefman": {
-      "weaponFire": [
-        {
-          "id": "throw1",
-          "path": "assets/sfx/characters/chefman/weapon-fire/throw1.mp3"
+      "volume": 1,
+      "cues": {
+        "weaponFire": {
+          "category": "weapon",
+          "volume": 0.35,
+          "clips": [
+            {
+              "id": "throw1",
+              "path": "assets/sfx/characters/chefman/weapon-fire/throw1.mp3"
+            }
+          ]
         }
-      ]
+      }
     },
     "depressedman": {
-      "ambient": [
-        {
-          "id": "depressedman-sigh-01",
-          "path": "assets/sfx/characters/depressedman/ambient/depressedman-sigh-01.mp3"
+      "volume": 1,
+      "cues": {
+        "ambient": {
+          "category": "voice",
+          "volume": 0.3,
+          "intervalMs": 4000,
+          "pitchVariation": true,
+          "clips": [
+            {
+              "id": "depressedman-sigh-01",
+              "path": "assets/sfx/characters/depressedman/ambient/depressedman-sigh-01.mp3"
+            }
+          ]
         }
-      ]
+      }
     },
     "happyman": {
-      "ambient": [
-        {
-          "id": "happyman-cheer-01",
-          "path": "assets/sfx/characters/happyman/ambient/happyman-cheer-01.mp3"
+      "volume": 1,
+      "cues": {
+        "ambient": {
+          "category": "voice",
+          "volume": 0.3,
+          "intervalMs": 4000,
+          "pitchVariation": true,
+          "clips": [
+            {
+              "id": "happyman-cheer-01",
+              "path": "assets/sfx/characters/happyman/ambient/happyman-cheer-01.mp3"
+            },
+            {
+              "id": "happyman-greeting-01",
+              "path": "assets/sfx/characters/happyman/ambient/happyman-greeting-01.mp3"
+            },
+            {
+              "id": "happyman-hello-01",
+              "path": "assets/sfx/characters/happyman/ambient/happyman-hello-01.mp3"
+            },
+            {
+              "id": "happyman-laugh-short-01",
+              "path": "assets/sfx/characters/happyman/ambient/happyman-laugh-short-01.mp3"
+            }
+          ]
         },
-        {
-          "id": "happyman-greeting-01",
-          "path": "assets/sfx/characters/happyman/ambient/happyman-greeting-01.mp3"
-        },
-        {
-          "id": "happyman-hello-01",
-          "path": "assets/sfx/characters/happyman/ambient/happyman-hello-01.mp3"
-        },
-        {
-          "id": "happyman-laugh-short-01",
-          "path": "assets/sfx/characters/happyman/ambient/happyman-laugh-short-01.mp3"
+        "weaponSlap": {
+          "category": "impact",
+          "volume": 0.7,
+          "clips": [
+            {
+              "id": "happyman-slap-impact-01",
+              "path": "assets/sfx/characters/happyman/weapon-slap/happyman-slap-impact-01.mp3"
+            }
+          ]
         }
-      ],
-      "weaponSlap": [
-        {
-          "id": "happyman-slap-impact-01",
-          "path": "assets/sfx/characters/happyman/weapon-slap/happyman-slap-impact-01.mp3"
-        }
-      ]
+      }
     },
     "womanman": {
-      "attackActive": [
-        {
-          "id": "womanman-attack-01",
-          "path": "assets/sfx/characters/womanman/attack-active/womanman-attack-01.mp3"
+      "volume": 1,
+      "cues": {
+        "attackActive": {
+          "category": "weapon",
+          "volume": 0.75,
+          "pitchVariation": true,
+          "clips": [
+            {
+              "id": "womanman-attack-01",
+              "path": "assets/sfx/characters/womanman/attack-active/womanman-attack-01.mp3"
+            }
+          ]
+        },
+        "weaponSlap": {
+          "category": "impact",
+          "volume": 0.7,
+          "clips": [
+            {
+              "id": "blow1",
+              "path": "assets/sfx/characters/womanman/weapon-slap/blow1.mp3"
+            }
+          ]
         }
-      ],
-      "weaponSlap": [
-        {
-          "id": "blow1",
-          "path": "assets/sfx/characters/womanman/weapon-slap/blow1.mp3"
-        }
-      ]
+      }
     }
   }
 }

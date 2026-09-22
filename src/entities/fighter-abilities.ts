@@ -1,5 +1,10 @@
 import type { Facing } from "../types/fighter";
-import type { AbilityConfig, AbilityState, SwingAction } from "../abilities/types";
+import type {
+      AbilityAudioEvent,
+      AbilityConfig,
+      AbilityState,
+      SwingAction,
+} from "../abilities/types";
 import { calculateSwingAngle } from "../abilities/actions/swing-action";
 
 /** Owns the ability runtime state machine, timers, cooldowns, and swing animation for a fighter. */
@@ -11,7 +16,12 @@ export class FighterAbilities {
       active: AbilityConfig | null = null;
       timer = 0;
 
-      constructor(private readonly onSound?: (type: string) => void) {}
+      constructor(
+            private readonly onAudioEvent?: (
+                  ability: AbilityConfig,
+                  event: AbilityAudioEvent,
+            ) => void,
+      ) {}
 
       canUse(ability: AbilityConfig, nowMs: number): boolean {
             return (
@@ -30,7 +40,7 @@ export class FighterAbilities {
             this.lastUseTimes.set(ability.id, nowMs);
             this.state = "windup";
             this.timer = ability.timing.windupFrames;
-            this.onSound?.("attackWindup");
+            this.onAudioEvent?.(ability, "windup");
       }
 
       lockFacingToward(targetX: number, selfX: number): void {
@@ -53,7 +63,7 @@ export class FighterAbilities {
             if (this.state === "windup" && this.timer <= 0) {
                   this.state = "active";
                   this.timer = this.active.timing.activeFrames;
-                  this.onSound?.("attackActive");
+                  this.onAudioEvent?.(this.active, "active");
             } else if (this.state === "active" && this.timer <= 0) {
                   this.state = "recovery";
                   this.timer = this.active.timing.recoveryFrames;

@@ -1,14 +1,9 @@
 import * as Matter from "matter-js";
-import type {
-      Facing,
-      FighterConfig,
-      FighterLines,
-      Vector2,
-} from "../types/fighter";
-import type { AbilityConfig, AbilityState } from "../abilities/types";
+import type { Facing, FighterConfig, Vector2 } from "../types/fighter";
 import type { GameConfig, SoundManifest } from "../types/game";
 import { FighterAudio } from "./fighter-audio";
 import { FighterPresentation } from "./fighter-presentation";
+import { FighterAbilities } from "./fighter-abilities";
 
 export { getRandomPitch } from "./fighter-audio";
 export type { PitchVariationOptions } from "./fighter-audio";
@@ -31,43 +26,22 @@ type NormalizedHitbox =
         };
 
 export class Fighter {
-      private readonly lastAbilityUseTimes = new Map<string, number>();
-
-      readonly id: string;
-      readonly name: string;
-      readonly maxHealth: number;
-
-      readonly color: string;
-      readonly radius: number;
-      readonly hitbox: NormalizedHitbox;
-      readonly baseDamage: number;
-      readonly baseSpeed: number;
-      readonly defaultFacing: Facing;
-      readonly hitboxOffset: Point;
-      readonly abilities: AbilityConfig[];
-
       private pendingForce: Point = { x: 0, y: 0 };
       private uprightAssistAfter = 0;
       private lastHitTime = 0;
 
+      readonly id: string;
+      readonly config: FighterConfig;
+      readonly hitbox: NormalizedHitbox;
+      readonly baseSpeed: number;
       readonly body: Matter.Body;
       readonly presentation: FighterPresentation;
       readonly audio: FighterAudio;
-      readonly lines: FighterLines;
-      readonly faceTarget: { mode: "never" | "always" | "range" };
+      readonly abilities: FighterAbilities;
 
-      abilityState: AbilityState = "idle";
-      abilityFacing: Facing | null = null;
-      activeAbility: AbilityConfig | null = null;
-      knockbackOwnerId: string | null = null;
-
-      abilityTimer = 0;
-      hitFlashTimer = 0;
-      attackTimer = 0;
       currentHealth: number;
       facing: Facing;
-
-      lastAmbientLineTime = performance.now();
+      knockbackOwnerId: string | null = null;
 
       constructor(
             config: FighterConfig,
@@ -78,20 +52,12 @@ export class Fighter {
             gameConfig: GameConfig,
             soundManifest: SoundManifest,
       ) {
+            this.config = config;
             this.id = config.id;
-            this.name = config.name;
-            this.maxHealth = config.maxHealth;
             this.currentHealth = config.maxHealth;
-            this.color = config.color;
-            this.radius = config.radius;
             this.hitbox = this.normalizeHitbox(config);
-            this.baseDamage = config.baseDamage;
             this.baseSpeed = Math.hypot(velX, velY);
-            this.hitboxOffset = config.hitboxOffset;
-            this.abilities = config.abilities;
-            this.defaultFacing = config.defaultFacing;
-            this.facing = this.defaultFacing;
-            this.faceTarget = config.faceTarget;
+            this.facing = config.defaultFacing;
 
             const bodyOptions: Matter.IChamferableBodyDefinition = {
                   restitution: 0.82,
@@ -107,15 +73,15 @@ export class Fighter {
             this.body =
                   this.hitbox.type === "box"
                         ? Matter.Bodies.rectangle(
-                                spawnX + this.hitboxOffset.x,
-                                spawnY + this.hitboxOffset.y,
+                                spawnX + this.config.hitboxOffset.x,
+                                spawnY + this.config.hitboxOffset.y,
                                 this.hitbox.width,
                                 this.hitbox.height,
                                 bodyOptions,
                           )
                         : Matter.Bodies.circle(
-                                spawnX + this.hitboxOffset.x,
-                                spawnY + this.hitboxOffset.y,
+                                spawnX + this.config.hitboxOffset.x,
+                                spawnY + this.config.hitboxOffset.y,
                                 this.hitbox.radius,
                                 bodyOptions,
                           );
@@ -123,38 +89,8 @@ export class Fighter {
 
             this.presentation = new FighterPresentation(config);
             this.audio = new FighterAudio(this.id, gameConfig, soundManifest);
-            this.lines = config.lines ?? {};
-      }
-
-      getSwingAngle(): number | null {
-            const swing = this.activeAbility?.actions.find(
-                  (action) => action.type === "swing",
-            );
-            if (!swing || swing.type !== "swing") return null;
-
-            let degrees = swing.startDegrees;
-            if (this.abilityState === "active") {
-                  const totalFrames = Math.max(
-                        1,
-                        this.activeAbility?.timing.activeFrames ?? 1,
-                  );
-                  const progress = Math.max(
-                        0,
-                        Math.min(1, 1 - this.abilityTimer / totalFrames),
-                  );
-                  degrees += (swing.endDegrees - swing.startDegrees) * progress;
-            } else if (this.abilityState === "recovery") {
-                  degrees = swing.endDegrees;
-            }
-            return (degrees * Math.PI) / 180;
-      }
-
-      canUseAbility(ability: AbilityConfig, nowMs: number): boolean {
-            return (
-                  nowMs -
-                        (this.lastAbilityUseTimes.get(ability.id) ??
-                              -Infinity) >=
-                  ability.timing.cooldownMs
+            this.abilities = new FighterAbilities((sound) =>
+                  this.playSound(sound, 0),
             );
       }
       applyForceKnockback(
@@ -245,77 +181,17 @@ export class Fighter {
             });
       }
 
-      startAbility(ability: AbilityConfig, nowMs = performance.now()): void {
-            this.activeAbility = ability;
-            this.abilityFacing = this.facing;
-            this.lastAbilityUseTimes.set(ability.id, nowMs);
-            this.abilityState = "windup";
-            this.abilityTimer = ability.timing.windupFrames;
-            this.attackTimer = ability.timing.windupFrames;
-            this.playSound("attackWindup", 0);
-      }
-
-      lockAbilityFacingToward(target: Fighter): void {
-            this.abilityFacing =
-                  target.body.position.x < this.body.position.x
-                        ? "left"
-                        : "right";
-      }
-
-      updateAbilityState(): void {
-            if (!this.activeAbility || this.abilityTimer <= 0) return;
-            if (
-                  this.abilityState === "active" &&
-                  this.activeAbility.actions.some(
-                        (action) =>
-                              action.type === "dash" && action.endOn.length > 0,
-                  )
-            )
-                  return;
-            this.abilityTimer--;
-            if (this.abilityState === "windup" && this.abilityTimer <= 0) {
-                  this.abilityState = "active";
-                  this.abilityTimer = this.activeAbility.timing.activeFrames;
-                  this.attackTimer = this.activeAbility.timing.activeFrames;
-                  this.playSound("attackActive", 0);
-            } else if (
-                  this.abilityState === "active" &&
-                  this.abilityTimer <= 0
-            ) {
-                  this.abilityState = "recovery";
-                  this.abilityTimer = this.activeAbility.timing.recoveryFrames;
-            } else if (
-                  this.abilityState === "recovery" &&
-                  this.abilityTimer <= 0
-            ) {
-                  this.abilityState = "idle";
-                  this.activeAbility = null;
-                  this.abilityFacing = null;
-            }
-      }
-
-      finishAbilityActive(): void {
-            if (this.abilityState !== "active" || !this.activeAbility) return;
-            this.abilityState = "recovery";
-            this.abilityTimer = this.activeAbility.timing.recoveryFrames;
-            if (this.abilityTimer <= 0) {
-                  this.abilityState = "idle";
-                  this.activeAbility = null;
-                  this.abilityFacing = null;
-            }
-      }
-
       updateAudio(nowMs: number): void {
             this.audio.update(
                   nowMs,
-                  !this.isDead && this.abilityState === "idle",
+                  !this.isDead && this.abilities.state === "idle",
             );
       }
 
       get visualPosition(): Point {
             return {
-                  x: this.body.position.x - this.hitboxOffset.x,
-                  y: this.body.position.y - this.hitboxOffset.y,
+                  x: this.body.position.x - this.config.hitboxOffset.x,
+                  y: this.body.position.y - this.config.hitboxOffset.y,
             };
       }
 
@@ -369,8 +245,7 @@ export class Fighter {
             if (nowMs - this.lastHitTime < cooldownMs) return false;
             this.lastHitTime = nowMs;
             this.currentHealth = Math.max(0, this.currentHealth - amount);
-            this.hitFlashTimer = 8;
-            this.attackTimer = 12;
+            this.presentation.triggerHitFlash();
             return true;
       }
       destroy(): void {
@@ -383,10 +258,10 @@ export class Fighter {
             return this.currentHealth <= 0;
       }
       get healthRatio(): number {
-            return this.currentHealth / this.maxHealth;
+            return this.currentHealth / this.config.maxHealth;
       }
       getRandomLine(type: string): string | null {
-            const lines = this.lines[type];
+            const lines = this.config.lines?.[type];
             return Array.isArray(lines) && lines.length > 0
                   ? lines[Math.floor(Math.random() * lines.length)]
                   : null;

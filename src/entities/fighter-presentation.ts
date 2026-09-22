@@ -35,6 +35,7 @@ export class FighterPresentation {
       };
       weaponIdle: HTMLImageElement | null = null;
       weaponAttack: HTMLImageElement | null = null;
+      hitFlashTimer = 0;
 
       private readonly poseVisuals: Partial<Record<PoseKey, PoseVisual>> = {};
 
@@ -63,6 +64,18 @@ export class FighterPresentation {
                   this.loadImage("weaponIdle", config.weaponIdle);
             if (config.weaponAttack)
                   this.loadImage("weaponAttack", config.weaponAttack);
+      }
+
+      triggerHitFlash(duration = 8): void {
+            this.hitFlashTimer = duration;
+      }
+
+      update(): void {
+            if (this.hitFlashTimer > 0) this.hitFlashTimer--;
+      }
+
+      get isFlashing(): boolean {
+            return this.hitFlashTimer > 0;
       }
 
       getCurrentSprite(abilityState: AbilityState): CurrentSprite | null {

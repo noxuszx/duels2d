@@ -50,6 +50,7 @@ export class FighterAudio {
       private readonly characterLastPitchRates: Record<string, number> = {};
       private lastIdleSoundTime = performance.now();
       private lastAmbientSoundTime = performance.now();
+      lastAmbientLineTime = performance.now();
 
       constructor(
             fighterId: string,

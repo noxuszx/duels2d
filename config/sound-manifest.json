@@ -40,6 +40,14 @@
         }
       ]
     },
+    "chefman": {
+      "weaponFire": [
+        {
+          "id": "throw1",
+          "path": "assets/sfx/characters/chefman/weapon-fire/throw1.mp3"
+        }
+      ]
+    },
     "depressedman": {
       "ambient": [
         {
@@ -79,6 +87,12 @@
         {
           "id": "womanman-attack-01",
           "path": "assets/sfx/characters/womanman/attack-active/womanman-attack-01.mp3"
+        }
+      ],
+      "weaponSlap": [
+        {
+          "id": "blow1",
+          "path": "assets/sfx/characters/womanman/weapon-slap/blow1.mp3"
         }
       ]
     }

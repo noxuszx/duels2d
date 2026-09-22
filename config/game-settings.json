@@ -22,7 +22,7 @@
                   "attackWindup": 0.7,
                   "attackActive": 0.75,
                   "weaponSlap": 0.7,
-                  "weapon-fire": 0.7,
+                  "weaponFire": 0.35,
                   "hurt": 0.3,
                   "death": 0.9,
                   "ambient": 0.3,

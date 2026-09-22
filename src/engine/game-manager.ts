@@ -217,7 +217,7 @@ export class GameManager {
 
             const title = document.getElementById("hud-title");
             if (title)
-                  title.innerHTML = `${this.characters[0]!.name} <span class="accent">VS</span> ${this.characters[1]!.name}`;
+                  title.innerHTML = `${this.characters[0]!.config.name} <span class="accent">VS</span> ${this.characters[1]!.config.name}`;
       }
 
       _registerCollisionEvents() {
@@ -254,7 +254,7 @@ export class GameManager {
                                     );
                                     this.indicators.spawnHitSpark(
                                           character.body.position,
-                                          character.color,
+                                          character.config.color,
                                     );
                                     const owner = this.characters.find(
                                           (c) => c.id === projectile.ownerId,
@@ -454,7 +454,7 @@ export class GameManager {
             this.indicators.spawnDamageIndicator(character, damage);
             this.indicators.spawnHitSpark(
                   character.body.position,
-                  character.color,
+                  character.config.color,
             );
             return true;
       }
@@ -498,7 +498,7 @@ export class GameManager {
             const now = performance.now();
             this.characters.forEach((character) => {
                   if (character.isDead) return;
-                  const lines = character.lines ?? {};
+                  const lines = character.config.lines ?? {};
                   if (
                         !Array.isArray(lines.ambient) ||
                         lines.ambient.length === 0
@@ -506,8 +506,9 @@ export class GameManager {
                         return;
                   const interval = lines.ambientIntervalMs ?? 6000;
                   const chance = lines.ambientChance ?? 0.25;
-                  if (now - character.lastAmbientLineTime < interval) return;
-                  character.lastAmbientLineTime = now;
+                  if (now - character.audio.lastAmbientLineTime < interval)
+                        return;
+                  character.audio.lastAmbientLineTime = now;
                   if (Math.random() > chance) return;
                   this.indicators.spawnCharacterLine(character, "ambient");
             });
@@ -599,18 +600,17 @@ export class GameManager {
                   if (char.isDead) return;
 
                   const pos = char.visualPosition;
-                  const r = char.radius;
+                  const r = char.config.radius;
                   const ang = char.body.angle;
 
                   if (!this.paused) {
-                        if (char.hitFlashTimer > 0) char.hitFlashTimer--;
-                        if (char.attackTimer > 0) char.attackTimer--;
+                        char.presentation.update();
                   }
 
-                  const shouldFlip = char.facing !== char.defaultFacing;
-                  const isFlashing = char.hitFlashTimer > 0;
+                  const shouldFlip = char.facing !== char.config.defaultFacing;
+                  const isFlashing = char.presentation.isFlashing;
                   const spriteVisual = char.presentation.getCurrentSprite(
-                        char.abilityState,
+                        char.abilities.state,
                   );
 
                   if (spriteVisual) {
@@ -624,8 +624,8 @@ export class GameManager {
                                     drawR,
                               );
                         const isDashWindingUp =
-                              char.abilityState === "windup" &&
-                              char.activeAbility?.actions.some(
+                              char.abilities.state === "windup" &&
+                              char.abilities.active?.actions.some(
                                     (action) => action.type === "dash",
                               );
                         const shakeTime = performance.now();
@@ -687,7 +687,9 @@ export class GameManager {
                               ctx.fill();
                         }
 
-                        ctx.strokeStyle = isFlashing ? "#ff4d4d" : char.color;
+                        ctx.strokeStyle = isFlashing
+                              ? "#ff4d4d"
+                              : char.config.color;
                         ctx.lineWidth = 2.5;
                         ctx.stroke();
                         ctx.restore();
@@ -704,7 +706,7 @@ export class GameManager {
                         ctx,
                         character,
                         character.visualPosition,
-                        character.radius,
+                        character.config.radius,
                   );
             });
       }
@@ -715,7 +717,7 @@ export class GameManager {
             position: Point,
             radius: number,
       ): void {
-            if (character.abilityState === "idle") return;
+            if (character.abilities.state === "idle") return;
             const presentation = character.presentation;
             const image = presentation.weaponAttack ?? presentation.weaponIdle;
             if (!image || image.naturalWidth <= 0 || image.naturalHeight <= 0)
@@ -731,11 +733,13 @@ export class GameManager {
             ctx.save();
             ctx.translate(position.x, position.y);
             ctx.rotate(character.body.angle);
-            const weaponFacing = character.abilityFacing ?? character.facing;
-            const shouldFlipWeapon = weaponFacing !== character.defaultFacing;
+            const weaponFacing =
+                  character.abilities.facing ?? character.facing;
+            const shouldFlipWeapon =
+                  weaponFacing !== character.config.defaultFacing;
             ctx.scale(shouldFlipWeapon ? -1 : 1, 1);
             ctx.translate(pivot.x, pivot.y);
-            ctx.rotate(character.getSwingAngle() ?? 0);
+            ctx.rotate(character.abilities.getSwingAngle() ?? 0);
             ctx.drawImage(
                   image,
                   offset.x - pivot.x - width / 2,

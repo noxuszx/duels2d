@@ -28,14 +28,14 @@ export class AbilitySystem {
       update(): void {
             const now = performance.now();
             for (const fighter of this.gm.characters) {
-                  const previousState = fighter.abilityState;
-                  fighter.updateAbilityState();
-                  const ability = fighter.activeAbility;
+                  const previousState = fighter.abilities.state;
+                  fighter.abilities.update();
+                  const ability = fighter.abilities.active;
 
                   if (
                         ability &&
                         previousState === "windup" &&
-                        fighter.abilityState === "active"
+                        fighter.abilities.state === "active"
                   ) {
                         const target = this.targets.get(fighter);
                         const swing = this.action<"swing">(ability, "swing");
@@ -64,7 +64,7 @@ export class AbilitySystem {
                               });
                   }
 
-                  if (ability && fighter.abilityState === "active") {
+                  if (ability && fighter.abilities.state === "active") {
                         const dash = this.action<"dash">(ability, "dash");
                         const direction = this.dashDirections.get(fighter);
                         if (dash && direction)
@@ -80,14 +80,14 @@ export class AbilitySystem {
                               this.tryApplyDashHit(fighter, target);
                   }
 
-                  if (fighter.abilityState === "idle")
+                  if (fighter.abilities.state === "idle")
                         this.clearRuntime(fighter);
-                  if (fighter.isDead || fighter.abilityState !== "idle")
+                  if (fighter.isDead || fighter.abilities.state !== "idle")
                         continue;
 
-                  const activation = fighter.abilities
+                  const activation = fighter.config.abilities
                         .filter((candidate) =>
-                              fighter.canUseAbility(candidate, now),
+                              fighter.abilities.canUse(candidate, now),
                         )
                         .map((candidate) => ({
                               ability: candidate,
@@ -111,13 +111,13 @@ export class AbilitySystem {
       updateFaceTargeting(): void {
             for (const fighter of this.gm.characters) {
                   if (fighter.isDead) continue;
-                  const mode = fighter.faceTarget?.mode ?? "never";
+                  const mode = fighter.config.faceTarget?.mode ?? "never";
                   if (mode === "always")
                         fighter.setFacingToward(
                               nearestEnemy(fighter, this.gm.characters),
                         );
                   else if (mode === "range") {
-                        const rangeAbility = fighter.abilities.find(
+                        const rangeAbility = fighter.config.abilities.find(
                               (ability) =>
                                     ability.trigger.type === "enemy-in-range",
                         );
@@ -132,8 +132,8 @@ export class AbilitySystem {
                                 )
                               : null;
                         if (target) fighter.setFacingToward(target);
-                        else fighter.facing = fighter.defaultFacing;
-                  } else fighter.facing = fighter.defaultFacing;
+                        else fighter.facing = fighter.config.defaultFacing;
+                  } else fighter.facing = fighter.config.defaultFacing;
             }
       }
 
@@ -154,8 +154,11 @@ export class AbilitySystem {
             ability: AbilityConfig,
             nowMs: number,
       ): void {
-            fighter.startAbility(ability, nowMs);
-            fighter.lockAbilityFacingToward(target);
+            fighter.abilities.start(ability, fighter.facing, nowMs);
+            fighter.abilities.lockFacingToward(
+                  target.body.position.x,
+                  fighter.body.position.x,
+            );
             this.targets.set(fighter, target);
             const projectile = this.action<"spawn-projectile">(
                   ability,
@@ -177,10 +180,10 @@ export class AbilitySystem {
       }
 
       private tryApplyDashHit(attacker: Fighter, target: Fighter): void {
-            const ability = attacker.activeAbility;
+            const ability = attacker.abilities.active;
             if (
                   !ability ||
-                  attacker.abilityState !== "active" ||
+                  attacker.abilities.state !== "active" ||
                   !this.action(ability, "dash") ||
                   attacker.isDead ||
                   target.isDead ||
@@ -195,13 +198,13 @@ export class AbilitySystem {
             fighter: Fighter,
             event: "fighter-collision" | "wall-collision",
       ): void {
-            const ability = fighter.activeAbility;
+            const ability = fighter.abilities.active;
             const dash = ability ? this.action<"dash">(ability, "dash") : null;
             if (
-                  fighter.abilityState === "active" &&
+                  fighter.abilities.state === "active" &&
                   dash?.endOn.includes(event)
             )
-                  fighter.finishAbilityActive();
+                  fighter.abilities.finishActive();
       }
 
       private clearRuntime(fighter: Fighter): void {

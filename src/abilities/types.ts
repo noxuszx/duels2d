@@ -24,17 +24,40 @@ export interface ProjectileConfig {
       imageScales?: Record<string, number>;
 }
 
+export interface DamageAction {
+      type: "damage";
+      amount: number;
+}
+
+export interface KnockbackAction {
+      type: "knockback";
+      forceMagnitude: number;
+}
+
+export interface DashAction {
+      type: "dash";
+      speedMultiplier: number;
+      accelerationForce: number;
+      endOn: Array<"fighter-collision" | "wall-collision">;
+}
+
+export interface SwingAction {
+      type: "swing";
+      startDegrees: number;
+      endDegrees: number;
+}
+
+export interface SpawnProjectileAction {
+      type: "spawn-projectile";
+      projectile: ProjectileConfig;
+}
+
 export type AbilityAction =
-      | { type: "damage"; amount: number }
-      | { type: "knockback"; forceMagnitude: number }
-      | {
-              type: "dash";
-              speedMultiplier: number;
-              accelerationForce: number;
-              endOn: Array<"fighter-collision" | "wall-collision">;
-        }
-      | { type: "swing"; startDegrees: number; endDegrees: number }
-      | { type: "spawn-projectile"; projectile: ProjectileConfig };
+      | DamageAction
+      | KnockbackAction
+      | DashAction
+      | SwingAction
+      | SpawnProjectileAction;
 
 export interface AbilityConfig {
       id: string;

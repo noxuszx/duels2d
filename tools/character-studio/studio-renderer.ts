@@ -318,7 +318,7 @@ export function drawStudio(studio: CharacterStudio): void {
             ctx.arc(
                   previewX,
                   previewY,
-                  projectileWeapon.projectile.radius,
+                  projectileAction.projectile.radius,
                   0,
                   Math.PI * 2,
             );

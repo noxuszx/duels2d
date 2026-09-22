@@ -44,13 +44,15 @@ export class IndicatorSystem {
             const config = this.indicatorConfig.damage;
             this.damageIndicators.push({
                   text: `-${amount}`,
-                  x: position.x + (Math.random() - 0.5) * character.radius,
+                  x:
+                        position.x +
+                        (Math.random() - 0.5) * character.config.radius,
                   y: position.y - character.hitbox.halfHeight * 0.35,
                   vy: config.driftY,
                   life: 1,
                   fontSize: Math.max(
                         config.minFontSize,
-                        character.radius * config.sizeMultiplier,
+                        character.config.radius * config.sizeMultiplier,
                   ),
             });
       }
@@ -69,7 +71,7 @@ export class IndicatorSystem {
                   life: 1,
                   fontSize: Math.max(
                         config.minFontSize,
-                        character.radius * config.sizeMultiplier,
+                        character.config.radius * config.sizeMultiplier,
                   ),
             });
       }

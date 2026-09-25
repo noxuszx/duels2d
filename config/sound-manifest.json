@@ -62,6 +62,52 @@
         }
       }
     },
+    "babyman": {
+      "volume": 1,
+      "cues": {
+        "ambient": {
+          "category": "voice",
+          "volume": 0.85,
+          "intervalMs": 4000,
+          "clips": [
+            {
+              "id": "babyman-idle1",
+              "path": "assets/sfx/characters/babyman/ambient/babyman-idle1.mp3"
+            },
+            {
+              "id": "babyman-idle2",
+              "path": "assets/sfx/characters/babyman/ambient/babyman-idle2.mp3"
+            },
+            {
+              "id": "babyman-idle3",
+              "path": "assets/sfx/characters/babyman/ambient/babyman-idle3.mp3"
+            }
+          ]
+        },
+        "attackActive": {
+          "category": "movement",
+          "volume": 0.8,
+          "rate": 1.35,
+          "loop": true,
+          "clips": [
+            {
+              "id": "babyman-dash",
+              "path": "assets/sfx/characters/babyman/attack-active/babyman-dash.mp3"
+            }
+          ]
+        },
+        "attackWindup": {
+          "category": "movement",
+          "volume": 0.8,
+          "clips": [
+            {
+              "id": "babyman-crawl",
+              "path": "assets/sfx/characters/babyman/attack-windup/babyman-crawl.mp3"
+            }
+          ]
+        }
+      }
+    },
     "chefman": {
       "volume": 1,
       "cues": {

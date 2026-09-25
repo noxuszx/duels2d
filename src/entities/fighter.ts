@@ -90,8 +90,9 @@ export class Fighter {
 
             this.presentation = new FighterPresentation(config);
             this.audio = new FighterAudio(this.id, gameConfig, soundManifest);
-            this.abilities = new FighterAbilities((ability, event) =>
-                  this.audio.playAbilityCue(ability, event),
+            this.abilities = new FighterAbilities(
+                  (ability, event) => this.audio.playAbilityCue(ability, event),
+                  (ability, event) => this.audio.stopAbilityCue(ability, event),
             );
       }
       applyForceKnockback(

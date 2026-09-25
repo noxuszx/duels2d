@@ -68,6 +68,8 @@ export interface SoundCueConfig {
   cooldownMs?: number;
   intervalMs?: number;
   pitchVariation?: boolean;
+  rate?: number;
+  loop?: boolean;
 }
 
 export interface CharacterSoundProfile {

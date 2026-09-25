@@ -9,6 +9,10 @@
       {
         "id": "wall-crawl-charge",
         "trigger": { "type": "wall-contact" },
+        "audio": {
+          "windup": "attackWindup",
+          "active": "attackActive"
+        },
         "timing": { "cooldownMs": 3000, "windupFrames": 0, "activeFrames": 35, "recoveryFrames": 0 },
         "actions": [
           { "type": "wall-crawl", "durationMs": 2000, "speedMultiplier": 1.5 },

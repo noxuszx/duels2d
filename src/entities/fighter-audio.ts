@@ -98,6 +98,9 @@ export class FighterAudio {
                   cue.sounds[Math.floor(Math.random() * cue.sounds.length)];
             const playbackId = sound.play();
             sound.volume(this.volumeForCue(cue.config), playbackId);
+            if (cue.config.loop) {
+                  sound.loop(true, playbackId);
+            }
             this.applyPitchVariation(
                   type,
                   cue.config,
@@ -107,9 +110,21 @@ export class FighterAudio {
             );
       }
 
+      stop(type: string): void {
+            const characterCue = this.soundCues[type];
+            const cue = characterCue ?? this.sharedSoundCues[type];
+            if (!cue) return;
+            cue.sounds.forEach((sound) => sound.stop());
+      }
+
       playAbilityCue(ability: AbilityConfig, event: AbilityAudioEvent): void {
             const cue = ability.audio?.[event];
             if (cue) this.play(cue);
+      }
+
+      stopAbilityCue(ability: AbilityConfig, event: AbilityAudioEvent): void {
+            const cue = ability.audio?.[event];
+            if (cue) this.stop(cue);
       }
 
       update(nowMs: number, canPlayIdleAudio: boolean): void {
@@ -184,6 +199,11 @@ export class FighterAudio {
             playbackId: number,
             isShared: boolean,
       ): void {
+            if (config.rate !== undefined) {
+                  sound.rate(config.rate, playbackId);
+                  return;
+            }
+
             if (!config.pitchVariation) {
                   sound.rate(1, playbackId);
                   return;

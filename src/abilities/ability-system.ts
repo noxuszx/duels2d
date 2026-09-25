@@ -107,15 +107,18 @@ export class AbilitySystem {
                         const chargeTarget = target && !target.isDead
                               ? target
                               : nearestEnemy(fighter, this.gm.characters);
-                        if (chargeTarget)
-                              this.dashDirections.set(fighter, {
-                                    x:
-                                          chargeTarget.body.position.x -
-                                          fighter.body.position.x,
-                                    y:
-                                          chargeTarget.body.position.y -
-                                          fighter.body.position.y,
-                              });
+                        if (chargeTarget) {
+                              const dx =
+                                    chargeTarget.body.position.x -
+                                    fighter.body.position.x;
+                              const dy =
+                                    chargeTarget.body.position.y -
+                                    fighter.body.position.y;
+                              this.dashDirections.set(fighter, { x: dx, y: dy });
+                              if (dx !== 0) {
+                                    fighter.facing = dx < 0 ? "left" : "right";
+                              }
+                        }
                   }
 
                   if (ability && fighter.abilities.state === "active") {
@@ -165,9 +168,21 @@ export class AbilitySystem {
             }
       }
 
+      isDashing(fighter: Fighter): boolean {
+            return (
+                  fighter.abilities.state === "active" &&
+                  Boolean(fighter.abilities.active?.actions.some((a) => a.type === "dash"))
+            );
+      }
+
       updateFaceTargeting(): void {
             for (const fighter of this.gm.characters) {
-                  if (fighter.isDead || this.isWallCrawling(fighter)) continue;
+                  if (
+                        fighter.isDead ||
+                        this.isWallCrawling(fighter) ||
+                        this.isDashing(fighter)
+                  )
+                        continue;
                   const mode = fighter.config.faceTarget?.mode ?? "never";
                   if (mode === "always")
                         fighter.setFacingToward(
@@ -180,13 +195,13 @@ export class AbilitySystem {
                         );
                         const target = rangeAbility
                               ? enemyInRange(
-                                      fighter,
-                                      this.gm.characters,
-                                      rangeAbility.trigger.type ===
-                                            "enemy-in-range"
-                                            ? rangeAbility.trigger.rangePadding
-                                            : 0,
-                                )
+                                    fighter,
+                                    this.gm.characters,
+                                    rangeAbility.trigger.type ===
+                                          "enemy-in-range"
+                                          ? rangeAbility.trigger.rangePadding
+                                          : 0,
+                              )
                               : null;
                         if (target) fighter.setFacingToward(target);
                         else fighter.facing = fighter.config.defaultFacing;

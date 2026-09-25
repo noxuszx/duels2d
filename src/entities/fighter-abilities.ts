@@ -21,6 +21,10 @@ export class FighterAbilities {
                   ability: AbilityConfig,
                   event: AbilityAudioEvent,
             ) => void,
+            private readonly onAudioStop?: (
+                  ability: AbilityConfig,
+                  event: AbilityAudioEvent,
+            ) => void,
       ) {}
 
       canUse(ability: AbilityConfig, nowMs: number): boolean {
@@ -35,6 +39,10 @@ export class FighterAbilities {
             currentFacing: Facing,
             nowMs = performance.now(),
       ): void {
+            if (this.active) {
+                  this.onAudioStop?.(this.active, "active");
+                  this.onAudioStop?.(this.active, "windup");
+            }
             this.active = ability;
             this.facing = currentFacing;
             this.lastUseTimes.set(ability.id, nowMs);
@@ -47,15 +55,25 @@ export class FighterAbilities {
             this.facing = targetX < selfX ? "left" : "right";
       }
 
+      private hasCollisionDash(): boolean {
+            const dash = this.active?.actions.find(
+                  (action) => action.type === "dash",
+            );
+            return Boolean(
+                  dash &&
+                  dash.type === "dash" &&
+                  (dash.endOn.includes("fighter-collision") ||
+                   dash.endOn.includes("wall-collision")),
+            );
+      }
+
       update(): void {
             if (!this.active || this.timer <= 0) return;
             this.timer--;
             if (this.state === "windup" && this.timer <= 0) {
                   this.beginActive();
             } else if (this.state === "active" && this.timer <= 0) {
-                  this.state = "recovery";
-                  this.timer = this.active.timing.recoveryFrames;
-                  if (this.timer <= 0) this.reset();
+                  this.finishActive();
             } else if (this.state === "recovery" && this.timer <= 0) {
                   this.reset();
             }
@@ -63,13 +81,17 @@ export class FighterAbilities {
 
       beginActive(): void {
             if (this.state !== "windup" || !this.active) return;
+            this.onAudioStop?.(this.active, "windup");
             this.state = "active";
-            this.timer = this.active.timing.activeFrames;
+            this.timer = this.hasCollisionDash()
+                  ? 600
+                  : this.active.timing.activeFrames;
             this.onAudioEvent?.(this.active, "active");
       }
 
       finishActive(): void {
             if (this.state !== "active" || !this.active) return;
+            this.onAudioStop?.(this.active, "active");
             this.state = "recovery";
             this.timer = this.active.timing.recoveryFrames;
             if (this.timer <= 0) {
@@ -78,6 +100,10 @@ export class FighterAbilities {
       }
 
       reset(): void {
+            if (this.active) {
+                  this.onAudioStop?.(this.active, "active");
+                  this.onAudioStop?.(this.active, "windup");
+            }
             this.state = "idle";
             this.active = null;
             this.facing = null;

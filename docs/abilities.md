@@ -86,8 +86,9 @@ and wall-contact activation; `wall-crawl-action.ts` owns the movement itself.
 It holds the fighter against the contacted wall, moves along it at `baseSpeed
 * speedMultiplier`, and reverses at corners for `durationMs`. Then the ability
 enters its active phase, where a following `dash` can charge toward the target.
-A dash also ends when its `activeFrames` expire, even if it misses both a fighter
-and a wall.
+A dash configured with `endOn` collision conditions continues until a specified
+collision occurs (such as hitting a fighter or a wall), with a safety watchdog
+timeout in place if neither is contacted.
 
 Teleporting is an instantaneous action and belongs in `ActionExecutor`. Its
 implementation should ask the arena for a valid destination before moving the

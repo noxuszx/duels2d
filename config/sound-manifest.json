@@ -99,7 +99,7 @@
       "cues": {
         "ambient": {
           "category": "voice",
-          "volume": 0.3,
+          "volume": 1,
           "intervalMs": 4000,
           "pitchVariation": true,
           "clips": [
@@ -123,7 +123,7 @@
         },
         "weaponSlap": {
           "category": "impact",
-          "volume": 0.7,
+          "volume": 0.6,
           "clips": [
             {
               "id": "happyman-slap-impact-01",

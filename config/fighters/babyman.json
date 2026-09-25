@@ -1,0 +1,66 @@
+{
+  "$schema": "./fighter.schema.json",
+  "id": "babyman",
+  "name": "Baby Man",
+  "color": "#8ed8ee",
+  "combat": {
+    "faceTarget": { "mode": "always" },
+    "abilities": [
+      {
+        "id": "wall-crawl-charge",
+        "trigger": { "type": "wall-contact" },
+        "timing": { "cooldownMs": 3000, "windupFrames": 0, "activeFrames": 35, "recoveryFrames": 0 },
+        "actions": [
+          { "type": "wall-crawl", "durationMs": 2000, "speedMultiplier": 1.5 },
+          {
+            "type": "dash",
+            "speedMultiplier": 5,
+            "accelerationForce": 0.018,
+            "endOn": [
+              "fighter-collision",
+              "wall-collision"
+            ]
+          },
+          { "type": "damage", "amount": 100 },
+          { "type": "knockback", "forceMagnitude": 0.45 }
+        ]
+      }
+    ]
+  },
+  "presentation": {
+    "image": "assets/fighters/babyman/sprites/babyman-idle.png",
+    "imageScale": 2.6,
+    "poses": {
+      "idle": {
+        "image": "assets/fighters/babyman/sprites/babyman-idle.png",
+        "imageCrop": { "x": 0, "y": 0, "width": 540, "height": 360 },
+        "imageScale": 2.3,
+        "imageOffset": { "x": 0, "y": -29 }
+      },
+      "crawl1": {
+        "image": "assets/fighters/babyman/sprites/babyman-crawl1.png",
+        "imageCrop": { "x": 0, "y": 0, "width": 1536, "height": 1024 },
+        "imageScale": 2.7,
+        "imageOffset": { "x": 0, "y": -32 }
+      },
+      "crawl2": {
+        "image": "assets/fighters/babyman/sprites/babyman-crawl2.png",
+        "imageCrop": { "x": 0, "y": 0, "width": 1536, "height": 1024 },
+        "imageScale": 2.7,
+        "imageOffset": { "x": 0, "y": -32 }
+      },
+      "attackActive": {
+        "image": "assets/fighters/babyman/sprites/babyman-dash.png",
+        "imageCrop": { "x": 0, "y": 0, "width": 1536, "height": 1024 },
+        "imageScale": 2.6,
+        "imageOffset": { "x": 0, "y": -25 }
+      }
+    },
+    "imageOffset": { "x": 0, "y": -12 },
+    "imageCrop": { "x": 0, "y": 0, "width": 540, "height": 360 }
+  },
+  "body": {
+    "hitbox": { "type": "box", "width": 59, "height": 63 },
+    "hitboxOffset": { "x": 1, "y": -36 }
+  }
+}

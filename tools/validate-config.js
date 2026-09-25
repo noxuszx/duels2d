@@ -444,6 +444,13 @@ roster.forEach((fighter) => {
             });
 
             (ability.actions || []).forEach((action, actionIndex) => {
+                  if (action.type === "wall-crawl") {
+                        const actionLocation = `${abilityLocation}.actions[${actionIndex}]`;
+                        if (!isPositive(action.durationMs))
+                              fail(`${actionLocation}.durationMs`, "must be greater than 0");
+                        if (!isPositive(action.speedMultiplier))
+                              fail(`${actionLocation}.speedMultiplier`, "must be greater than 0");
+                  }
                   if (action.type !== "spawn-projectile") return;
                   const projectile = action.projectile;
                   const actionLocation = `${abilityLocation}.actions[${actionIndex}].projectile`;

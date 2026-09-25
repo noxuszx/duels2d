@@ -7,7 +7,8 @@ export interface AbilityTiming {
 
 export type AbilityTrigger =
       | { type: "nearest-enemy" }
-      | { type: "enemy-in-range"; rangePadding: number };
+      | { type: "enemy-in-range"; rangePadding: number }
+      | { type: "wall-contact" };
 
 export interface ForceKnockbackConfig {
       forceMagnitude: number;
@@ -41,6 +42,12 @@ export interface DashAction {
       endOn: Array<"fighter-collision" | "wall-collision">;
 }
 
+export interface WallCrawlAction {
+      type: "wall-crawl";
+      durationMs: number;
+      speedMultiplier: number;
+}
+
 export interface SwingAction {
       type: "swing";
       startDegrees: number;
@@ -59,6 +66,7 @@ export type AbilityAction =
       | DamageAction
       | KnockbackAction
       | DashAction
+      | WallCrawlAction
       | SwingAction
       | SpawnProjectileAction;
 

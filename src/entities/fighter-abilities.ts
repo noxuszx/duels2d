@@ -49,27 +49,23 @@ export class FighterAbilities {
 
       update(): void {
             if (!this.active || this.timer <= 0) return;
-            if (
-                  this.state === "active" &&
-                  this.active.actions.some(
-                        (action) =>
-                              action.type === "dash" && action.endOn.length > 0,
-                  )
-            ) {
-                  return;
-            }
-
             this.timer--;
             if (this.state === "windup" && this.timer <= 0) {
-                  this.state = "active";
-                  this.timer = this.active.timing.activeFrames;
-                  this.onAudioEvent?.(this.active, "active");
+                  this.beginActive();
             } else if (this.state === "active" && this.timer <= 0) {
                   this.state = "recovery";
                   this.timer = this.active.timing.recoveryFrames;
+                  if (this.timer <= 0) this.reset();
             } else if (this.state === "recovery" && this.timer <= 0) {
                   this.reset();
             }
+      }
+
+      beginActive(): void {
+            if (this.state !== "windup" || !this.active) return;
+            this.state = "active";
+            this.timer = this.active.timing.activeFrames;
+            this.onAudioEvent?.(this.active, "active");
       }
 
       finishActive(): void {

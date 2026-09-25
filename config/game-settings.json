@@ -1,6 +1,6 @@
 {
       "rendering": {
-            "scale": 2
+            "scale": 3
       },
       "physics": {
             "globalSpeedMultiplier": 0.15,

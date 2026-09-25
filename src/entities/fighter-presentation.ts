@@ -7,7 +7,7 @@ import type {
       Vector2,
 } from "../types/fighter";
 
-type PoseKey = "idle" | "attackWindup" | "attackActive";
+type PoseKey = "idle" | "attackWindup" | "attackActive" | "crawl1" | "crawl2";
 type PoseVisual = Partial<PoseOverrides>;
 
 export interface CurrentSprite {
@@ -32,10 +32,13 @@ export class FighterPresentation {
             idle: null,
             attackWindup: null,
             attackActive: null,
+            crawl1: null,
+            crawl2: null,
       };
       weaponIdle: HTMLImageElement | null = null;
       weaponAttack: HTMLImageElement | null = null;
       hitFlashTimer = 0;
+      private animationFrame = 0;
 
       private readonly poseVisuals: Partial<Record<PoseKey, PoseVisual>> = {};
 
@@ -60,6 +63,8 @@ export class FighterPresentation {
                   config.poses?.attackActive,
                   config.image,
             );
+            this.loadPose("crawl1", config.poses?.crawl1, config.image);
+            this.loadPose("crawl2", config.poses?.crawl2, config.image);
             if (config.weaponIdle)
                   this.loadImage("weaponIdle", config.weaponIdle);
             if (config.weaponAttack)
@@ -72,25 +77,33 @@ export class FighterPresentation {
 
       update(): void {
             if (this.hitFlashTimer > 0) this.hitFlashTimer--;
+            this.animationFrame++;
       }
 
       get isFlashing(): boolean {
             return this.hitFlashTimer > 0;
       }
 
-      getCurrentSprite(abilityState: AbilityState): CurrentSprite | null {
-            const poseKey = this.currentPoseKey(abilityState);
+      getCurrentSprite(abilityState: AbilityState, isCrawling = false): CurrentSprite | null {
+            const crawlKey: PoseKey = Math.floor(this.animationFrame / 9) % 2 === 0
+                  ? "crawl1"
+                  : "crawl2";
+            const poseKey = isCrawling && this.sprites[crawlKey]
+                  ? crawlKey
+                  : this.currentPoseKey(abilityState);
             const image =
-                  abilityState === "windup"
+                  isCrawling && this.sprites[crawlKey]
+                        ? this.sprites[crawlKey]
+                  : abilityState === "windup"
                         ? (this.sprites.attackWindup ??
-                          this.sprites.idle ??
-                          this.sprite)
+                              this.sprites.idle ??
+                              this.sprite)
                         : abilityState === "active"
-                          ? (this.sprites.attackActive ??
-                            this.sprites.attackWindup ??
-                            this.sprites.idle ??
-                            this.sprite)
-                          : (this.sprites.idle ?? this.sprite);
+                              ? (this.sprites.attackActive ??
+                                    this.sprites.attackWindup ??
+                                    this.sprites.idle ??
+                                    this.sprite)
+                              : (this.sprites.idle ?? this.sprite);
             if (!image) return null;
             const pose = poseKey ? (this.poseVisuals[poseKey] ?? {}) : {};
             return {
@@ -129,16 +142,16 @@ export class FighterPresentation {
                   return this.sprites.attackWindup
                         ? "attackWindup"
                         : this.sprites.idle
-                          ? "idle"
-                          : null;
+                              ? "idle"
+                              : null;
             if (abilityState === "active")
                   return this.sprites.attackActive
                         ? "attackActive"
                         : this.sprites.attackWindup
-                          ? "attackWindup"
-                          : this.sprites.idle
-                            ? "idle"
-                            : null;
+                              ? "attackWindup"
+                              : this.sprites.idle
+                                    ? "idle"
+                                    : null;
             return this.sprites.idle ? "idle" : null;
       }
 

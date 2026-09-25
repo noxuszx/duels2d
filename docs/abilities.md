@@ -11,12 +11,14 @@ Current triggers:
 
 - `nearest-enemy`
 - `enemy-in-range`
+- `wall-contact`
 
 Current actions:
 
 - `damage`
 - `knockback`
 - `dash`
+- `wall-crawl`
 - `swing`
 - `spawn-projectile`
 
@@ -79,10 +81,13 @@ fighter IDs or inspect character names.
 
 ## Movement modes
 
-Persistent movement such as wall walking should live in a separate movement
-controller rather than in `ActionExecutor`. An ability action can activate a
-named movement mode for a duration, while the movement system owns its ongoing
-forces and collision behavior.
+`wall-crawl` is a reusable movement action. The ability system owns its phase
+and wall-contact activation; `wall-crawl-action.ts` owns the movement itself.
+It holds the fighter against the contacted wall, moves along it at `baseSpeed
+* speedMultiplier`, and reverses at corners for `durationMs`. Then the ability
+enters its active phase, where a following `dash` can charge toward the target.
+A dash also ends when its `activeFrames` expire, even if it misses both a fighter
+and a wall.
 
 Teleporting is an instantaneous action and belongs in `ActionExecutor`. Its
 implementation should ask the arena for a valid destination before moving the

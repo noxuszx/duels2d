@@ -47,6 +47,11 @@ export function getRandomPitch(
       return Number(nextRate.toFixed(2));
 }
 
+export interface SoundPlayback {
+      sound: Howl;
+      playbackId: number;
+}
+
 /** Owns sound assets, playback rules, and ambient scheduling for a fighter. */
 export class FighterAudio {
       private static sharedSoundCueCache: SoundCues | null = null;
@@ -141,9 +146,9 @@ export class FighterAudio {
             type: string,
             soundManifest: SoundManifest,
             gameConfig: GameConfig,
-      ): void {
+      ): SoundPlayback | null {
             const cue = this.getSharedSoundCues(soundManifest)[type];
-            if (!cue || cue.sounds.length === 0) return;
+            if (!cue || cue.sounds.length === 0) return null;
             const sound =
                   cue.sounds[Math.floor(Math.random() * cue.sounds.length)];
             const playbackId = sound.play();
@@ -151,6 +156,7 @@ export class FighterAudio {
                   this.calculateVolume(cue.config, gameConfig, 1),
                   playbackId,
             );
+            return { sound, playbackId };
       }
 
       private updateAmbient(nowMs: number): void {

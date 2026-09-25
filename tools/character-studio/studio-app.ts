@@ -73,7 +73,7 @@ declare global {
       }
 }
 
-const SUPPORTED_POSE_KEYS = ["idle", "attackWindup", "attackActive"] as const;
+const SUPPORTED_POSE_KEYS = ["idle", "attackWindup", "attackActive", "crawl1", "crawl2"] as const;
 
 function poseLabel(key: string): string {
       const labels: Record<string, string> = {
@@ -81,6 +81,8 @@ function poseLabel(key: string): string {
             idle: "Idle",
             attackWindup: "Attack Windup",
             attackActive: "Attack Active",
+            crawl1: "Crawl 1",
+            crawl2: "Crawl 2",
       };
       return labels[key] ?? key;
 }

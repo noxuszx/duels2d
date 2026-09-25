@@ -2,7 +2,7 @@
 // collaborators are migrated in parallel. Its public module boundary is typed.
 import { Body, Engine, Events, Runner, World } from "matter-js";
 import { Fighter } from "../entities/fighter";
-import { FighterAudio } from "../entities/fighter-audio";
+import { FighterAudio, type SoundPlayback } from "../entities/fighter-audio";
 import { Projectile } from "../entities/projectile";
 import { IndicatorSystem } from "../systems/indicator-system";
 import { AbilitySystem } from "../abilities/ability-system";
@@ -11,6 +11,18 @@ import type { FighterConfig } from "../types/fighter";
 import type { RuntimeConfig } from "../config/runtime-config";
 
 type Point = { x: number; y: number };
+export interface RecordingView {
+      canvas: HTMLCanvasElement;
+      logicalWidth: number;
+      logicalHeight: number;
+      visualOverflow: number;
+      backgroundColor: string;
+      arenaBackgroundColor: string;
+      arenaWidth: number;
+      arenaHeight: number;
+      fighterNames: string[];
+      targets: Array<{ x: number; y: number }>;
+}
 type ImpactDamageSettings = {
       minSpeedMultiplier?: number;
       minSpeed?: number;
@@ -38,6 +50,7 @@ export class GameManager {
       private readonly hudEls: { status: HTMLElement };
       private readonly abilitySystem: AbilitySystem;
       private readonly characterSelectPanel: FighterSelectPanel;
+      private readonly arenaBackgroundColor: string;
       private arenaW = 0;
       private arenaH = 0;
       private W = 0;
@@ -89,6 +102,7 @@ export class GameManager {
             this.container = container;
             this.canvas = canvas;
             this.ctx = context;
+            this.arenaBackgroundColor = getComputedStyle(container).backgroundColor;
             this.hudEls = { status };
             this.abilitySystem = new AbilitySystem(this);
             this.characterSelectPanel = new FighterSelectPanel(this);
@@ -140,6 +154,28 @@ export class GameManager {
             };
       }
 
+      getRecordingView(): RecordingView {
+            const alive = this.characters.filter((c) => !c.isDead);
+            const activeTargets = alive.length > 0 ? alive : this.characters;
+            return {
+                  canvas: this.canvas,
+                  logicalWidth: this.W,
+                  logicalHeight: this.H,
+                  visualOverflow: this.VISUAL_OVERFLOW,
+                  backgroundColor: this.runtimeConfig.game.arena.backgroundColor,
+                  arenaBackgroundColor: this.arenaBackgroundColor,
+                  arenaWidth: this.arenaW,
+                  arenaHeight: this.arenaH,
+                  fighterNames: this.characters.map(
+                        (character) => character.config.name,
+                  ),
+                  targets: activeTargets.map((character) => ({
+                        x: character.body.position.x,
+                        y: character.body.position.y,
+                  })),
+            };
+      }
+
       _getSelectedCharacterConfigs() {
             const byId = new Map(
                   this.fighterRoster.map((config) => [config.id, config]),
@@ -163,8 +199,8 @@ export class GameManager {
             this.characters = [];
       }
 
-      _playSharedSound(type: string): void {
-            FighterAudio.playShared(
+      _playSharedSound(type: string): SoundPlayback | null {
+            return FighterAudio.playShared(
                   type,
                   this.runtimeConfig.sounds,
                   this.runtimeConfig.game,
@@ -302,8 +338,10 @@ export class GameManager {
                   this.characters.forEach((char) => {
                         if (char.isDead) return;
                         char.applyPendingForce();
-                        char.applyCruiseForce();
-                        char.applyUprightTorque(now);
+                        if (!this.abilitySystem.isWallCrawling(char)) {
+                              char.applyCruiseForce();
+                              char.applyUprightTorque(now);
+                        }
 
                         const position = char.body.position;
                         const velocity = { ...char.body.velocity };
@@ -355,17 +393,25 @@ export class GameManager {
 
                         if (!hitVerticalWall && !hitHorizontalWall) return;
 
+                        const wall = hitVerticalWall
+                              ? position.x < minX ? "left" : "right"
+                              : position.y < minY ? "top" : "bottom";
                         Body.setPosition(char.body, {
                               x: correctedX,
                               y: correctedY,
                         });
+                        if (this.abilitySystem.handleWallCollision(char, wall, {
+                              minX,
+                              maxX,
+                              minY,
+                              maxY,
+                        })) return;
                         this._enforceMinimumDepartureAngle(
                               velocity,
                               hitVerticalWall,
                               hitHorizontalWall,
                         );
                         Body.setVelocity(char.body, velocity);
-                        this.abilitySystem.handleWallCollision(char);
                         char.noteImpact();
                         char.playSound("body-bounce");
                         this._applyImpactDamage(char, impactSpeed, Date.now());
@@ -521,11 +567,15 @@ export class GameManager {
 
       _startRenderLoop() {
             const ctx = this.ctx;
+            let previousFrameTime = performance.now();
             const loop = () => {
                   this._animId = requestAnimationFrame(loop);
+                  const frameTime = performance.now();
+                  const deltaMs = Math.max(0, frameTime - previousFrameTime);
+                  previousFrameTime = frameTime;
 
                   if (!this.paused) {
-                        this.abilitySystem.update();
+                        this.abilitySystem.update(deltaMs);
                         this.abilitySystem.updateFaceTargeting();
                         this._updateCharacterAudio();
                         this._updateCharacterLines();
@@ -542,6 +592,8 @@ export class GameManager {
 
                   ctx.clearRect(0, 0, this.W, this.H);
                   this._drawArenaBorder(ctx);
+                  this._drawArenaWatermark(ctx);
+                  this._drawArenaFooterText(ctx);
                   this._drawProjectiles(ctx);
                   this._drawCharacters(ctx);
                   this._drawHeldWeapons(ctx);
@@ -552,6 +604,121 @@ export class GameManager {
             };
 
             loop();
+      }
+
+      _drawArenaWatermark(ctx: CanvasRenderingContext2D): void {
+            const { ax, ay, aw, ah } = this._getArena();
+            const text = "duels-2d";
+            const fontSize = 24;
+            ctx.save();
+            ctx.globalAlpha = 0.35;
+            ctx.font = `800 ${fontSize}px sans-serif`;
+            ctx.textAlign = "left";
+            ctx.textBaseline = "middle";
+
+            const textWidth = ctx.measureText(text).width;
+            const iconHeight = fontSize * 0.95;
+            const iconWidth = iconHeight * 1.4;
+            const spacing = 9;
+            const totalWidth = iconWidth + spacing + textWidth;
+
+            const arenaCenterX = ax + aw / 2;
+            const arenaCenterY = ay + ah / 2;
+
+            const startX = arenaCenterX - totalWidth / 2;
+            const iconX = startX;
+            const iconY = arenaCenterY - iconHeight / 2;
+
+            // Draw YouTube red rounded-rectangle icon
+            const radius = iconHeight * 0.28;
+            ctx.fillStyle = "#ff0000";
+            ctx.beginPath();
+            if (typeof ctx.roundRect === "function") {
+                  ctx.roundRect(iconX, iconY, iconWidth, iconHeight, radius);
+            } else {
+                  ctx.moveTo(iconX + radius, iconY);
+                  ctx.lineTo(iconX + iconWidth - radius, iconY);
+                  ctx.quadraticCurveTo(
+                        iconX + iconWidth,
+                        iconY,
+                        iconX + iconWidth,
+                        iconY + radius,
+                  );
+                  ctx.lineTo(iconX + iconWidth, iconY + iconHeight - radius);
+                  ctx.quadraticCurveTo(
+                        iconX + iconWidth,
+                        iconY + iconHeight,
+                        iconX + iconWidth - radius,
+                        iconY + iconHeight,
+                  );
+                  ctx.lineTo(iconX + radius, iconY + iconHeight);
+                  ctx.quadraticCurveTo(
+                        iconX,
+                        iconY + iconHeight,
+                        iconX,
+                        iconY + iconHeight - radius,
+                  );
+                  ctx.lineTo(iconX, iconY + radius);
+                  ctx.quadraticCurveTo(iconX, iconY, iconX + radius, iconY);
+                  ctx.closePath();
+            }
+            ctx.fill();
+
+            // Draw white play triangle centered inside YouTube icon
+            const triWidth = iconWidth * 0.36;
+            const triHeight = iconHeight * 0.44;
+            const iconCenterX = iconX + iconWidth / 2;
+            const iconCenterY = iconY + iconHeight / 2;
+
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.moveTo(
+                  iconCenterX - triWidth * 0.42,
+                  iconCenterY - triHeight / 2,
+            );
+            ctx.lineTo(iconCenterX + triWidth * 0.58, iconCenterY);
+            ctx.lineTo(
+                  iconCenterX - triWidth * 0.42,
+                  iconCenterY + triHeight / 2,
+            );
+            ctx.closePath();
+            ctx.fill();
+
+            // Draw "duels-2d" right next to the YouTube icon
+            const textX = iconX + iconWidth + spacing;
+            const textY = arenaCenterY;
+
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.65)";
+            ctx.lineWidth = 2.5;
+            ctx.lineJoin = "round";
+            ctx.strokeText(text, textX, textY);
+            ctx.fillStyle = "#ffffff";
+            ctx.fillText(text, textX, textY);
+
+            ctx.restore();
+      }
+
+      _drawArenaFooterText(ctx: CanvasRenderingContext2D): void {
+            const { ax, ay, aw, ah } = this._getArena();
+            const text = "LIKE & SUBSCRIBE";
+            const fontSize = 18;
+            ctx.save();
+            ctx.globalAlpha = 0.85;
+            ctx.font = `800 ${fontSize}px sans-serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            const arenaCenterX = ax + aw / 2;
+            const y = ay + ah + 28;
+
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.75)";
+            ctx.lineWidth = 3;
+            ctx.lineJoin = "round";
+            ctx.strokeText(text, arenaCenterX, y);
+            ctx.fillStyle = "#ffffff";
+            ctx.fillText(text, arenaCenterX, y);
+
+            ctx.restore();
       }
 
       _drawArenaBorder(ctx: CanvasRenderingContext2D): void {
@@ -606,7 +773,8 @@ export class GameManager {
 
                   const pos = char.visualPosition;
                   const r = char.config.radius;
-                  const ang = char.body.angle;
+                  const crawlAngle = this.abilitySystem.getWallCrawlAngle(char);
+                  const ang = crawlAngle ?? char.body.angle;
 
                   if (!this.paused) {
                         char.presentation.update();
@@ -616,6 +784,7 @@ export class GameManager {
                   const isFlashing = char.presentation.isFlashing;
                   const spriteVisual = char.presentation.getCurrentSprite(
                         char.abilities.state,
+                        this.abilitySystem.isWallCrawling(char),
                   );
 
                   if (spriteVisual) {
@@ -630,6 +799,7 @@ export class GameManager {
                               );
                         const isDashWindingUp =
                               char.abilities.state === "windup" &&
+                              !this.abilitySystem.isWallCrawling(char) &&
                               char.abilities.active?.actions.some(
                                     (action) => action.type === "dash",
                               );
@@ -737,7 +907,8 @@ export class GameManager {
 
             ctx.save();
             ctx.translate(position.x, position.y);
-            ctx.rotate(character.body.angle);
+            const crawlAngle = this.abilitySystem.getWallCrawlAngle(character);
+            ctx.rotate(crawlAngle ?? character.body.angle);
             const weaponFacing =
                   character.abilities.facing ?? character.facing;
             const shouldFlipWeapon =
@@ -842,10 +1013,16 @@ export class GameManager {
 
             this.gameOver = true;
             this.characters.filter((c) => c.isDead).forEach((c) => c.onDeath());
+            let victoryPlayback: SoundPlayback | null = null;
             if (alive.length === 1 && !this.victorySoundPlayed) {
                   this.victorySoundPlayed = true;
-                  this._playSharedSound("victory");
+                  victoryPlayback = this._playSharedSound("victory");
             }
+            window.dispatchEvent(
+                  new CustomEvent("duels2d:gameover", {
+                        detail: { victoryPlayback },
+                  }),
+            );
       }
 
       _restart() {

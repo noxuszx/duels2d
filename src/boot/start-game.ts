@@ -11,6 +11,7 @@ import {
 import { GameManager } from "../engine/game-manager";
 import { CommandLineController } from "../ui/command-console";
 import { TransportControls } from "../ui/transport-controls";
+import { RecordingController } from "../ui/recording-controller";
 
 
 
@@ -29,6 +30,7 @@ window.addEventListener("DOMContentLoaded", async () => {
             const game = new GameManager(fighterConfig.roster, runtimeConfig);
             const commandLine = new CommandLineController(game);
             new TransportControls(game);
+            new RecordingController(game);
             window.game = game;
             window.commandLine = commandLine;
 

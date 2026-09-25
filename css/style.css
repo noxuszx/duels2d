@@ -101,6 +101,43 @@ body {
    */
 }
 
+.recording-camera-frame {
+      position: absolute;
+      z-index: 20;
+      box-sizing: border-box;
+      pointer-events: none;
+      border: 2px dashed rgba(58, 205, 255, 0.9);
+      box-shadow:
+            0 0 0 1px rgba(0, 0, 0, 0.65),
+            0 0 14px rgba(58, 205, 255, 0.18);
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.recording-camera-frame::before {
+      content: "9:16";
+      position: absolute;
+      top: 4px;
+      left: 5px;
+      padding: 2px 4px;
+      color: #071116;
+      background: rgba(58, 205, 255, 0.92);
+      font: 700 9px/1 ui-monospace, monospace;
+      letter-spacing: 0.08em;
+}
+
+.recording-camera-frame.recording {
+      border-color: #ff4242;
+      box-shadow:
+            0 0 0 1px rgba(0, 0, 0, 0.7),
+            0 0 18px rgba(255, 45, 45, 0.3);
+}
+
+.recording-camera-frame.recording::before {
+      content: "REC  9:16";
+      color: #fff;
+      background: #d42121;
+}
+
 /* ---- Header & Footer (Above and Below Arena) ----------------------------- */
 #game-header {
       display: flex;
@@ -754,6 +791,13 @@ kbd {
 }
 
 #transport-play svg { fill: currentColor; stroke: none; }
+#transport-record svg { fill: currentColor; stroke: none; }
+#transport-record.recording {
+      color: #ff4a4a;
+      background: #391a1a;
+      border-color: #181010;
+      box-shadow: 0 -2px #ff3535 inset;
+}
 
 @media (max-width: 520px) {
       #transport-controls { right: 7px; bottom: 7px; }

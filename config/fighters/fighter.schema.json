@@ -133,6 +133,14 @@
                                     }
                               },
                               "additionalProperties": false
+                        },
+                        {
+                              "type": "object",
+                              "required": ["type"],
+                              "properties": {
+                                    "type": { "const": "wall-contact" }
+                              },
+                              "additionalProperties": false
                         }
                   ]
             },
@@ -177,6 +185,16 @@
                                           "items": { "enum": ["fighter-collision", "wall-collision"] },
                                           "uniqueItems": true
                                     }
+                              },
+                              "additionalProperties": false
+                        },
+                        {
+                              "type": "object",
+                              "required": ["type", "durationMs", "speedMultiplier"],
+                              "properties": {
+                                    "type": { "const": "wall-crawl" },
+                                    "durationMs": { "$ref": "#/$defs/positiveNumber" },
+                                    "speedMultiplier": { "$ref": "#/$defs/positiveNumber" }
                               },
                               "additionalProperties": false
                         },

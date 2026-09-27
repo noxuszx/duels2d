@@ -1,7 +1,7 @@
 {
       "combat": {
             "maxHealth": 1000,
-            "speed": 10,
+            "speed": 11,
             "baseDamage": 100,
             "abilities": [],
             "faceTarget": { "mode": "never" }

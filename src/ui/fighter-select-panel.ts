@@ -10,6 +10,7 @@ export class FighterSelectPanel {
       private readonly playerOne: HTMLElement | null;
       private readonly playerTwo: HTMLElement | null;
       private query: string;
+      private pendingSelectedIds: string[];
 
       constructor(private readonly game: GameManager) {
             this.root = document.getElementById("character-select-panel");
@@ -24,6 +25,7 @@ export class FighterSelectPanel {
             this.playerOne = document.getElementById("selected-player-one");
             this.playerTwo = document.getElementById("selected-player-two");
             this.query = "";
+            this.pendingSelectedIds = [];
 
             if (
                   !this.root ||
@@ -39,6 +41,7 @@ export class FighterSelectPanel {
 
       open() {
             if (!this.root) return;
+            this.pendingSelectedIds = [];
             this.root.classList.remove("hidden");
             this.render();
             this.searchInput?.focus();
@@ -61,7 +64,7 @@ export class FighterSelectPanel {
       render() {
             if (!this.grid) return;
 
-            const selectedIds = this.game.getSelectedCharacterIds();
+            const selectedIds = this.pendingSelectedIds;
             const normalizedQuery = this.query.trim().toLowerCase();
             const configs = this.game.fighterRoster.filter(
                   (config: FighterConfig) => {
@@ -174,20 +177,16 @@ export class FighterSelectPanel {
       }
 
       _selectCharacter(characterId: string) {
-            const selectedIds = this.game.getSelectedCharacterIds();
-            const existingIndex = selectedIds.indexOf(characterId);
+            if (this.pendingSelectedIds.includes(characterId)) return;
 
-            if (existingIndex !== -1) {
+            this.pendingSelectedIds.push(characterId);
+            if (this.pendingSelectedIds.length < 2) {
+                  this.render();
                   return;
-            } else if (selectedIds.length < 2) {
-                  selectedIds.push(characterId);
-            } else {
-                  selectedIds[0] = selectedIds[1];
-                  selectedIds[1] = characterId;
             }
 
-            this.game.setSelectedCharacterIds(selectedIds);
-            this.render();
+            this.game.setSelectedCharacterIds(this.pendingSelectedIds);
+            this.game.pause();
             this.close();
       }
 }

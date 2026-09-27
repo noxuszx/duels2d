@@ -49,12 +49,16 @@ export class CombatSystem {
                         if (!first || !second || first === second) continue;
                         first.noteImpact(now);
                         second.noteImpact(now);
+                        const firstWasDashing = this.abilities.isDashing(first);
+                        const secondWasDashing = this.abilities.isDashing(second);
                         this.abilities.handleCharacterCollision(first, second);
                         this.handleFighterImpact(
                               first,
                               second,
                               now,
                               this.normalImpactSpeed(bodyA, bodyB, collision.normal),
+                              firstWasDashing,
+                              secondWasDashing,
                         );
                   }
             });
@@ -166,6 +170,7 @@ export class CombatSystem {
             const wall = hitVertical
                   ? position.x < minX ? "left" : "right"
                   : position.y < minY ? "top" : "bottom";
+            const wasDashing = this.abilities.isDashing(fighter);
             Body.setPosition(fighter.body, { x: correctedX, y: correctedY });
             if (this.abilities.handleWallCollision(fighter, wall, {
                   minX,
@@ -177,7 +182,9 @@ export class CombatSystem {
             Body.setVelocity(fighter.body, velocity);
             fighter.noteImpact(now);
             fighter.playSound("body-bounce");
-            this.applyImpactDamage(fighter, impactSpeed, now);
+            if (!this.host.isGameOver() && !wasDashing) {
+                  this.applyImpactDamage(fighter, impactSpeed, now);
+            }
       }
 
       private fighterFromBody(body: Body): Fighter | null {
@@ -242,11 +249,13 @@ export class CombatSystem {
             second: Fighter,
             now: number,
             speed: number,
+            firstWasDashing: boolean,
+            secondWasDashing: boolean,
       ): void {
             // Avoid slap-into-self-bounce damage from the fighter that launched them.
-            if (!second.isKnockbackFrom(first.id, now))
+            if (!firstWasDashing && !second.isKnockbackFrom(first.id, now))
                   this.applyImpactDamage(first, speed, now);
-            if (!first.isKnockbackFrom(second.id, now))
+            if (!secondWasDashing && !first.isKnockbackFrom(second.id, now))
                   this.applyImpactDamage(second, speed, now);
       }
 }

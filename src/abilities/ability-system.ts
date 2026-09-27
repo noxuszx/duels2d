@@ -47,9 +47,18 @@ export class AbilitySystem implements StandardAbilityHandler {
                               this.gm.COLLISION_COOLDOWN,
                         );
                         if (dealt) {
+                              target.playSound("hurt");
                               this.gm.indicators.spawnDamageIndicator(
                                     target,
                                     amount,
+                              );
+                              this.gm.indicators.spawnHitSpark(
+                                    target.body.position,
+                                    target.config.color,
+                              );
+                              this.gm.indicators.spawnCharacterLine(
+                                    source,
+                                    "weaponHit",
                               );
                         }
                         return dealt;

@@ -25,10 +25,12 @@ export class FighterAbilities {
                   ability: AbilityConfig,
                   event: AbilityAudioEvent,
             ) => void,
+            private readonly canStartAbility: () => boolean = () => true,
       ) {}
 
       canUse(ability: AbilityConfig, nowMs: number): boolean {
             return (
+                  this.canStartAbility() &&
                   nowMs - (this.lastUseTimes.get(ability.id) ?? -Infinity) >=
                   ability.timing.cooldownMs
             );

@@ -54,6 +54,35 @@ describe("simulation timing", () => {
             expect(runtime.canUse(ability, 1_500)).toBe(true);
       });
 
+      it("blocks new abilities without interrupting the active ability runtime", () => {
+            let canStart = true;
+            const ability: AbilityConfig = {
+                  id: "test",
+                  trigger: { type: "nearest-enemy" },
+                  timing: {
+                        cooldownMs: 1_000,
+                        windupFrames: 1,
+                        activeFrames: 2,
+                        recoveryFrames: 0,
+                  },
+                  actions: [],
+            };
+            const runtime = new FighterAbilities(
+                  undefined,
+                  undefined,
+                  () => canStart,
+            );
+            runtime.start(ability, "right", 0);
+            runtime.update();
+            canStart = false;
+
+            expect(runtime.canUse(ability, 1_000)).toBe(false);
+            expect(runtime.state).toBe("active");
+
+            runtime.update();
+            expect(runtime.state).toBe("active");
+      });
+
       it("ages projectiles only when the simulation advances", () => {
             const projectile = new Projectile(
                   {

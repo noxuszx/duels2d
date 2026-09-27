@@ -14,7 +14,7 @@ const CAMERA_SMOOTH_TIME_SECONDS = 0.25;
 const CAMERA_MAX_SPEED = 1200;
 // 0 locks the camera vertically; 1 follows the fighters at full range.
 const CAMERA_VERTICAL_FOLLOW = 0.25;
-const FRAME_RATE = 60;
+const FRAME_RATE = 120;
 const VIDEO_BITS_PER_SECOND = 32_000_000;
 const AUDIO_BITS_PER_SECOND = 192_000;
 const VICTORY_FALLBACK_TAIL_MS = 1800;

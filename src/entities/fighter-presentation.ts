@@ -71,7 +71,7 @@ export class FighterPresentation {
                   this.loadImage("weaponAttack", config.weaponAttack);
       }
 
-      triggerHitFlash(duration = 8): void {
+      triggerHitFlash(duration = 18): void {
             this.hitFlashTimer = duration;
       }
 

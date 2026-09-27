@@ -70,10 +70,10 @@ function requireString(value: unknown, location: string): void {
             throw new Error(`${location} must be a non-empty string.`);
 }
 
-function requireVolume(value: unknown, location: string): void {
+function requireVolume(value: unknown, location: string, max = 1): void {
       requireNumber(value, location, 0);
-      if ((value as number) > 1)
-            throw new Error(`${location} must not exceed 1.`);
+      if ((value as number) > max)
+            throw new Error(`${location} must not exceed ${max}.`);
 }
 
 function validateGameConfig(value: unknown): GameConfig {
@@ -203,7 +203,7 @@ function validateSoundManifest(value: unknown): SoundManifest {
             const cue = requireRecord(value, location);
             requireString(cue.category, `${location}.category`);
             if (cue.volume !== undefined)
-                  requireVolume(cue.volume, `${location}.volume`);
+                  requireVolume(cue.volume, `${location}.volume`, 5);
             if (cue.cooldownMs !== undefined)
                   requireNumber(cue.cooldownMs, `${location}.cooldownMs`, 0);
             if (cue.intervalMs !== undefined)

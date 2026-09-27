@@ -2,7 +2,7 @@
   "shared": {
     "body-bounce": {
       "category": "impact",
-      "volume": 1,
+      "volume": 1.5,
       "pitchVariation": true,
       "clips": [
         {
@@ -25,7 +25,7 @@
     },
     "hurt": {
       "category": "voice",
-      "volume": 0.3,
+      "volume": 0.8,
       "pitchVariation": true,
       "clips": [
         {
@@ -88,7 +88,6 @@
           "category": "movement",
           "volume": 0.8,
           "rate": 1.35,
-          "stopOnPhaseEnd": true,
           "clips": [
             {
               "id": "babyman-dash",
@@ -99,7 +98,6 @@
         "attackWindup": {
           "category": "movement",
           "volume": 0.8,
-          "stopOnPhaseEnd": true,
           "clips": [
             {
               "id": "babyman-crawl",
@@ -148,7 +146,6 @@
           "category": "voice",
           "volume": 1,
           "intervalMs": 4000,
-          "pitchVariation": true,
           "clips": [
             {
               "id": "happyman-cheer-01",

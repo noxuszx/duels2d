@@ -11,6 +11,10 @@ export type { PitchVariationOptions } from "./fighter-audio";
 
 type Point = Vector2;
 
+const PHYSICS_BASE_STEP_MS = 1000 / 60;
+const SIMULATION_STEP_MS = 1000 / 120;
+const FORCE_SCALE = (PHYSICS_BASE_STEP_MS / SIMULATION_STEP_MS) ** 2;
+
 type NormalizedHitbox =
       | {
             type: "box";
@@ -96,8 +100,18 @@ export class Fighter {
             this.abilities = new FighterAbilities(
                   (ability, event) => this.audio.playAbilityCue(ability, event),
                   (ability, event) => this.audio.stopAbilityCue(ability, event),
+                  () => this.canStartAbility(),
             );
       }
+
+      canStartAbility(): boolean {
+            const speed = Math.hypot(
+                  this.body.velocity.x,
+                  this.body.velocity.y,
+            );
+            return speed <= this.baseSpeed * 2;
+      }
+
       applyForceKnockback(
             direction: Point,
             forceMagnitude: number,
@@ -116,7 +130,10 @@ export class Fighter {
             Matter.Body.applyForce(
                   this.body,
                   this.body.position,
-                  this.pendingForce,
+                  {
+                        x: this.pendingForce.x * FORCE_SCALE,
+                        y: this.pendingForce.y * FORCE_SCALE,
+                  },
             );
             this.pendingForce = { x: 0, y: 0 };
       }
@@ -133,10 +150,12 @@ export class Fighter {
                   Math.sin(-this.body.angle),
                   Math.cos(-this.body.angle),
             );
-            const springTorque = angleError * this.body.inertia * 0.000036;
+            const springTorque =
+                  angleError * this.body.inertia * 0.000036 * FORCE_SCALE;
             const dampingTorque =
-                  this.body.angularVelocity * this.body.inertia * 0.00043;
-            const maxTorque = this.body.inertia * 0.00008;
+                  this.body.angularVelocity * this.body.inertia * 0.00043 *
+                  FORCE_SCALE;
+            const maxTorque = this.body.inertia * 0.00008 * FORCE_SCALE;
             this.body.torque += Math.max(
                   -maxTorque,
                   Math.min(maxTorque, springTorque - dampingTorque),
@@ -160,7 +179,7 @@ export class Fighter {
             const deficit = this.baseSpeed - speed;
             const forceMagnitude =
                   (this.body.mass * deficit * 0.25) /
-                  ((1000 / 60) * (1000 / 60));
+                  (SIMULATION_STEP_MS * SIMULATION_STEP_MS);
             Matter.Body.applyForce(this.body, this.body.position, {
                   x: direction.x * forceMagnitude,
                   y: direction.y * forceMagnitude,
@@ -182,8 +201,8 @@ export class Fighter {
             const remaining = Math.max(0, 1 - forwardSpeed / targetSpeed);
             this.knockbackOwnerId = null;
             Matter.Body.applyForce(this.body, this.body.position, {
-                  x: unitX * forceMagnitude * remaining,
-                  y: unitY * forceMagnitude * remaining,
+                  x: unitX * forceMagnitude * remaining * FORCE_SCALE,
+                  y: unitY * forceMagnitude * remaining * FORCE_SCALE,
             });
       }
 

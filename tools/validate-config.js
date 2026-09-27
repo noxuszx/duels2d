@@ -175,9 +175,9 @@ function checkAnimation(location, animation) {
       });
 }
 
-function checkVolume(location, value) {
-      if (!Number.isFinite(value) || value < 0 || value > 1)
-            fail(location, "must be between 0 and 1");
+function checkVolume(location, value, max = 1) {
+      if (!Number.isFinite(value) || value < 0 || value > max)
+            fail(location, `must be between 0 and ${max}`);
 }
 
 function checkSoundCue(location, cue) {
@@ -192,7 +192,7 @@ function checkSoundCue(location, cue) {
                   `${location}.category`,
                   `references unknown category: ${cue.category}`,
             );
-      if (cue.volume !== undefined) checkVolume(`${location}.volume`, cue.volume);
+      if (cue.volume !== undefined) checkVolume(`${location}.volume`, cue.volume, 5);
       if (
             cue.cooldownMs !== undefined &&
             (!Number.isFinite(cue.cooldownMs) || cue.cooldownMs < 0)

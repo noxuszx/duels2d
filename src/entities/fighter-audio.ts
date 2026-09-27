@@ -271,13 +271,10 @@ export class FighterAudio {
             const categoryVolume = audio.categories[config.category] ?? 1;
             return Math.max(
                   0,
-                  Math.min(
-                        1,
-                        audio.masterVolume *
-                              categoryVolume *
-                              characterVolume *
-                              (config.volume ?? 1),
-                  ),
+                  audio.masterVolume *
+                        categoryVolume *
+                        characterVolume *
+                        (config.volume ?? 1),
             );
       }
 

@@ -24,7 +24,8 @@ export interface RecordingView {
       fighterNames: string[];
       targets: Array<{ x: number; y: number }>;
 }
-const SIMULATION_STEP_MS = 1000 / 60;
+const SIMULATION_STEP_MS = 1000 / 120;
+const GAME_SPEED = 1;
 const MAX_FRAME_DELTA_MS = 250;
 
 export class GameManager {
@@ -315,12 +316,9 @@ export class GameManager {
                   );
                   this.previousFrameTimeMs = frameTime;
 
-                  if (!this.paused && !this.gameOver) {
-                        this.frameAccumulatorMs += deltaMs;
-                        while (
-                              this.frameAccumulatorMs >= SIMULATION_STEP_MS &&
-                              !this.gameOver
-                        ) {
+                  if (!this.paused) {
+                        this.frameAccumulatorMs += deltaMs * GAME_SPEED;
+                        while (this.frameAccumulatorMs >= SIMULATION_STEP_MS) {
                               this._stepSimulation(SIMULATION_STEP_MS);
                               this.frameAccumulatorMs -= SIMULATION_STEP_MS;
                         }
@@ -359,7 +357,6 @@ export class GameManager {
             if (alive.length > 1) return;
 
             this.gameOver = true;
-            this.paused = true;
             this.characters.filter((c) => c.isDead).forEach((c) => c.onDeath());
             let victoryPlayback: SoundPlayback | null = null;
             if (alive.length === 1 && !this.victorySoundPlayed) {

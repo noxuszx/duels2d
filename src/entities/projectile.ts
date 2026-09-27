@@ -10,7 +10,6 @@ interface ProjectileOwner {
 export class Projectile {
       readonly ownerId: string;
       readonly damage: number;
-      readonly createdAt: number;
       readonly lifetimeMs: number;
       image: HTMLImageElement | null = null;
       readonly radius: number;
@@ -20,6 +19,7 @@ export class Projectile {
       readonly rotationSpeed: number;
       readonly hitSoundCue: string | null;
       angle: number;
+      private ageMs = 0;
 
       constructor(
             config: ProjectileConfig,
@@ -32,7 +32,6 @@ export class Projectile {
       ) {
             this.ownerId = owner.id;
             this.damage = config.damage;
-            this.createdAt = performance.now();
             this.lifetimeMs = config.lifetimeMs;
             this.radius = config.radius;
             this.imageScale = 1;
@@ -75,14 +74,16 @@ export class Projectile {
             image.src = src;
       }
 
-      update(): void {
-            if (this.rotationSpeed) this.angle += this.rotationSpeed;
+      update(deltaMs: number): void {
+            this.ageMs += deltaMs;
+            if (this.rotationSpeed)
+                  this.angle += this.rotationSpeed * (deltaMs / (1000 / 60));
       }
 
       get expired(): boolean {
             return (
                   this.dead ||
-                  performance.now() - this.createdAt >= this.lifetimeMs
+                  this.ageMs >= this.lifetimeMs
             );
       }
 }

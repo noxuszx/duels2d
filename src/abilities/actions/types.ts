@@ -8,4 +8,5 @@ export interface ActionExecutionContext {
       projectiles: Projectile[];
       indicators: IndicatorSystem;
       COLLISION_COOLDOWN: number;
+      now(): number;
 }

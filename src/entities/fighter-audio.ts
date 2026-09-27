@@ -62,12 +62,17 @@ export class FighterAudio {
       private readonly characterVolume: number;
       private readonly soundCooldowns: Record<string, number> = {};
       private readonly characterLastPitchRates: Record<string, number> = {};
-      private lastIdleSoundTime = performance.now();
-      private lastAmbientSoundTime = performance.now();
+      private readonly abilityPlaybacks = new Map<
+            AbilityAudioEvent,
+            SoundPlayback
+      >();
+      private lastIdleSoundTime = 0;
+      private lastAmbientSoundTime = 0;
       constructor(
             fighterId: string,
             private readonly gameConfig: GameConfig,
             soundManifest: SoundManifest,
+            private readonly now: () => number = () => performance.now(),
       ) {
             const profile: CharacterSoundProfile = soundManifest.characters[
                   fighterId
@@ -79,20 +84,23 @@ export class FighterAudio {
             );
       }
 
-      play(type: string, cooldownMs: number | null = null): void {
+      play(
+            type: string,
+            cooldownMs: number | null = null,
+      ): SoundPlayback | null {
             const characterCue = this.soundCues[type];
             const cue = characterCue ?? this.sharedSoundCues[type];
-            if (!cue || cue.sounds.length === 0) return;
+            if (!cue || cue.sounds.length === 0) return null;
             const cooldown =
                   cooldownMs ??
                   cue.config.cooldownMs ??
                   this.gameConfig.audio.defaultCooldownMs;
-            const now = performance.now();
+            const now = this.now();
             if (
                   cooldown > 0 &&
-                  now - (this.soundCooldowns[type] ?? 0) < cooldown
+                  now - (this.soundCooldowns[type] ?? -Infinity) < cooldown
             )
-                  return;
+                  return null;
             this.soundCooldowns[type] = now;
             const sound =
                   cue.sounds[Math.floor(Math.random() * cue.sounds.length)];
@@ -108,6 +116,7 @@ export class FighterAudio {
                   playbackId,
                   characterCue === undefined,
             );
+            return { sound, playbackId };
       }
 
       stop(type: string): void {
@@ -118,13 +127,23 @@ export class FighterAudio {
       }
 
       playAbilityCue(ability: AbilityConfig, event: AbilityAudioEvent): void {
-            const cue = ability.audio?.[event];
-            if (cue) this.play(cue);
+            const cueName = ability.audio?.[event];
+            if (!cueName) return;
+            this.stopTrackedAbilityPlayback(event);
+            const cue = this.getCue(cueName);
+            const playback = this.play(cueName);
+            if (playback && cue && this.isPhaseBound(cue.config)) {
+                  this.abilityPlaybacks.set(event, playback);
+            }
       }
 
       stopAbilityCue(ability: AbilityConfig, event: AbilityAudioEvent): void {
-            const cue = ability.audio?.[event];
-            if (cue) this.stop(cue);
+            const cueName = ability.audio?.[event];
+            if (!cueName) return;
+            const cue = this.getCue(cueName);
+            if (cue && this.isPhaseBound(cue.config)) {
+                  this.stopTrackedAbilityPlayback(event);
+            }
       }
 
       update(nowMs: number, canPlayIdleAudio: boolean): void {
@@ -149,6 +168,7 @@ export class FighterAudio {
       }
 
       destroy(): void {
+            this.abilityPlaybacks.clear();
             Object.values(this.soundCues).forEach((cue) =>
                   cue.sounds.forEach((sound) => {
                         sound.stop();
@@ -190,6 +210,21 @@ export class FighterAudio {
                   return;
             this.lastAmbientSoundTime = nowMs;
             this.play("ambient", 0);
+      }
+
+      private getCue(type: string): LoadedCue | undefined {
+            return this.soundCues[type] ?? this.sharedSoundCues[type];
+      }
+
+      private isPhaseBound(config: SoundCueConfig): boolean {
+            return config.stopOnPhaseEnd ?? config.loop === true;
+      }
+
+      private stopTrackedAbilityPlayback(event: AbilityAudioEvent): void {
+            const playback = this.abilityPlaybacks.get(event);
+            if (!playback) return;
+            playback.sound.stop(playback.playbackId);
+            this.abilityPlaybacks.delete(event);
       }
 
       private applyPitchVariation(

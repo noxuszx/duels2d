@@ -7,10 +7,16 @@ export function executeKnockbackAction(
       source: Fighter,
       target: Fighter,
       customDirection?: { x: number; y: number },
+      nowMs?: number,
 ): void {
       const direction = customDirection ?? {
             x: target.body.position.x - source.body.position.x,
             y: target.body.position.y - source.body.position.y,
       };
-      target.applyForceKnockback(direction, action.forceMagnitude, source.id);
+      target.applyForceKnockback(
+            direction,
+            action.forceMagnitude,
+            source.id,
+            nowMs,
+      );
 }

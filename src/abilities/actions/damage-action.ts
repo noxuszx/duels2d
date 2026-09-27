@@ -8,11 +8,10 @@ export function executeDamageAction(
       source: Fighter,
       target: Fighter,
       context: ActionExecutionContext,
-      nowMs = Date.now(),
 ): boolean {
       const didDamage = target.takeDamage(
             action.amount,
-            nowMs,
+            context.now(),
             context.COLLISION_COOLDOWN,
       );
       if (!didDamage) return false;

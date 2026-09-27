@@ -88,7 +88,7 @@
           "category": "movement",
           "volume": 0.8,
           "rate": 1.35,
-          "loop": true,
+          "stopOnPhaseEnd": true,
           "clips": [
             {
               "id": "babyman-dash",
@@ -99,6 +99,7 @@
         "attackWindup": {
           "category": "movement",
           "volume": 0.8,
+          "stopOnPhaseEnd": true,
           "clips": [
             {
               "id": "babyman-crawl",

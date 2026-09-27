@@ -1,16 +1,17 @@
 // This module retains the original game-loop implementation while the physics
 // collaborators are migrated in parallel. Its public module boundary is typed.
-import { Body, Engine, Events, Runner, World } from "matter-js";
+import { Engine, World } from "matter-js";
 import { Fighter } from "../entities/fighter";
 import { FighterAudio, type SoundPlayback } from "../entities/fighter-audio";
 import { Projectile } from "../entities/projectile";
 import { IndicatorSystem } from "../systems/indicator-system";
 import { AbilitySystem } from "../abilities/ability-system";
 import { FighterSelectPanel } from "../ui/fighter-select-panel";
+import { ArenaRenderer } from "../rendering/arena-renderer";
+import { CombatSystem } from "./combat-system";
 import type { FighterConfig } from "../types/fighter";
 import type { RuntimeConfig } from "../config/runtime-config";
 
-type Point = { x: number; y: number };
 export interface RecordingView {
       canvas: HTMLCanvasElement;
       logicalWidth: number;
@@ -23,11 +24,8 @@ export interface RecordingView {
       fighterNames: string[];
       targets: Array<{ x: number; y: number }>;
 }
-type ImpactDamageSettings = {
-      minSpeedMultiplier?: number;
-      minSpeed?: number;
-      damage?: number;
-};
+const SIMULATION_STEP_MS = 1000 / 60;
+const MAX_FRAME_DELTA_MS = 250;
 
 export class GameManager {
       COLLISION_COOLDOWN: number;
@@ -43,18 +41,22 @@ export class GameManager {
       private selectedCharacterIds: string[];
       private engine: Engine;
       world: World;
-      private runner: Runner;
       private readonly container: HTMLElement;
       private readonly canvas: HTMLCanvasElement;
       private readonly ctx: CanvasRenderingContext2D;
       private readonly hudEls: { status: HTMLElement };
       private readonly abilitySystem: AbilitySystem;
       private readonly characterSelectPanel: FighterSelectPanel;
+      private readonly renderer: ArenaRenderer;
+      private readonly combatSystem: CombatSystem;
       private readonly arenaBackgroundColor: string;
       private arenaW = 0;
       private arenaH = 0;
       private W = 0;
       private H = 0;
+      private simulationTimeMs = 0;
+      private frameAccumulatorMs = 0;
+      private previousFrameTimeMs = 0;
 
       constructor(
             public readonly fighterRoster: FighterConfig[],
@@ -81,9 +83,6 @@ export class GameManager {
                   enableSleeping: false,
             });
             this.world = this.engine.world;
-            this.runner = Runner.create();
-            // Supported by Matter 0.19 at runtime, though omitted from its current typings.
-            Object.assign(this.runner, { isFixed: true });
             const container = document.getElementById("game-container");
             const canvas = document.getElementById("arena-canvas");
             const status = document.getElementById("hud-status");
@@ -105,6 +104,19 @@ export class GameManager {
             this.arenaBackgroundColor = getComputedStyle(container).backgroundColor;
             this.hudEls = { status };
             this.abilitySystem = new AbilitySystem(this);
+            this.combatSystem = new CombatSystem(
+                  this.engine,
+                  this,
+                  this.abilitySystem,
+                  this.indicators,
+                  this.runtimeConfig.game,
+            );
+            this.renderer = new ArenaRenderer(
+                  this.ctx,
+                  this.runtimeConfig,
+                  this.abilitySystem,
+                  this.indicators,
+            );
             this.characterSelectPanel = new FighterSelectPanel(this);
 
             this._resizeCanvas();
@@ -112,6 +124,10 @@ export class GameManager {
             ro.observe(this.container);
             this._applyConfigDOM();
             this._init();
+      }
+
+      now(): number {
+            return this.simulationTimeMs;
       }
 
       _defaultSelectedCharacterIds() {
@@ -145,13 +161,17 @@ export class GameManager {
             this.ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
       }
 
-      _getArena() {
+      getArena() {
             return {
                   ax: this.VISUAL_OVERFLOW,
                   ay: this.VISUAL_OVERFLOW,
                   aw: this.arenaW,
                   ah: this.arenaH,
             };
+      }
+
+      isGameOver(): boolean {
+            return this.gameOver;
       }
 
       getRecordingView(): RecordingView {
@@ -217,7 +237,7 @@ export class GameManager {
             const secondConfig = configs[1]!;
             const m =
                   this.runtimeConfig.game.physics.globalSpeedMultiplier || 1.0;
-            const { ax, ay, aw, ah } = this._getArena();
+            const { ax, ay, aw, ah } = this.getArena();
             const spawnData: [
                   { x: number; y: number; vx: number; vy: number },
                   { x: number; y: number; vx: number; vy: number },
@@ -246,6 +266,7 @@ export class GameManager {
                         sd.vy,
                         this.runtimeConfig.game,
                         this.runtimeConfig.sounds,
+                        () => this.now(),
                   );
                   World.add(this.world, character.body);
                   return character;
@@ -256,297 +277,15 @@ export class GameManager {
                   title.innerHTML = `${this.characters[0]!.config.name} <span class="accent">VS</span> ${this.characters[1]!.config.name}`;
       }
 
-      _registerCollisionEvents() {
-            Events.on(this.engine, "collisionStart", (event) => {
-                  if (this.gameOver) return;
-                  const now = Date.now();
-
-                  event.pairs.forEach(({ bodyA, bodyB, collision }) => {
-                        const impactSpeed = this._getNormalImpactSpeed(
-                              bodyA,
-                              bodyB,
-                              collision.normal,
-                        );
-                        const projectile =
-                              this._projectileFromBody(bodyA) ??
-                              this._projectileFromBody(bodyB);
-                        const charA = this._charFromBody(bodyA);
-                        const charB = this._charFromBody(bodyB);
-                        const character = charA ?? charB;
-
-                        if (projectile && character) {
-                              if (projectile.ownerId === character.id) return;
-
-                              const didDamage = character.takeDamage(
-                                    projectile.damage,
-                                    now,
-                                    this.COLLISION_COOLDOWN,
-                              );
-                              if (didDamage) {
-                                    character.playSound("hurt");
-                                    this.indicators.spawnDamageIndicator(
-                                          character,
-                                          projectile.damage,
-                                    );
-                                    this.indicators.spawnHitSpark(
-                                          character.body.position,
-                                          character.config.color,
-                                    );
-                                    const owner = this.characters.find(
-                                          (c) => c.id === projectile.ownerId,
-                                    );
-                                    if (owner) {
-                                          if (projectile.hitSoundCue)
-                                                owner.audio.play(
-                                                      projectile.hitSoundCue,
-                                                );
-                                          this.indicators.spawnCharacterLine(
-                                                owner,
-                                                "weaponHit",
-                                          );
-                                    }
-                              }
-                              projectile.dead = true;
-                              World.remove(this.world, projectile.body);
-                              this.projectiles = this.projectiles.filter(
-                                    (p) => p !== projectile,
-                              );
-                              return;
-                        }
-
-                        if (charA && charB && charA !== charB) {
-                              charA.noteImpact();
-                              charB.noteImpact();
-                              this.abilitySystem.handleCharacterCollision(
-                                    charA,
-                                    charB,
-                              );
-                              this._handleCharacterImpact(
-                                    charA,
-                                    charB,
-                                    now,
-                                    impactSpeed,
-                              );
-                        }
-                  });
-            });
-
-            Events.on(this.engine, "beforeUpdate", () => {
-                  const now = performance.now();
-                  const { ax, ay, aw, ah } = this._getArena();
-                  const padding = this.ARENA_BORDER;
-                  this.characters.forEach((char) => {
-                        if (char.isDead) return;
-                        char.applyPendingForce();
-                        if (!this.abilitySystem.isWallCrawling(char)) {
-                              char.applyCruiseForce();
-                              char.applyUprightTorque(now);
-                        }
-
-                        const position = char.body.position;
-                        const velocity = { ...char.body.velocity };
-                        const minX = ax + char.hitbox.halfWidth + padding;
-                        const maxX = ax + aw - char.hitbox.halfWidth - padding;
-                        const minY = ay + char.hitbox.halfHeight + padding;
-                        const maxY = ay + ah - char.hitbox.halfHeight - padding;
-                        let correctedX = position.x;
-                        let correctedY = position.y;
-                        let hitHorizontalWall = false;
-                        let hitVerticalWall = false;
-                        let impactSpeed = 0;
-
-                        if (position.x < minX) {
-                              correctedX = minX;
-                              impactSpeed = Math.max(
-                                    impactSpeed,
-                                    Math.abs(velocity.x),
-                              );
-                              velocity.x = Math.abs(velocity.x);
-                              hitVerticalWall = true;
-                        } else if (position.x > maxX) {
-                              correctedX = maxX;
-                              impactSpeed = Math.max(
-                                    impactSpeed,
-                                    Math.abs(velocity.x),
-                              );
-                              velocity.x = -Math.abs(velocity.x);
-                              hitVerticalWall = true;
-                        }
-
-                        if (position.y < minY) {
-                              correctedY = minY;
-                              impactSpeed = Math.max(
-                                    impactSpeed,
-                                    Math.abs(velocity.y),
-                              );
-                              velocity.y = Math.abs(velocity.y);
-                              hitHorizontalWall = true;
-                        } else if (position.y > maxY) {
-                              correctedY = maxY;
-                              impactSpeed = Math.max(
-                                    impactSpeed,
-                                    Math.abs(velocity.y),
-                              );
-                              velocity.y = -Math.abs(velocity.y);
-                              hitHorizontalWall = true;
-                        }
-
-                        if (!hitVerticalWall && !hitHorizontalWall) return;
-
-                        const wall = hitVerticalWall
-                              ? position.x < minX ? "left" : "right"
-                              : position.y < minY ? "top" : "bottom";
-                        Body.setPosition(char.body, {
-                              x: correctedX,
-                              y: correctedY,
-                        });
-                        if (this.abilitySystem.handleWallCollision(char, wall, {
-                              minX,
-                              maxX,
-                              minY,
-                              maxY,
-                        })) return;
-                        this._enforceMinimumDepartureAngle(
-                              velocity,
-                              hitVerticalWall,
-                              hitHorizontalWall,
-                        );
-                        Body.setVelocity(char.body, velocity);
-                        char.noteImpact();
-                        char.playSound("body-bounce");
-                        this._applyImpactDamage(char, impactSpeed, Date.now());
-                  });
-            });
-      }
-
-      _charFromBody(body: Body): Fighter | null {
-            return this.characters.find((c) => c.body === body) || null;
-      }
-
-      _projectileFromBody(body: Body): Projectile | null {
-            return this.projectiles.find((p) => p.body === body) || null;
-      }
-
-      _getNormalImpactSpeed(bodyA: Body, bodyB: Body, normal: Point): number {
-            const relativeVelocityX = bodyA.velocity.x - bodyB.velocity.x;
-            const relativeVelocityY = bodyA.velocity.y - bodyB.velocity.y;
-            return Math.abs(
-                  relativeVelocityX * normal.x + relativeVelocityY * normal.y,
-            );
-      }
-
-      _enforceMinimumDepartureAngle(
-            velocity: Point,
-            hitVerticalWall: boolean,
-            hitHorizontalWall: boolean,
-      ): void {
-            if (hitVerticalWall === hitHorizontalWall) return;
-            const speed = Math.hypot(velocity.x, velocity.y);
-            if (speed <= 0) return;
-            const minimumNormalSpeed = speed * Math.sin((25 * Math.PI) / 180);
-
-            if (hitVerticalWall && Math.abs(velocity.x) < minimumNormalSpeed) {
-                  const normalSign = Math.sign(velocity.x) || 1;
-                  const tangentSign = Math.sign(velocity.y) || 1;
-                  velocity.x = normalSign * minimumNormalSpeed;
-                  velocity.y =
-                        tangentSign *
-                        Math.sqrt(
-                              speed * speed -
-                                    minimumNormalSpeed * minimumNormalSpeed,
-                        );
-            } else if (
-                  hitHorizontalWall &&
-                  Math.abs(velocity.y) < minimumNormalSpeed
-            ) {
-                  const normalSign = Math.sign(velocity.y) || 1;
-                  const tangentSign = Math.sign(velocity.x) || 1;
-                  velocity.y = normalSign * minimumNormalSpeed;
-                  velocity.x =
-                        tangentSign *
-                        Math.sqrt(
-                              speed * speed -
-                                    minimumNormalSpeed * minimumNormalSpeed,
-                        );
-            }
-      }
-
-      _applyImpactDamage(
-            character: Fighter,
-            speed: number,
-            nowMs: number,
-      ): boolean {
-            if (character.isDead) return false;
-
-            const cfg = this.runtimeConfig.game.physics
-                  .impactDamage as ImpactDamageSettings;
-            const minSpeed =
-                  cfg.minSpeed ??
-                  character.baseSpeed * (cfg.minSpeedMultiplier ?? 2.8);
-            if (speed <= minSpeed) return false;
-
-            const baseDamage = cfg.damage ?? 45;
-            const excessSpeedRatio = (speed - minSpeed) / minSpeed;
-            const damage = Math.max(
-                  1,
-                  Math.min(
-                        baseDamage * 4,
-                        Math.round(baseDamage * excessSpeedRatio),
-                  ),
-            );
-            const didDamage = character.takeDamage(
-                  damage,
-                  nowMs,
-                  this.COLLISION_COOLDOWN,
-            );
-            if (!didDamage) return false;
-
-            character.playSound("hurt");
-            this.indicators.spawnDamageIndicator(character, damage);
-            this.indicators.spawnHitSpark(
-                  character.body.position,
-                  character.config.color,
-            );
-            return true;
-      }
-
-      _handleCharacterImpact(
-            charA: Fighter,
-            charB: Fighter,
-            nowMs: number,
-            impactSpeed: number,
-      ): void {
-            // Suppress impact damage when the fast-moving fighter was launched by the
-            // potential victim — prevents slap-into-self-bounce damage.
-            if (!charB.isKnockbackFrom(charA.id, nowMs)) {
-                  this._applyImpactDamage(charA, impactSpeed, nowMs);
-            }
-            if (!charA.isKnockbackFrom(charB.id, nowMs)) {
-                  this._applyImpactDamage(charB, impactSpeed, nowMs);
-            }
-      }
-
-      _updateProjectiles() {
-            for (let i = this.projectiles.length - 1; i >= 0; i--) {
-                  const projectile = this.projectiles[i];
-                  projectile.update();
-                  if (projectile.expired) {
-                        projectile.dead = true;
-                        World.remove(this.world, projectile.body);
-                        this.projectiles.splice(i, 1);
-                  }
-            }
-      }
-
       _updateCharacterAudio() {
-            const now = performance.now();
+            const now = this.now();
             this.characters.forEach((character) => {
                   character.updateAudio(now);
             });
       }
 
       _updateCharacterLines() {
-            const now = performance.now();
+            const now = this.now();
             this.characters.forEach((character) => {
                   if (character.isDead) return;
                   const lines = character.config.lines ?? {};
@@ -566,452 +305,61 @@ export class GameManager {
       }
 
       _startRenderLoop() {
-            const ctx = this.ctx;
-            let previousFrameTime = performance.now();
-            const loop = () => {
+            this.previousFrameTimeMs = performance.now();
+            this.frameAccumulatorMs = 0;
+            const loop = (frameTime: number) => {
                   this._animId = requestAnimationFrame(loop);
-                  const frameTime = performance.now();
-                  const deltaMs = Math.max(0, frameTime - previousFrameTime);
-                  previousFrameTime = frameTime;
+                  const deltaMs = Math.min(
+                        MAX_FRAME_DELTA_MS,
+                        Math.max(0, frameTime - this.previousFrameTimeMs),
+                  );
+                  this.previousFrameTimeMs = frameTime;
 
-                  if (!this.paused) {
-                        this.abilitySystem.update(deltaMs);
-                        this.abilitySystem.updateFaceTargeting();
-                        this._updateCharacterAudio();
-                        this._updateCharacterLines();
-                        Runner.tick(
-                              this.runner,
-                              this.engine,
-                              performance.now(),
-                        );
-                        this.indicators.updateDamageIndicators();
-                        this.indicators.updateDialogueIndicators();
-                        this.indicators.updateHitSparks();
-                        this._updateProjectiles();
+                  if (!this.paused && !this.gameOver) {
+                        this.frameAccumulatorMs += deltaMs;
+                        while (
+                              this.frameAccumulatorMs >= SIMULATION_STEP_MS &&
+                              !this.gameOver
+                        ) {
+                              this._stepSimulation(SIMULATION_STEP_MS);
+                              this.frameAccumulatorMs -= SIMULATION_STEP_MS;
+                        }
                   }
 
-                  ctx.clearRect(0, 0, this.W, this.H);
-                  this._drawArenaBorder(ctx);
-                  this._drawArenaWatermark(ctx);
-                  this._drawArenaFooterText(ctx);
-                  this._drawProjectiles(ctx);
-                  this._drawCharacters(ctx);
-                  this._drawHeldWeapons(ctx);
-                  this.indicators.drawDamageIndicators(ctx);
-                  this.indicators.drawDialogueIndicators(ctx);
-                  this.indicators.drawHitSparks(ctx);
-                  if (!this.gameOver) this._checkWinCondition();
+                  this.renderer.render({
+                        width: this.W,
+                        height: this.H,
+                        arena: this.getArena(),
+                        characters: this.characters,
+                        projectiles: this.projectiles,
+                        paused: this.paused,
+                  });
             };
 
-            loop();
+            this._animId = requestAnimationFrame(loop);
       }
 
-      _drawArenaWatermark(ctx: CanvasRenderingContext2D): void {
-            const { ax, ay, aw, ah } = this._getArena();
-            const text = "duels-2d";
-            const fontSize = 24;
-            ctx.save();
-            ctx.globalAlpha = 0.35;
-            ctx.font = `800 ${fontSize}px sans-serif`;
-            ctx.textAlign = "left";
-            ctx.textBaseline = "middle";
-
-            const textWidth = ctx.measureText(text).width;
-            const iconHeight = fontSize * 0.95;
-            const iconWidth = iconHeight * 1.4;
-            const spacing = 9;
-            const totalWidth = iconWidth + spacing + textWidth;
-
-            const arenaCenterX = ax + aw / 2;
-            const arenaCenterY = ay + ah / 2;
-
-            const startX = arenaCenterX - totalWidth / 2;
-            const iconX = startX;
-            const iconY = arenaCenterY - iconHeight / 2;
-
-            // Draw YouTube red rounded-rectangle icon
-            const radius = iconHeight * 0.28;
-            ctx.fillStyle = "#ff0000";
-            ctx.beginPath();
-            if (typeof ctx.roundRect === "function") {
-                  ctx.roundRect(iconX, iconY, iconWidth, iconHeight, radius);
-            } else {
-                  ctx.moveTo(iconX + radius, iconY);
-                  ctx.lineTo(iconX + iconWidth - radius, iconY);
-                  ctx.quadraticCurveTo(
-                        iconX + iconWidth,
-                        iconY,
-                        iconX + iconWidth,
-                        iconY + radius,
-                  );
-                  ctx.lineTo(iconX + iconWidth, iconY + iconHeight - radius);
-                  ctx.quadraticCurveTo(
-                        iconX + iconWidth,
-                        iconY + iconHeight,
-                        iconX + iconWidth - radius,
-                        iconY + iconHeight,
-                  );
-                  ctx.lineTo(iconX + radius, iconY + iconHeight);
-                  ctx.quadraticCurveTo(
-                        iconX,
-                        iconY + iconHeight,
-                        iconX,
-                        iconY + iconHeight - radius,
-                  );
-                  ctx.lineTo(iconX, iconY + radius);
-                  ctx.quadraticCurveTo(iconX, iconY, iconX + radius, iconY);
-                  ctx.closePath();
-            }
-            ctx.fill();
-
-            // Draw white play triangle centered inside YouTube icon
-            const triWidth = iconWidth * 0.36;
-            const triHeight = iconHeight * 0.44;
-            const iconCenterX = iconX + iconWidth / 2;
-            const iconCenterY = iconY + iconHeight / 2;
-
-            ctx.fillStyle = "#ffffff";
-            ctx.beginPath();
-            ctx.moveTo(
-                  iconCenterX - triWidth * 0.42,
-                  iconCenterY - triHeight / 2,
-            );
-            ctx.lineTo(iconCenterX + triWidth * 0.58, iconCenterY);
-            ctx.lineTo(
-                  iconCenterX - triWidth * 0.42,
-                  iconCenterY + triHeight / 2,
-            );
-            ctx.closePath();
-            ctx.fill();
-
-            // Draw "duels-2d" right next to the YouTube icon
-            const textX = iconX + iconWidth + spacing;
-            const textY = arenaCenterY;
-
-            ctx.strokeStyle = "rgba(0, 0, 0, 0.65)";
-            ctx.lineWidth = 2.5;
-            ctx.lineJoin = "round";
-            ctx.strokeText(text, textX, textY);
-            ctx.fillStyle = "#ffffff";
-            ctx.fillText(text, textX, textY);
-
-            ctx.restore();
-      }
-
-      _drawArenaFooterText(ctx: CanvasRenderingContext2D): void {
-            const { ax, ay, aw, ah } = this._getArena();
-            const text = "LIKE & SUBSCRIBE";
-            const fontSize = 18;
-            ctx.save();
-            ctx.globalAlpha = 0.85;
-            ctx.font = `800 ${fontSize}px sans-serif`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-
-            const arenaCenterX = ax + aw / 2;
-            const y = ay + ah + 28;
-
-            ctx.strokeStyle = "rgba(0, 0, 0, 0.75)";
-            ctx.lineWidth = 3;
-            ctx.lineJoin = "round";
-            ctx.strokeText(text, arenaCenterX, y);
-            ctx.fillStyle = "#ffffff";
-            ctx.fillText(text, arenaCenterX, y);
-
-            ctx.restore();
-      }
-
-      _drawArenaBorder(ctx: CanvasRenderingContext2D): void {
-            const { ax, ay, aw, ah } = this._getArena();
-            const b = this.ARENA_BORDER;
-            ctx.save();
-            ctx.strokeStyle = this.runtimeConfig.game.arena.borderColor;
-            ctx.lineWidth = b * 2;
-            ctx.strokeRect(ax, ay, aw, ah);
-            ctx.restore();
-      }
-
-      _drawProjectiles(ctx: CanvasRenderingContext2D): void {
-            this.projectiles.forEach((projectile) => {
-                  const pos = projectile.body.position;
-                  const r = projectile.radius;
-                  ctx.save();
-                  ctx.translate(pos.x, pos.y);
-                  if (projectile.angle) {
-                        ctx.rotate(projectile.angle);
-                  }
-
-                  if (projectile.image) {
-                        const maxSide = Math.max(
-                              projectile.image.naturalWidth,
-                              projectile.image.naturalHeight,
-                        );
-                        const scale = (r * 2 * projectile.imageScale) / maxSide;
-                        const width = projectile.image.naturalWidth * scale;
-                        const height = projectile.image.naturalHeight * scale;
-                        ctx.drawImage(
-                              projectile.image,
-                              -width / 2,
-                              -height / 2,
-                              width,
-                              height,
-                        );
-                  } else {
-                        ctx.fillStyle = "#9ad6ff";
-                        ctx.beginPath();
-                        ctx.arc(0, 0, r, 0, Math.PI * 2);
-                        ctx.fill();
-                  }
-
-                  ctx.restore();
-            });
-      }
-
-      _drawCharacters(ctx: CanvasRenderingContext2D): void {
-            this.characters.forEach((char) => {
-                  if (char.isDead) return;
-
-                  const pos = char.visualPosition;
-                  const r = char.config.radius;
-                  const crawlAngle = this.abilitySystem.getWallCrawlAngle(char);
-                  const ang = crawlAngle ?? char.body.angle;
-
-                  if (!this.paused) {
-                        char.presentation.update();
-                  }
-
-                  const shouldFlip = char.facing !== char.config.defaultFacing;
-                  const isFlashing = char.presentation.isFlashing;
-                  const spriteVisual = char.presentation.getCurrentSprite(
-                        char.abilities.state,
-                        this.abilitySystem.isWallCrawling(char),
-                  );
-
-                  if (spriteVisual) {
-                        const { image, imageScale, imageOffset, imageCrop } =
-                              spriteVisual;
-                        const drawR = r * imageScale;
-                        const { crop, dx, dy, dw, dh } =
-                              char.presentation.getCropDrawRect(
-                                    image,
-                                    imageCrop,
-                                    drawR,
-                              );
-                        const isDashWindingUp =
-                              char.abilities.state === "windup" &&
-                              !this.abilitySystem.isWallCrawling(char) &&
-                              char.abilities.active?.actions.some(
-                                    (action) => action.type === "dash",
-                              );
-                        const shakeTime = performance.now();
-                        const shakeX = isDashWindingUp
-                              ? Math.sin(shakeTime * 0.18) * 1.25
-                              : 0;
-                        const shakeY = isDashWindingUp
-                              ? Math.cos(shakeTime * 0.21) * 1
-                              : 0;
-                        const shakeRotation = isDashWindingUp
-                              ? Math.sin(shakeTime * 0.23) * 0.0125
-                              : 0;
-                        ctx.save();
-                        ctx.translate(
-                              pos.x + imageOffset.x + shakeX,
-                              pos.y + imageOffset.y + shakeY,
-                        );
-                        ctx.rotate(ang + shakeRotation);
-                        ctx.scale(shouldFlip ? -1 : 1, 1);
-                        ctx.drawImage(
-                              image,
-                              crop.x,
-                              crop.y,
-                              crop.width,
-                              crop.height,
-                              dx,
-                              dy,
-                              dw,
-                              dh,
-                        );
-
-                        if (isFlashing) {
-                              ctx.globalCompositeOperation = "source-atop";
-                              ctx.fillStyle = "rgba(255, 0, 0, 0.55)";
-                              ctx.fillRect(dx, dy, dw, dh);
-                        }
-
-                        ctx.restore();
-                  } else {
-                        ctx.save();
-                        const grad = ctx.createRadialGradient(
-                              pos.x - r * 0.3,
-                              pos.y - r * 0.3,
-                              r * 0.05,
-                              pos.x,
-                              pos.y,
-                              r,
-                        );
-                        grad.addColorStop(0, "rgba(255,255,255,0.35)");
-                        grad.addColorStop(1, "rgba(0,0,0,0.25)");
-                        ctx.beginPath();
-                        ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
-                        ctx.fillStyle = grad;
-                        ctx.fill();
-
-                        if (isFlashing) {
-                              ctx.globalCompositeOperation = "source-atop";
-                              ctx.fillStyle = "rgba(255, 0, 0, 0.55)";
-                              ctx.fill();
-                        }
-
-                        ctx.strokeStyle = isFlashing
-                              ? "#ff4d4d"
-                              : char.config.color;
-                        ctx.lineWidth = 2.5;
-                        ctx.stroke();
-                        ctx.restore();
-                  }
-
-                  this._drawInlineHealthBar(ctx, char, pos, r);
-            });
-      }
-
-      _drawHeldWeapons(ctx: CanvasRenderingContext2D): void {
-            this.characters.forEach((character) => {
-                  if (character.isDead) return;
-                  this._drawHeldWeapon(
-                        ctx,
-                        character,
-                        character.visualPosition,
-                        character.config.radius,
-                  );
-            });
-      }
-
-      _drawHeldWeapon(
-            ctx: CanvasRenderingContext2D,
-            character: Fighter,
-            position: Point,
-            radius: number,
-      ): void {
-            if (character.abilities.state === "idle") return;
-            const presentation = character.presentation;
-            const image = presentation.weaponAttack ?? presentation.weaponIdle;
-            if (!image || image.naturalWidth <= 0 || image.naturalHeight <= 0)
-                  return;
-
-            const maxSide = Math.max(image.naturalWidth, image.naturalHeight);
-            const scale = (radius * 2 * presentation.weaponScale) / maxSide;
-            const width = image.naturalWidth * scale;
-            const height = image.naturalHeight * scale;
-            const pivot = presentation.weaponPivot;
-            const offset = presentation.weaponOffset;
-
-            ctx.save();
-            ctx.translate(position.x, position.y);
-            const crawlAngle = this.abilitySystem.getWallCrawlAngle(character);
-            ctx.rotate(crawlAngle ?? character.body.angle);
-            const weaponFacing =
-                  character.abilities.facing ?? character.facing;
-            const shouldFlipWeapon =
-                  weaponFacing !== character.config.defaultFacing;
-            ctx.scale(shouldFlipWeapon ? -1 : 1, 1);
-            ctx.translate(pivot.x, pivot.y);
-            ctx.rotate(character.abilities.getSwingAngle() ?? 0);
-            ctx.drawImage(
-                  image,
-                  offset.x - pivot.x - width / 2,
-                  offset.y - pivot.y - height / 2,
-                  width,
-                  height,
-            );
-            ctx.restore();
-      }
-
-      _tracePlusPath(
-            ctx: CanvasRenderingContext2D,
-            x: number,
-            y: number,
-            size: number,
-      ): void {
-            const unit = size / 3;
-            ctx.beginPath();
-            ctx.moveTo(x + unit, y);
-            ctx.lineTo(x + unit * 2, y);
-            ctx.lineTo(x + unit * 2, y + unit);
-            ctx.lineTo(x + size, y + unit);
-            ctx.lineTo(x + size, y + unit * 2);
-            ctx.lineTo(x + unit * 2, y + unit * 2);
-            ctx.lineTo(x + unit * 2, y + size);
-            ctx.lineTo(x + unit, y + size);
-            ctx.lineTo(x + unit, y + unit * 2);
-            ctx.lineTo(x, y + unit * 2);
-            ctx.lineTo(x, y + unit);
-            ctx.lineTo(x + unit, y + unit);
-            ctx.closePath();
-      }
-
-      _drawInlineHealthBar(
-            ctx: CanvasRenderingContext2D,
-            char: Fighter,
-            pos: Point,
-            r: number,
-      ): void {
-            const indicatorCfg = this.runtimeConfig.indicators;
-            const ratio = char.healthRatio;
-            const size = r * 2;
-            const x = pos.x - size / 2 + char.presentation.healthBarOffset.x;
-            const y = pos.y - r - 20 + char.presentation.healthBarOffset.y;
-            const hue = ratio > 0.5 ? 120 : ratio > 0.25 ? 50 : 0;
-            const fill = `hsl(${hue}, 90%, 40%)`;
-            const fillHeight = Math.max(0, Math.round(ratio * size));
-
-            ctx.save();
-            this._tracePlusPath(ctx, x, y, size);
-            ctx.fillStyle = "#222222";
-            ctx.fill();
-
-            ctx.save();
-            this._tracePlusPath(ctx, x, y, size);
-            ctx.clip();
-            ctx.fillStyle = fill;
-            ctx.fillRect(x, y + size - fillHeight, size, fillHeight);
-            ctx.restore();
-
-            this._tracePlusPath(ctx, x, y, size);
-            ctx.strokeStyle = "rgba(0, 0, 0, 0.28)";
-            ctx.lineWidth = 1.5;
-            ctx.lineJoin = "round";
-            ctx.stroke();
-
-            const textCfg = indicatorCfg.text;
-            const healthCfg = indicatorCfg.health;
-            const fontSize = Math.max(
-                  healthCfg.minFontSize,
-                  size * healthCfg.sizeMultiplier,
-            );
-            ctx.fillStyle = healthCfg.fillColor;
-            ctx.strokeStyle = healthCfg.strokeColor;
-            ctx.lineWidth = healthCfg.strokeWidth;
-            ctx.font = `${textCfg.weight} ${fontSize}px ${textCfg.family}`;
-            ctx.textAlign = textCfg.align;
-            ctx.textBaseline = textCfg.baseline;
-            ctx.strokeText(
-                  String(Math.ceil(char.currentHealth)),
-                  x + size / 2,
-                  y + size / 2,
-            );
-            ctx.fillText(
-                  String(Math.ceil(char.currentHealth)),
-                  x + size / 2,
-                  y + size / 2,
-            );
-            ctx.restore();
+      private _stepSimulation(deltaMs: number): void {
+            this.simulationTimeMs += deltaMs;
+            this.abilitySystem.update(deltaMs);
+            this.abilitySystem.updateFaceTargeting();
+            this._updateCharacterAudio();
+            this._updateCharacterLines();
+            Engine.update(this.engine, deltaMs);
+            this.indicators.updateDamageIndicators();
+            this.indicators.updateDialogueIndicators();
+            this.indicators.updateHitSparks();
+            this.combatSystem.updateProjectiles(deltaMs);
+            this._checkWinCondition();
       }
 
       _checkWinCondition() {
+            if (this.gameOver) return;
             const alive = this.characters.filter((c) => !c.isDead);
             if (alive.length > 1) return;
 
             this.gameOver = true;
+            this.paused = true;
             this.characters.filter((c) => c.isDead).forEach((c) => c.onDeath());
             let victoryPlayback: SoundPlayback | null = null;
             if (alive.length === 1 && !this.victorySoundPlayed) {
@@ -1023,6 +371,7 @@ export class GameManager {
                         detail: { victoryPlayback },
                   }),
             );
+            this._dispatchPlaybackState();
       }
 
       _restart() {
@@ -1031,9 +380,12 @@ export class GameManager {
             this.gameOver = false;
             this.victorySoundPlayed = false;
             this.paused = false;
+            this.simulationTimeMs = 0;
+            this.frameAccumulatorMs = 0;
 
-            if (this._animId) cancelAnimationFrame(this._animId);
+            if (this._animId !== null) cancelAnimationFrame(this._animId);
 
+            this.abilitySystem.resetAll();
             World.clear(this.world, false);
             this._cleanupCharacters();
             this.projectiles = [];
@@ -1109,7 +461,7 @@ export class GameManager {
 
       _init() {
             this._spawnCharacters();
-            this._registerCollisionEvents();
+            this.combatSystem.register();
             this._startRenderLoop();
       }
 }

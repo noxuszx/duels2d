@@ -37,7 +37,7 @@ export class FighterAbilities {
       start(
             ability: AbilityConfig,
             currentFacing: Facing,
-            nowMs = performance.now(),
+            nowMs: number,
       ): void {
             if (this.active) {
                   this.onAudioStop?.(this.active, "active");

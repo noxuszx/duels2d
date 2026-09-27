@@ -70,6 +70,8 @@ export interface SoundCueConfig {
   pitchVariation?: boolean;
   rate?: number;
   loop?: boolean;
+  /** Stop this cue when its ability phase ends. Loops are phase-bound by default. */
+  stopOnPhaseEnd?: boolean;
 }
 
 export interface CharacterSoundProfile {

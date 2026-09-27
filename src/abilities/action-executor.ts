@@ -31,7 +31,13 @@ export class ActionExecutor {
                                     this.context,
                               ) || connected;
                   } else if (action.type === "knockback") {
-                        executeKnockbackAction(action, source, target);
+                        executeKnockbackAction(
+                              action,
+                              source,
+                              target,
+                              undefined,
+                              this.context.now(),
+                        );
                         connected = true;
                   }
             }

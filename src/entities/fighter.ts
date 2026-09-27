@@ -4,6 +4,7 @@ import type { GameConfig, SoundManifest } from "../types/game";
 import { FighterAudio } from "./fighter-audio";
 import { FighterPresentation } from "./fighter-presentation";
 import { FighterAbilities } from "./fighter-abilities";
+import type { FighterBehavior } from "../behaviors/fighter-behavior";
 
 export { getRandomPitch } from "./fighter-audio";
 export type { PitchVariationOptions } from "./fighter-audio";
@@ -12,23 +13,23 @@ type Point = Vector2;
 
 type NormalizedHitbox =
       | {
-              type: "box";
-              width: number;
-              height: number;
-              halfWidth: number;
-              halfHeight: number;
-        }
+            type: "box";
+            width: number;
+            height: number;
+            halfWidth: number;
+            halfHeight: number;
+      }
       | {
-              type: "circle";
-              radius: number;
-              halfWidth: number;
-              halfHeight: number;
-        };
+            type: "circle";
+            radius: number;
+            halfWidth: number;
+            halfHeight: number;
+      };
 
 export class Fighter {
       private pendingForce: Point = { x: 0, y: 0 };
       private uprightAssistAfter = 0;
-      private lastHitTime = 0;
+      private lastHitTime = -Infinity;
 
       readonly id: string;
       readonly config: FighterConfig;
@@ -39,10 +40,11 @@ export class Fighter {
       readonly audio: FighterAudio;
       readonly abilities: FighterAbilities;
 
+      behavior: FighterBehavior | null = null;
       currentHealth: number;
       facing: Facing;
       knockbackOwnerId: string | null = null;
-      lastAmbientLineTime = performance.now();
+      lastAmbientLineTime = 0;
 
       constructor(
             config: FighterConfig,
@@ -52,6 +54,7 @@ export class Fighter {
             velY: number,
             gameConfig: GameConfig,
             soundManifest: SoundManifest,
+            private readonly now: () => number = () => performance.now(),
       ) {
             this.config = config;
             this.id = config.id;
@@ -74,22 +77,22 @@ export class Fighter {
             this.body =
                   this.hitbox.type === "box"
                         ? Matter.Bodies.rectangle(
-                                spawnX + this.config.hitboxOffset.x,
-                                spawnY + this.config.hitboxOffset.y,
-                                this.hitbox.width,
-                                this.hitbox.height,
-                                bodyOptions,
-                          )
+                              spawnX + this.config.hitboxOffset.x,
+                              spawnY + this.config.hitboxOffset.y,
+                              this.hitbox.width,
+                              this.hitbox.height,
+                              bodyOptions,
+                        )
                         : Matter.Bodies.circle(
-                                spawnX + this.config.hitboxOffset.x,
-                                spawnY + this.config.hitboxOffset.y,
-                                this.hitbox.radius,
-                                bodyOptions,
-                          );
+                              spawnX + this.config.hitboxOffset.x,
+                              spawnY + this.config.hitboxOffset.y,
+                              this.hitbox.radius,
+                              bodyOptions,
+                        );
             Matter.Body.setVelocity(this.body, { x: velX, y: velY });
 
             this.presentation = new FighterPresentation(config);
-            this.audio = new FighterAudio(this.id, gameConfig, soundManifest);
+            this.audio = new FighterAudio(this.id, gameConfig, soundManifest, now);
             this.abilities = new FighterAbilities(
                   (ability, event) => this.audio.playAbilityCue(ability, event),
                   (ability, event) => this.audio.stopAbilityCue(ability, event),
@@ -99,10 +102,11 @@ export class Fighter {
             direction: Point,
             forceMagnitude: number,
             sourceOwnerId: string,
+            nowMs = this.now(),
       ): void {
             const length = Math.hypot(direction.x, direction.y) || 1;
             this.knockbackOwnerId = sourceOwnerId;
-            this.noteImpact();
+            this.noteImpact(nowMs);
             this.pendingForce.x += (direction.x / length) * forceMagnitude;
             this.pendingForce.y += (direction.y / length) * forceMagnitude;
       }
@@ -117,12 +121,12 @@ export class Fighter {
             this.pendingForce = { x: 0, y: 0 };
       }
 
-      noteImpact(nowMs = performance.now()): void {
+      noteImpact(nowMs = this.now()): void {
             const gracePeriodMs = 500 + Math.random() * 1500;
             this.uprightAssistAfter = nowMs + gracePeriodMs;
       }
 
-      applyUprightTorque(nowMs = performance.now()): void {
+      applyUprightTorque(nowMs = this.now()): void {
             if (nowMs < this.uprightAssistAfter) return;
 
             const angleError = Math.atan2(
@@ -149,9 +153,9 @@ export class Fighter {
             const direction =
                   speed > 0.01
                         ? {
-                                x: this.body.velocity.x / speed,
-                                y: this.body.velocity.y / speed,
-                          }
+                              x: this.body.velocity.x / speed,
+                              y: this.body.velocity.y / speed,
+                        }
                         : { x: this.facing === "left" ? -1 : 1, y: 0 };
             const deficit = this.baseSpeed - speed;
             const forceMagnitude =
@@ -230,7 +234,7 @@ export class Fighter {
       playSound(type: string, cooldownMs: number | null = null): void {
             this.audio.play(type, cooldownMs);
       }
-      isKnockbackFrom(ownerId: string, nowMs = performance.now()): boolean {
+      isKnockbackFrom(ownerId: string, nowMs = this.now()): boolean {
             void nowMs;
             const speed = Math.hypot(
                   this.body.velocity.x,

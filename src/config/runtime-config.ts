@@ -213,17 +213,23 @@ function validateSoundManifest(value: unknown): SoundManifest {
                   typeof cue.pitchVariation !== "boolean"
             )
                   throw new Error(`${location}.pitchVariation must be boolean.`);
+            if (cue.rate !== undefined)
+                  requireNumber(cue.rate, `${location}.rate`, 0);
+            for (const field of ["loop", "stopOnPhaseEnd"]) {
+                  if (cue[field] !== undefined && typeof cue[field] !== "boolean")
+                        throw new Error(`${location}.${field} must be boolean.`);
+            }
             if (!Array.isArray(cue.clips) || cue.clips.length === 0)
                   throw new Error(`${location}.clips must be a non-empty array.`);
             for (const entry of cue.clips) {
-                        if (typeof entry === "string") continue;
-                        const file = requireRecord(
-                              entry,
-                              `${location}.clips entry`,
-                        );
-                        requireString(file.id, `${location}.clips entry.id`);
-                        requireString(file.path, `${location}.clips entry.path`);
-                  }
+                  if (typeof entry === "string") continue;
+                  const file = requireRecord(
+                        entry,
+                        `${location}.clips entry`,
+                  );
+                  requireString(file.id, `${location}.clips entry.id`);
+                  requireString(file.path, `${location}.clips entry.path`);
+            }
       };
 
       const shared = requireRecord(manifest.shared, "sound manifest.shared");

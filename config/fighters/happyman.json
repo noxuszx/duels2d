@@ -11,9 +11,9 @@
                   "audio": { "hit": "weaponSlap" },
                   "timing": {
                         "cooldownMs": 1000,
-                        "windupFrames": 10,
-                        "activeFrames": 26,
-                        "recoveryFrames": 14
+                        "windupMs": 83,
+                        "activeMs": 217,
+                        "recoveryMs": 117
                   },
                   "actions": [
                         { "type": "damage", "amount": 100 },

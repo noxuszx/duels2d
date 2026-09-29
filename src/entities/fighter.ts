@@ -5,6 +5,13 @@ import { FighterAudio } from "./fighter-audio";
 import { FighterPresentation } from "./fighter-presentation";
 import { FighterAbilities } from "./fighter-abilities";
 import type { FighterBehavior } from "../behaviors/fighter-behavior";
+import { StatusEffectController } from "../status-effects";
+import { TransformationController } from "../transformations";
+import type { AbilityConfig } from "../abilities/types";
+import type {
+      StatusApplicationResult,
+      StatusEffectApplication,
+} from "../status-effects";
 
 export { getRandomPitch } from "./fighter-audio";
 export type { PitchVariationOptions } from "./fighter-audio";
@@ -43,6 +50,8 @@ export class Fighter {
       readonly presentation: FighterPresentation;
       readonly audio: FighterAudio;
       readonly abilities: FighterAbilities;
+      readonly statuses = new StatusEffectController();
+      readonly transformation: TransformationController;
 
       behavior: FighterBehavior | null = null;
       currentHealth: number;
@@ -96,6 +105,7 @@ export class Fighter {
             Matter.Body.setVelocity(this.body, { x: velX, y: velY });
 
             this.presentation = new FighterPresentation(config);
+            this.transformation = new TransformationController(config.transformation);
             this.audio = new FighterAudio(this.id, gameConfig, soundManifest, now);
             this.abilities = new FighterAbilities(
                   (ability, event) => this.audio.playAbilityCue(ability, event),
@@ -104,12 +114,58 @@ export class Fighter {
             );
       }
 
+      get activeAbilities(): readonly AbilityConfig[] {
+            return this.transformation.isTransformed && this.transformation.config
+                  ? this.transformation.config.abilities
+                  : this.config.abilities;
+      }
+
+      /** Applies an automatic transformation and synchronizes runtime collaborators. */
+      updateTransformation(): boolean {
+            if (!this.transformation.update(this.currentHealth, this.config.maxHealth)) {
+                  return false;
+            }
+            this.finishTransformation();
+            return true;
+      }
+
+      /** Public boundary for behavior- or action-driven transformations. */
+      transform(): boolean {
+            if (!this.transformation.transform()) return false;
+            this.finishTransformation();
+            return true;
+      }
+
+      private finishTransformation(): void {
+            this.behavior?.reset();
+            this.abilities.reset();
+            this.presentation.setTransformed(true);
+            this.behavior?.onTransform();
+      }
+
+      resetTransformation(): void {
+            this.transformation.reset();
+            this.presentation.setTransformed(false);
+      }
+
       canStartAbility(): boolean {
+            if (this.isDead || !this.statuses.canStartAbilities) return false;
             const speed = Math.hypot(
                   this.body.velocity.x,
                   this.body.velocity.y,
             );
             return speed <= this.baseSpeed * 2;
+      }
+
+      applyStatus(application: StatusEffectApplication): StatusApplicationResult {
+            const result = this.statuses.apply(application);
+            if (result.applied && !this.statuses.canContinueAbility) {
+                  this.behavior?.reset();
+                  // The default behavior reset clears its targeting runtime only.
+                  // Reset centrally as well; cooldown timestamps are retained.
+                  this.abilities.reset();
+            }
+            return result;
       }
 
       applyForceKnockback(
@@ -120,6 +176,18 @@ export class Fighter {
       ): void {
             const length = Math.hypot(direction.x, direction.y) || 1;
             this.knockbackOwnerId = sourceOwnerId;
+            this.noteImpact(nowMs);
+            this.pendingForce.x += (direction.x / length) * forceMagnitude;
+            this.pendingForce.y += (direction.y / length) * forceMagnitude;
+      }
+
+      /** Queues unattributed source-side force, used by recoil and similar movement. */
+      applyRecoil(
+            direction: Point,
+            forceMagnitude: number,
+            nowMs = this.now(),
+      ): void {
+            const length = Math.hypot(direction.x, direction.y) || 1;
             this.noteImpact(nowMs);
             this.pendingForce.x += (direction.x / length) * forceMagnitude;
             this.pendingForce.y += (direction.y / length) * forceMagnitude;

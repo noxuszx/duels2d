@@ -46,9 +46,9 @@ Every fighter file references `fighter.schema.json`, which documents the support
       },
       "timing": {
         "cooldownMs": 1200,
-        "windupFrames": 8,
-        "activeFrames": 12,
-        "recoveryFrames": 10
+        "windupMs": 67,
+        "activeMs": 100,
+        "recoveryMs": 83
       },
       "actions": [
         { "type": "damage", "amount": 80 },
@@ -72,7 +72,31 @@ Every fighter file references `fighter.schema.json`, which documents the support
 }
 ```
 
-Only values that differ from `fighters/defaults.json` need to be included. `faceTarget.mode` accepts `never`, `always`, or `range`. Abilities combine a trigger, timing, and reusable actions such as `damage`, `knockback`, `dash`, `swing`, and `spawn-projectile`. A `swing` rotates `presentation.weaponIdle` from `startDegrees` to `endDegrees` around the fighter-relative `presentation.weaponPivot`; its damage and knockback occur when active frames begin. Values ending in `Ms` are milliseconds; values ending in `Frames` are render frames.
+Only values that differ from `fighters/defaults.json` need to be included. `faceTarget.mode` accepts `never`, `always`, or `range`. Abilities combine a trigger, timing, and reusable actions such as `damage`, `knockback`, `dash`, `swing`, `spawn-projectile`, `attack-hitbox`, `recoil`, and `apply-status`. Status actions accept `stun` or `ability-lock` with a positive `durationMs`; no live fighter currently has an `apply-status` action configured. A `swing` rotates `presentation.weaponIdle` from `startDegrees` to `endDegrees` around the fighter-relative `presentation.weaponPivot`; its damage and knockback occur when the active phase begins. An `attack-hitbox` is a facing-relative rectangle that stays live during the active phase, while `recoil` pushes the source opposite its firing direction once on active entry. `windupMs`, `activeMs`, `recoveryMs`, and `cooldownMs` are simulation milliseconds.
+
+### Transformations
+
+An optional top-level `transformation` gives a fighter a persistent transformed
+ability and pose set. A health threshold is expressed as a ratio from 0 to 1:
+
+```json
+{
+  "transformation": {
+    "trigger": { "type": "health-threshold", "healthRatio": 0.4 },
+    "combat": { "abilities": [] },
+    "presentation": {
+      "poses": {
+        "idle": "assets/fighters/example/sprites/transformed-idle.png"
+      }
+    }
+  }
+}
+```
+
+The threshold is inclusive and the transformation happens once per match.
+Transformed `combat.abilities` and `presentation.poses` each fall back to their
+base equivalents when omitted. See `docs/transformation-architecture.md` for
+runtime ownership and extension rules.
 
 Ability `audio` hooks (`windup`, `active`, and `hit`) reference cue names in
 `sound-manifest.json`. Effective playback volume combines the master, category,
@@ -124,7 +148,11 @@ presentation values, then keeps its own crop, scale, and offset independently.
 1. Copy the closest fighter JSON file and make its filename match its unique `id`.
 2. Add its assets under `assets/fighters/<fighter-id>/`.
 3. Add its filename to the `fighters` array in `fighters/index.json`.
-4. Run `node tools/validate-config.js`.
-5. Open Character Studio for visual tuning and save back to the same JSON file.
+4. Define ordinary moves in `combat.abilities`; fighters without a custom
+   registration in `src/behaviors/registry.ts` use `DefaultFighterBehavior`.
+5. Add a registry entry only when the fighter needs custom decision logic or
+   event sequencing that configured triggers and actions cannot express.
+6. Run `node tools/validate-config.js`.
+7. Open Character Studio for visual tuning and save back to the same JSON file.
 
 The validator catches malformed manifests, duplicate or mismatched IDs, invalid ranges, unsupported modes and actions, malformed geometry and poses, bad dialogue, missing ability fields, and missing assets.

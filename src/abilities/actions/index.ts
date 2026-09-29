@@ -5,3 +5,5 @@ export * from "./dash-action";
 export * from "./wall-crawl-action";
 export * from "./projectile-action";
 export * from "./swing-action";
+export * from "./attack-hitbox-action";
+export * from "./recoil-action";

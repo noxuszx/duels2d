@@ -1,8 +1,10 @@
+import type { StatusEffectId } from "../status-effects";
+
 export interface AbilityTiming {
       cooldownMs: number;
-      windupFrames: number;
-      activeFrames: number;
-      recoveryFrames: number;
+      windupMs: number;
+      activeMs: number;
+      recoveryMs: number;
 }
 
 export type AbilityTrigger =
@@ -59,6 +61,30 @@ export interface SpawnProjectileAction {
       projectile: ProjectileConfig;
 }
 
+export interface ApplyStatusAction {
+      type: "apply-status";
+      effect: StatusEffectId;
+      durationMs: number;
+}
+
+/** A facing-relative rectangular attack volume active for the ability's active phase. */
+export interface AttackHitboxAction {
+      type: "attack-hitbox";
+      width: number;
+      height: number;
+      offset: {
+            /** Forward distance. Positive values are mirrored with fighter facing. */
+            x: number;
+            y: number;
+      };
+}
+
+/** Pushes the source opposite its locked firing direction on active entry. */
+export interface RecoilAction {
+      type: "recoil";
+      forceMagnitude: number;
+}
+
 export type AbilityAudioEvent = "windup" | "active" | "hit";
 export type AbilityAudioConfig = Partial<Record<AbilityAudioEvent, string>>;
 
@@ -68,7 +94,10 @@ export type AbilityAction =
       | DashAction
       | WallCrawlAction
       | SwingAction
-      | SpawnProjectileAction;
+      | SpawnProjectileAction
+      | ApplyStatusAction
+      | AttackHitboxAction
+      | RecoilAction;
 
 export interface AbilityConfig {
       id: string;

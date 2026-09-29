@@ -34,6 +34,32 @@ export interface PoseOverrides {
 export type PoseConfig = string | PoseOverrides;
 export type FighterPoses = Record<string, PoseConfig> | null;
 
+export interface HealthThresholdTransformationTrigger {
+      type: "health-threshold";
+      /** Transform when current health divided by max health reaches this ratio. */
+      healthRatio: number;
+}
+
+export type TransformationTrigger = HealthThresholdTransformationTrigger;
+
+/** Optional overrides authored in a fighter JSON file. */
+export interface FighterTransformationDefinition {
+      trigger: TransformationTrigger;
+      combat?: {
+            abilities?: AbilityConfig[];
+      };
+      presentation?: {
+            poses?: FighterPoses;
+      };
+}
+
+/** Fully-composed transformation data used by the runtime. */
+export interface FighterTransformationConfig {
+      trigger: TransformationTrigger;
+      abilities: AbilityConfig[];
+      poses: FighterPoses;
+}
+
 /** Values accepted by the fighter JSON schema's `lines` object. */
 export interface FighterLines {
       ambientIntervalMs?: number;
@@ -77,6 +103,7 @@ export interface FighterDefinition {
       combat?: FighterCombatOverrides;
       body?: FighterBodyOverrides;
       presentation?: FighterPresentationOverrides;
+      transformation?: FighterTransformationDefinition;
       lines?: FighterLines;
 }
 
@@ -111,6 +138,7 @@ export interface FighterConfig {
       weaponIdle?: string | null;
       weaponAttack?: string | null;
       poses: FighterPoses;
+      transformation: FighterTransformationConfig | null;
       defaultFacing: Facing;
       lines: FighterLines;
 }

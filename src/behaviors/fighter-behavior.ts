@@ -1,5 +1,11 @@
 import type { Fighter } from "../entities/fighter";
-import type { ArenaBounds, ArenaWall, FighterBehaviorContext } from "./types";
+import {
+      DEFAULT_WALL_COLLISION_RESPONSE,
+      type ArenaBounds,
+      type ArenaWall,
+      type FighterBehaviorContext,
+      type WallCollisionResponse,
+} from "./types";
 
 /**
  * Base class for all fighter behaviors.
@@ -17,13 +23,12 @@ export abstract class FighterBehavior {
 
       /**
        * Called when the fighter makes contact with an arena wall.
-       * Return `true` if the behavior handled the collision (e.g. wall crawl),
-       * preventing default physics bounce processing.
+       * Independently controls whether normal bounce and impact damage apply.
        */
-      onWallCollision(wall: ArenaWall, bounds: ArenaBounds): boolean {
+      onWallCollision(wall: ArenaWall, bounds: ArenaBounds): WallCollisionResponse {
             void wall;
             void bounds;
-            return false;
+            return DEFAULT_WALL_COLLISION_RESPONSE;
       }
 
       /** Called when this fighter collides with another fighter. */
@@ -36,6 +41,9 @@ export abstract class FighterBehavior {
             void amount;
             void source;
       }
+
+      /** Called after the fighter enters its configured transformed state. */
+      onTransform(): void {}
 
       /** Whether the fighter is currently crawling on a wall (for rendering / physics assist). */
       isWallCrawling(): boolean {

@@ -273,6 +273,68 @@
               Cancel
             </button>
           </div>
+
+          <div class="section-divider"><span>Attack Hitbox</span></div>
+
+          <div id="attack-hitbox-controls">
+            <div class="control-group">
+              <label for="attackHitboxAbility">Ability</label>
+              <select id="attackHitboxAbility"></select>
+            </div>
+
+            <div class="control-group">
+              <label>
+                <span>Width</span>
+                <span class="val-display" id="val-attackHitboxWidth"></span>
+              </label>
+              <div class="slider-row">
+                <input type="range" id="attackHitboxWidth" min="10" max="300" step="1" />
+                <input type="number" class="num-input" data-for="attackHitboxWidth" min="10" max="300" step="1" />
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label>
+                <span>Height</span>
+                <span class="val-display" id="val-attackHitboxHeight"></span>
+              </label>
+              <div class="slider-row">
+                <input type="range" id="attackHitboxHeight" min="10" max="300" step="1" />
+                <input type="number" class="num-input" data-for="attackHitboxHeight" min="10" max="300" step="1" />
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label>
+                <span>Forward Offset</span>
+                <span class="val-display" id="val-attackHitboxOffsetX"></span>
+              </label>
+              <div class="slider-row">
+                <input type="range" id="attackHitboxOffsetX" min="-250" max="250" step="1" />
+                <input type="number" class="num-input" data-for="attackHitboxOffsetX" min="-250" max="250" step="1" />
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label>
+                <span>Vertical Offset</span>
+                <span class="val-display" id="val-attackHitboxOffsetY"></span>
+              </label>
+              <div class="slider-row">
+                <input type="range" id="attackHitboxOffsetY" min="-250" max="250" step="1" />
+                <input type="number" class="num-input" data-for="attackHitboxOffsetY" min="-250" max="250" step="1" />
+              </div>
+            </div>
+
+            <p class="control-hint">
+              The red rectangle is active only during the selected ability's active phase.
+              Forward offset automatically mirrors with facing.
+            </p>
+          </div>
+
+          <div id="no-attack-hitbox-message" class="empty-panel-message" hidden>
+            This character has no configured attack hitbox.
+          </div>
         </div>
 
         <!-- Tab: Image -->

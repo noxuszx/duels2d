@@ -58,10 +58,11 @@ function merge(
 function materializePoses(
       presentation: FighterPresentationOverrides &
             FighterDefaults["presentation"],
+      poses: FighterPoses = presentation.poses,
 ): FighterPoses {
-      if (!presentation.poses) return null;
+      if (!poses) return null;
       return Object.fromEntries(
-            Object.entries(presentation.poses).map(([key, pose]) => {
+            Object.entries(poses).map(([key, pose]) => {
                   const poseObject = typeof pose === "string" ? null : pose;
                   const image = typeof pose === "string" ? pose : pose.image;
                   const imageCrop =
@@ -115,6 +116,19 @@ export function composeFighter(
             weaponIdle: merged.presentation.weaponIdle,
             weaponAttack: merged.presentation.weaponAttack,
             poses: materializePoses(merged.presentation),
+            transformation: merged.transformation
+                  ? {
+                          trigger: merged.transformation.trigger,
+                          abilities:
+                                merged.transformation.combat?.abilities ??
+                                merged.combat.abilities,
+                          poses: materializePoses(
+                                merged.presentation,
+                                merged.transformation.presentation?.poses ??
+                                      merged.presentation.poses,
+                          ),
+                    }
+                  : null,
             defaultFacing: merged.presentation.defaultFacing,
             lines: merged.lines,
       };

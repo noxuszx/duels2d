@@ -4,6 +4,7 @@ import type { Fighter } from "../entities/fighter";
 import type { Projectile } from "../entities/projectile";
 import type { IndicatorSystem } from "../systems/indicator-system";
 import type { GameConfig } from "../types/game";
+import { applyDamage } from "../combat/combat-resolver";
 
 type Point = { x: number; y: number };
 type Arena = { ax: number; ay: number; aw: number; ah: number };
@@ -83,26 +84,19 @@ export class CombatSystem {
             now: number,
       ): void {
             if (projectile.ownerId === fighter.id || projectile.dead) return;
-            const didDamage = fighter.takeDamage(
-                  projectile.damage,
-                  now,
-                  this.gameConfig.physics.collisionCooldownMs,
-            );
-            if (didDamage) {
-                  fighter.playSound("hurt");
-                  this.indicators.spawnDamageIndicator(fighter, projectile.damage);
-                  this.indicators.spawnHitSpark(
-                        fighter.body.position,
-                        fighter.config.color,
-                  );
-                  const owner = this.host.characters.find(
-                        (candidate) => candidate.id === projectile.ownerId,
-                  );
-                  if (owner) {
-                        if (projectile.hitSoundCue)
-                              owner.audio.play(projectile.hitSoundCue);
-                        this.indicators.spawnCharacterLine(owner, "weaponHit");
-                  }
+            const owner = this.host.characters.find(
+                  (candidate) => candidate.id === projectile.ownerId,
+            ) ?? null;
+            const result = applyDamage({
+                  source: owner,
+                  target: fighter,
+                  amount: projectile.damage,
+                  nowMs: now,
+                  cooldownMs: this.gameConfig.physics.collisionCooldownMs,
+                  indicators: this.indicators,
+            });
+            if (result.applied && owner && projectile.hitSoundCue) {
+                  owner.audio.play(projectile.hitSoundCue);
             }
             projectile.dead = true;
             World.remove(this.host.world, projectile.body);
@@ -117,7 +111,10 @@ export class CombatSystem {
             for (const fighter of this.host.characters) {
                   if (fighter.isDead) continue;
                   fighter.applyPendingForce();
-                  if (!this.abilities.isWallCrawling(fighter)) {
+                  if (
+                        !this.abilities.isWallCrawling(fighter) &&
+                        fighter.statuses.canUseMovement
+                  ) {
                         fighter.applyCruiseForce();
                         fighter.applyUprightTorque(now);
                   }
@@ -172,17 +169,18 @@ export class CombatSystem {
                   : position.y < minY ? "top" : "bottom";
             const wasDashing = this.abilities.isDashing(fighter);
             Body.setPosition(fighter.body, { x: correctedX, y: correctedY });
-            if (this.abilities.handleWallCollision(fighter, wall, {
+            const wallResponse = this.abilities.handleWallCollision(fighter, wall, {
                   minX,
                   maxX,
                   minY,
                   maxY,
-            })) return;
+            }, wasDashing);
+            if (!wallResponse.defaultBounce) return;
             this.enforceMinimumDepartureAngle(velocity, hitVertical, hitHorizontal);
             Body.setVelocity(fighter.body, velocity);
             fighter.noteImpact(now);
             fighter.playSound("body-bounce");
-            if (!this.host.isGameOver() && !wasDashing) {
+            if (!this.host.isGameOver() && wallResponse.allowImpactDamage) {
                   this.applyImpactDamage(fighter, impactSpeed, now);
             }
       }
@@ -233,15 +231,13 @@ export class CombatSystem {
                   1,
                   Math.min(baseDamage * 4, Math.round(baseDamage * (speed - minSpeed) / minSpeed)),
             );
-            if (!fighter.takeDamage(
-                  damage,
-                  now,
-                  this.gameConfig.physics.collisionCooldownMs,
-            )) return false;
-            fighter.playSound("hurt");
-            this.indicators.spawnDamageIndicator(fighter, damage);
-            this.indicators.spawnHitSpark(fighter.body.position, fighter.config.color);
-            return true;
+            return applyDamage({
+                  target: fighter,
+                  amount: damage,
+                  nowMs: now,
+                  cooldownMs: this.gameConfig.physics.collisionCooldownMs,
+                  indicators: this.indicators,
+            }).applied;
       }
 
       private handleFighterImpact(

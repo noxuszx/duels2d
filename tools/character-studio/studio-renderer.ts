@@ -276,6 +276,32 @@ export function drawStudio(studio: CharacterStudio): void {
             drawHitboxEditOverlay(studio, config, centerX, centerY);
       }
 
+      const attackHitbox = studio._attackHitboxAction();
+      if (attackHitbox) {
+            const facingSign = config.defaultFacing === "left" ? -1 : 1;
+            const attackCenterX =
+                  centerX + attackHitbox.offset.x * facingSign;
+            const attackCenterY = centerY + attackHitbox.offset.y;
+            const x = attackCenterX - attackHitbox.width / 2;
+            const y = attackCenterY - attackHitbox.height / 2;
+            ctx.save();
+            ctx.fillStyle = "rgba(235, 76, 76, 0.16)";
+            ctx.strokeStyle = "rgba(255, 82, 82, 0.95)";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 4]);
+            ctx.fillRect(x, y, attackHitbox.width, attackHitbox.height);
+            ctx.strokeRect(x, y, attackHitbox.width, attackHitbox.height);
+            ctx.setLineDash([]);
+            ctx.fillStyle = "rgba(20, 20, 20, 0.82)";
+            ctx.fillRect(x, y - 18, 86, 16);
+            ctx.fillStyle = "#ffb1b1";
+            ctx.font = "9px Inter, sans-serif";
+            ctx.textAlign = "left";
+            ctx.textBaseline = "middle";
+            ctx.fillText("ATTACK HITBOX", x + 5, y - 10);
+            ctx.restore();
+      }
+
       const projectileAction = config.abilities
             .flatMap((ability) => ability.actions)
             .find((action) => action.type === "spawn-projectile");

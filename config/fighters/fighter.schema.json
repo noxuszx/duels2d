@@ -12,6 +12,7 @@
             "combat": { "$ref": "#/$defs/combat" },
             "body": { "$ref": "#/$defs/body" },
             "presentation": { "$ref": "#/$defs/presentation" },
+            "transformation": { "$ref": "#/$defs/transformation" },
             "lines": { "$ref": "#/$defs/lines" }
       },
       "additionalProperties": false,
@@ -50,15 +51,15 @@
                   "type": "object",
                   "required": [
                         "cooldownMs",
-                        "windupFrames",
-                        "activeFrames",
-                        "recoveryFrames"
+                        "windupMs",
+                        "activeMs",
+                        "recoveryMs"
                   ],
                   "properties": {
                         "cooldownMs": { "$ref": "#/$defs/positiveNumber" },
-                        "windupFrames": { "type": "integer", "minimum": 0 },
-                        "activeFrames": { "type": "integer", "minimum": 0 },
-                        "recoveryFrames": { "type": "integer", "minimum": 0 }
+                        "windupMs": { "type": "number", "minimum": 0 },
+                        "activeMs": { "type": "number", "minimum": 0 },
+                        "recoveryMs": { "type": "number", "minimum": 0 }
                   },
                   "additionalProperties": false
             },
@@ -216,6 +217,36 @@
                                     "projectile": { "$ref": "#/$defs/projectile" }
                               },
                               "additionalProperties": false
+                        },
+                        {
+                              "type": "object",
+                              "required": ["type", "effect", "durationMs"],
+                              "properties": {
+                                    "type": { "const": "apply-status" },
+                                    "effect": { "enum": ["stun", "ability-lock"] },
+                                    "durationMs": { "$ref": "#/$defs/positiveNumber" }
+                              },
+                              "additionalProperties": false
+                        },
+                        {
+                              "type": "object",
+                              "required": ["type", "width", "height", "offset"],
+                              "properties": {
+                                    "type": { "const": "attack-hitbox" },
+                                    "width": { "$ref": "#/$defs/positiveNumber" },
+                                    "height": { "$ref": "#/$defs/positiveNumber" },
+                                    "offset": { "$ref": "#/$defs/vector" }
+                              },
+                              "additionalProperties": false
+                        },
+                        {
+                              "type": "object",
+                              "required": ["type", "forceMagnitude"],
+                              "properties": {
+                                    "type": { "const": "recoil" },
+                                    "forceMagnitude": { "$ref": "#/$defs/positiveNumber" }
+                              },
+                              "additionalProperties": false
                         }
                   ]
             },
@@ -342,6 +373,54 @@
                                           }
                                     }
                               ]
+                        }
+                  },
+                  "additionalProperties": false
+            },
+            "transformationTrigger": {
+                  "type": "object",
+                  "required": ["type", "healthRatio"],
+                  "properties": {
+                        "type": { "const": "health-threshold" },
+                        "healthRatio": {
+                              "type": "number",
+                              "exclusiveMinimum": 0,
+                              "maximum": 1
+                        }
+                  },
+                  "additionalProperties": false
+            },
+            "transformation": {
+                  "type": "object",
+                  "required": ["trigger"],
+                  "properties": {
+                        "trigger": { "$ref": "#/$defs/transformationTrigger" },
+                        "combat": {
+                              "type": "object",
+                              "properties": {
+                                    "abilities": {
+                                          "type": "array",
+                                          "items": { "$ref": "#/$defs/ability" }
+                                    }
+                              },
+                              "additionalProperties": false
+                        },
+                        "presentation": {
+                              "type": "object",
+                              "properties": {
+                                    "poses": {
+                                          "oneOf": [
+                                                { "type": "null" },
+                                                {
+                                                      "type": "object",
+                                                      "additionalProperties": {
+                                                            "$ref": "#/$defs/pose"
+                                                      }
+                                                }
+                                          ]
+                                    }
+                              },
+                              "additionalProperties": false
                         }
                   },
                   "additionalProperties": false

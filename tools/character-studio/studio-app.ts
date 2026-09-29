@@ -1,5 +1,6 @@
 // Coordinates Studio dependencies, selection, and high-level editor actions.
 import type { IndicatorConfig } from "../../src/types/game";
+import type { AttackHitboxAction } from "../../src/abilities/types";
 import type {
       Facing,
       FighterConfig,
@@ -73,7 +74,14 @@ declare global {
       }
 }
 
-const SUPPORTED_POSE_KEYS = ["idle", "attackWindup", "attackActive", "crawl1", "crawl2"] as const;
+const SUPPORTED_POSE_KEYS = [
+      "idle",
+      "attackWindup",
+      "attackActive",
+      "recovery",
+      "crawl1",
+      "crawl2",
+] as const;
 
 function poseLabel(key: string): string {
       const labels: Record<string, string> = {
@@ -81,6 +89,7 @@ function poseLabel(key: string): string {
             idle: "Idle",
             attackWindup: "Attack Windup",
             attackActive: "Attack Active",
+            recovery: "Recovery",
             crawl1: "Crawl 1",
             crawl2: "Crawl 2",
       };
@@ -130,6 +139,7 @@ export class CharacterStudio {
       cancelCropBtn: HTMLButtonElement;
       saveBtn: HTMLButtonElement;
       hitboxOutput: HTMLInputElement;
+      attackHitboxAbilitySelect: HTMLSelectElement;
       projectileImageSelect: HTMLSelectElement;
       projectileImageScale: HTMLInputElement;
       projectileRotationSpeed: HTMLInputElement;
@@ -216,6 +226,9 @@ export class CharacterStudio {
             this.saveBtn = requireElement<HTMLButtonElement>("save-config-btn");
             this.hitboxOutput =
                   requireElement<HTMLInputElement>("hitbox-output");
+            this.attackHitboxAbilitySelect = requireElement<HTMLSelectElement>(
+                  "attackHitboxAbility",
+            );
             this.projectileImageSelect = requireElement<HTMLSelectElement>(
                   "projectile-image-select",
             );
@@ -234,6 +247,14 @@ export class CharacterStudio {
                   hitboxRadius: requireElement<NumericInput>("hitboxRadius"),
                   hitboxOffsetX: requireElement<NumericInput>("hitboxOffsetX"),
                   hitboxOffsetY: requireElement<NumericInput>("hitboxOffsetY"),
+                  attackHitboxWidth:
+                        requireElement<NumericInput>("attackHitboxWidth"),
+                  attackHitboxHeight:
+                        requireElement<NumericInput>("attackHitboxHeight"),
+                  attackHitboxOffsetX:
+                        requireElement<NumericInput>("attackHitboxOffsetX"),
+                  attackHitboxOffsetY:
+                        requireElement<NumericInput>("attackHitboxOffsetY"),
                   imageScale: requireElement<NumericInput>("imageScale"),
                   imageOffsetX: requireElement<NumericInput>("imageOffsetX"),
                   imageOffsetY: requireElement<NumericInput>("imageOffsetY"),
@@ -264,6 +285,14 @@ export class CharacterStudio {
                   hitboxRadius: requireElement("val-hitboxRadius"),
                   hitboxOffsetX: requireElement("val-hitboxOffsetX"),
                   hitboxOffsetY: requireElement("val-hitboxOffsetY"),
+                  attackHitboxWidth: requireElement("val-attackHitboxWidth"),
+                  attackHitboxHeight: requireElement("val-attackHitboxHeight"),
+                  attackHitboxOffsetX: requireElement(
+                        "val-attackHitboxOffsetX",
+                  ),
+                  attackHitboxOffsetY: requireElement(
+                        "val-attackHitboxOffsetY",
+                  ),
                   imageScale: requireElement("val-imageScale"),
                   imageOffsetX: requireElement("val-imageOffsetX"),
                   imageOffsetY: requireElement("val-imageOffsetY"),
@@ -412,6 +441,11 @@ export class CharacterStudio {
                         .value as Facing;
                   this._draw();
                   this._saveState();
+            });
+
+            this.attackHitboxAbilitySelect.addEventListener("change", () => {
+                  this._syncAttackHitboxControls();
+                  this._draw();
             });
 
             this.projectileImageSelect.addEventListener("change", () => {
@@ -564,6 +598,58 @@ export class CharacterStudio {
                   if (action?.type === "swing") return action;
             }
             return null;
+      }
+
+      _attackHitboxAction(): AttackHitboxAction | null {
+            const abilityId = this.attackHitboxAbilitySelect.value;
+            const ability = this._currentConfig().abilities.find(
+                  (candidate) => candidate.id === abilityId,
+            );
+            return (
+                  ability?.actions.find(
+                        (candidate): candidate is AttackHitboxAction =>
+                              candidate.type === "attack-hitbox",
+                  ) ?? null
+            );
+      }
+
+      _populateAttackHitboxSelect(): void {
+            const previous = this.attackHitboxAbilitySelect.value;
+            const abilities = this._currentConfig().abilities.filter((ability) =>
+                  ability.actions.some((action) => action.type === "attack-hitbox"),
+            );
+            this.attackHitboxAbilitySelect.replaceChildren();
+            for (const ability of abilities) {
+                  const option = document.createElement("option");
+                  option.value = ability.id;
+                  option.textContent = ability.id;
+                  this.attackHitboxAbilitySelect.appendChild(option);
+            }
+            if (abilities.some((ability) => ability.id === previous)) {
+                  this.attackHitboxAbilitySelect.value = previous;
+            }
+            const hasAttackHitbox = abilities.length > 0;
+            requireElement<HTMLElement>("attack-hitbox-controls").hidden =
+                  !hasAttackHitbox;
+            requireElement<HTMLElement>("no-attack-hitbox-message").hidden =
+                  hasAttackHitbox;
+            this._syncAttackHitboxControls();
+      }
+
+      _syncAttackHitboxControls(): void {
+            const action = this._attackHitboxAction();
+            this.controls.attackHitboxWidth.value = action?.width ?? 40;
+            this.controls.attackHitboxHeight.value = action?.height ?? 100;
+            this.controls.attackHitboxOffsetX.value = action?.offset.x ?? 40;
+            this.controls.attackHitboxOffsetY.value = action?.offset.y ?? 0;
+            for (const key of [
+                  "attackHitboxWidth",
+                  "attackHitboxHeight",
+                  "attackHitboxOffsetX",
+                  "attackHitboxOffsetY",
+            ] as const) {
+                  this.controls[key].disabled = !action;
+            }
       }
 
       _syncSwingControls(): void {
@@ -1166,6 +1252,7 @@ export class CharacterStudio {
             this.controls.weaponPivotX.value = config.weaponPivot.x;
             this.controls.weaponPivotY.value = config.weaponPivot.y;
             this._syncSwingControls();
+            this._populateAttackHitboxSelect();
             this.weaponImagePath.value = config.weaponIdle ?? "";
 
             // Load base image (activePoseKey == "base" at this point)
@@ -1396,6 +1483,7 @@ export class CharacterStudio {
             this.controls.weaponPivotX.value = config.weaponPivot.x;
             this.controls.weaponPivotY.value = config.weaponPivot.y;
             this._syncSwingControls();
+            this._populateAttackHitboxSelect();
             this._populateProjectileSelect();
 
             // Update body image if pose changed
@@ -1490,6 +1578,21 @@ export class CharacterStudio {
                   swing.endDegrees = numberValue(
                         this.controls.swingEndDegrees,
                   );
+            }
+            const attackHitbox = this._attackHitboxAction();
+            if (attackHitbox) {
+                  attackHitbox.width = Math.max(
+                        1,
+                        numberValue(this.controls.attackHitboxWidth),
+                  );
+                  attackHitbox.height = Math.max(
+                        1,
+                        numberValue(this.controls.attackHitboxHeight),
+                  );
+                  attackHitbox.offset = {
+                        x: numberValue(this.controls.attackHitboxOffsetX),
+                        y: numberValue(this.controls.attackHitboxOffsetY),
+                  };
             }
 
             // Crop: pose-aware

@@ -1,6 +1,8 @@
 import type { Fighter } from "../../entities/fighter";
 import type { DamageAction } from "../types";
 import type { ActionExecutionContext } from "./types";
+import { applyDamage } from "../../combat/combat-resolver";
+import type { DamageResult } from "../../combat/combat-result";
 
 /** Executes direct damage against a target fighter with audio, sparks, and indicators. */
 export function executeDamageAction(
@@ -8,20 +10,13 @@ export function executeDamageAction(
       source: Fighter,
       target: Fighter,
       context: ActionExecutionContext,
-): boolean {
-      const didDamage = target.takeDamage(
-            action.amount,
-            context.now(),
-            context.COLLISION_COOLDOWN,
-      );
-      if (!didDamage) return false;
-
-      target.playSound("hurt");
-      context.indicators.spawnDamageIndicator(target, action.amount);
-      context.indicators.spawnHitSpark(
-            target.body.position,
-            target.config.color,
-      );
-      context.indicators.spawnCharacterLine(source, "weaponHit");
-      return true;
+): DamageResult {
+      return applyDamage({
+            source,
+            target,
+            amount: action.amount,
+            nowMs: context.now(),
+            cooldownMs: context.COLLISION_COOLDOWN,
+            indicators: context.indicators,
+      });
 }

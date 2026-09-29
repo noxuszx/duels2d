@@ -1,7 +1,13 @@
-import type { AbilityConfig, DamageAction, DashAction, KnockbackAction } from "../../abilities/types";
+import type { AbilityConfig, DashAction } from "../../abilities/types";
 import type { Fighter } from "../../entities/fighter";
 import { DashSkill } from "../../skills/dash-skill";
-import type { ArenaBounds, ArenaWall, FighterBehaviorContext } from "../types";
+import {
+      DEFAULT_WALL_COLLISION_RESPONSE,
+      type ArenaBounds,
+      type ArenaWall,
+      type FighterBehaviorContext,
+      type WallCollisionResponse,
+} from "../types";
 import { FighterBehavior } from "../fighter-behavior";
 
 /** Angry Man winds up, then charges the target until a fighter or wall stops him. */
@@ -16,7 +22,7 @@ export class AngryManBehavior extends FighterBehavior {
       override onUpdate(deltaMs: number): void {
             if (this.fighter.isDead) return this.reset();
             const previousState = this.fighter.abilities.state;
-            this.fighter.abilities.update();
+            this.fighter.abilities.update(deltaMs);
             const ability = this.fighter.abilities.active;
 
             if (ability && previousState === "windup" && this.fighter.abilities.state === "active") {
@@ -34,10 +40,10 @@ export class AngryManBehavior extends FighterBehavior {
             this.dashSkill.handleFighterCollision(target);
       }
 
-      override onWallCollision(wall: ArenaWall, bounds: ArenaBounds): boolean {
+      override onWallCollision(wall: ArenaWall, bounds: ArenaBounds): WallCollisionResponse {
             void bounds;
             this.dashSkill.handleWallCollision(wall);
-            return false;
+            return DEFAULT_WALL_COLLISION_RESPONSE;
       }
 
       override reset(): void {
@@ -48,14 +54,23 @@ export class AngryManBehavior extends FighterBehavior {
 
       private tryActivate(): void {
             const now = this.context.now();
-            const ability = this.fighter.config.abilities.find((candidate) =>
-                  candidate.trigger.type === "nearest-enemy" && this.fighter.abilities.canUse(candidate, now),
-            );
             const target = this.context.getNearestEnemy(this.fighter);
-            if (!ability || !target) return;
-            this.target = target;
-            this.fighter.abilities.start(ability, this.fighter.facing, now);
-            this.fighter.abilities.lockFacingToward(target.body.position.x, this.fighter.body.position.x);
+            if (!target) return;
+            for (const ability of this.fighter.activeAbilities) {
+                  if (ability.trigger.type !== "nearest-enemy") continue;
+                  const result = this.fighter.abilities.tryStart(
+                        ability,
+                        this.fighter.facing,
+                        now,
+                  );
+                  if (!result.started) continue;
+                  this.target = target;
+                  this.fighter.abilities.lockFacingToward(
+                        target.body.position.x,
+                        this.fighter.body.position.x,
+                  );
+                  return;
+            }
       }
 
       private startDash(ability: AbilityConfig): void {
@@ -64,8 +79,6 @@ export class AngryManBehavior extends FighterBehavior {
                   : this.context.getNearestEnemy(this.fighter);
             const dash = ability.actions.find((action): action is DashAction => action.type === "dash");
             if (!target || !dash) return this.fighter.abilities.finishActive();
-            const damage = ability.actions.find((action): action is DamageAction => action.type === "damage");
-            const knockback = ability.actions.find((action): action is KnockbackAction => action.type === "knockback");
             const direction = {
                   x: target.body.position.x - this.fighter.body.position.x,
                   y: target.body.position.y - this.fighter.body.position.y,
@@ -76,9 +89,13 @@ export class AngryManBehavior extends FighterBehavior {
                   accelerationForce: dash.accelerationForce,
                   stopOn: dash.endOn,
                   onHitEnemy: (enemy) => {
-                        if (damage) this.context.dealDamage(this.fighter, enemy, damage.amount);
-                        if (knockback) this.context.applyKnockback(this.fighter, enemy, knockback.forceMagnitude);
-                        this.fighter.audio.playAbilityCue(ability, "hit");
+                        const result = this.context.executeTargetActions(
+                              this.fighter,
+                              enemy,
+                              ability,
+                        );
+                        if (result.connected)
+                              this.fighter.audio.playAbilityCue(ability, "hit");
                   },
                   onComplete: () => this.fighter.abilities.finishActive(),
             });

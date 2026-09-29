@@ -10,9 +10,9 @@
                   "trigger": { "type": "nearest-enemy" },
                   "timing": {
                         "cooldownMs": 900,
-                        "windupFrames": 4,
-                        "activeFrames": 4,
-                        "recoveryFrames": 8
+                        "windupMs": 33,
+                        "activeMs": 33,
+                        "recoveryMs": 67
                   },
                   "actions": [{
                         "type": "spawn-projectile",

@@ -3,10 +3,6 @@ import { DefaultFighterBehavior, type StandardAbilityHandler } from "./default-b
 import { FighterBehavior } from "./fighter-behavior";
 import { BabyManBehavior } from "./fighters/babyman.behavior";
 import { AngryManBehavior } from "./fighters/angryman.behavior";
-import { ChefManBehavior } from "./fighters/chefman.behavior";
-import { DepressedManBehavior } from "./fighters/depressedman.behavior";
-import { HappyManBehavior } from "./fighters/happyman.behavior";
-import { WomanManBehavior } from "./fighters/womanman.behavior";
 import type { FighterBehaviorContext } from "./types";
 
 export type FighterBehaviorConstructor = new (
@@ -17,10 +13,6 @@ export type FighterBehaviorConstructor = new (
 const BEHAVIOR_REGISTRY = new Map<string, FighterBehaviorConstructor>([
       ["babyman", BabyManBehavior],
       ["angryman", AngryManBehavior],
-      ["chefman", ChefManBehavior],
-      ["depressedman", DepressedManBehavior],
-      ["happyman", HappyManBehavior],
-      ["womanman", WomanManBehavior],
 ]);
 
 /**

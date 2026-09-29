@@ -9,7 +9,7 @@
       "id": "charge",
       "trigger": { "type": "nearest-enemy" },
       "audio": { "windup": "attackWindup" },
-      "timing": { "cooldownMs": 6000, "windupFrames": 105, "activeFrames": 22, "recoveryFrames": 18 },
+      "timing": { "cooldownMs": 6000, "windupMs": 875, "activeMs": 183, "recoveryMs": 150 },
       "actions": [
         { "type": "dash", "speedMultiplier": 6, "accelerationForce": 0.018, "endOn": ["fighter-collision", "wall-collision"] },
         { "type": "damage", "amount": 100 },

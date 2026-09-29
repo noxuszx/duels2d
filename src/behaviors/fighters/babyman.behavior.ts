@@ -2,13 +2,17 @@ import { DashSkill } from "../../skills/dash-skill";
 import { WallCrawlSkill } from "../../skills/wall-crawl-skill";
 import type { Fighter } from "../../entities/fighter";
 import type {
-      DamageAction,
       DashAction,
-      KnockbackAction,
       WallCrawlAction,
 } from "../../abilities/types";
 import { FighterBehavior } from "../fighter-behavior";
-import type { ArenaBounds, ArenaWall, FighterBehaviorContext } from "../types";
+import {
+      DEFAULT_WALL_COLLISION_RESPONSE,
+      type ArenaBounds,
+      type ArenaWall,
+      type FighterBehaviorContext,
+      type WallCollisionResponse,
+} from "../types";
 
 /**
  * Dedicated behavior script for Baby Man.
@@ -33,9 +37,9 @@ export class BabyManBehavior extends FighterBehavior {
                   this.crawlSkill.update(deltaMs);
             } else if (this.dashSkill.isActive) {
                   this.dashSkill.update(deltaMs);
-                  this.fighter.abilities.update();
+                  this.fighter.abilities.update(deltaMs);
             } else {
-                  this.fighter.abilities.update();
+                  this.fighter.abilities.update(deltaMs);
             }
 
             if (this.fighter.abilities.state === "idle") {
@@ -44,26 +48,26 @@ export class BabyManBehavior extends FighterBehavior {
             }
       }
 
-      override onWallCollision(wall: ArenaWall, bounds: ArenaBounds): boolean {
+      override onWallCollision(wall: ArenaWall, bounds: ArenaBounds): WallCollisionResponse {
             if (this.crawlSkill.isActive) {
-                  return true;
+                  return { defaultBounce: false, allowImpactDamage: false };
             }
 
             if (this.dashSkill.isActive) {
                   this.dashSkill.handleWallCollision(wall);
-                  return false;
+                  return DEFAULT_WALL_COLLISION_RESPONSE;
             }
 
             if (this.fighter.isDead || this.fighter.abilities.state !== "idle") {
-                  return false;
+                  return DEFAULT_WALL_COLLISION_RESPONSE;
             }
 
             const now = this.context.now();
-            const ability = this.fighter.config.abilities.find(
-                  (a) => a.trigger.type === "wall-contact" && this.fighter.abilities.canUse(a, now),
+            const ability = this.fighter.activeAbilities.find(
+                  (a) => a.trigger.type === "wall-contact",
             );
             const target = this.context.getNearestEnemy(this.fighter);
-            if (!ability || !target) return false;
+            if (!ability || !target) return DEFAULT_WALL_COLLISION_RESPONSE;
 
             const crawlAction = ability.actions.find(
                   (a): a is WallCrawlAction => a.type === "wall-crawl",
@@ -71,14 +75,12 @@ export class BabyManBehavior extends FighterBehavior {
             const dashAction = ability.actions.find(
                   (a): a is DashAction => a.type === "dash",
             );
-            const damageAction = ability.actions.find(
-                  (a): a is DamageAction => a.type === "damage",
+            const result = this.fighter.abilities.tryStart(
+                  ability,
+                  this.fighter.facing,
+                  now,
             );
-            const knockbackAction = ability.actions.find(
-                  (a): a is KnockbackAction => a.type === "knockback",
-            );
-
-            this.fighter.abilities.start(ability, this.fighter.facing, now);
+            if (!result.started) return DEFAULT_WALL_COLLISION_RESPONSE;
 
             this.crawlSkill.start(this.fighter, target, wall, bounds, {
                   durationMs: crawlAction?.durationMs ?? 2000,
@@ -103,21 +105,13 @@ export class BabyManBehavior extends FighterBehavior {
                                     "wall-collision",
                               ],
                               onHitEnemy: (enemy) => {
-                                    if (damageAction) {
-                                          this.context.dealDamage(
-                                                this.fighter,
-                                                enemy,
-                                                damageAction.amount,
-                                          );
-                                    }
-                                    if (knockbackAction) {
-                                          this.context.applyKnockback(
-                                                this.fighter,
-                                                enemy,
-                                                knockbackAction.forceMagnitude,
-                                          );
-                                    }
-                                    this.fighter.audio.playAbilityCue(ability, "hit");
+                                    const result = this.context.executeTargetActions(
+                                          this.fighter,
+                                          enemy,
+                                          ability,
+                                    );
+                                    if (result.connected)
+                                          this.fighter.audio.playAbilityCue(ability, "hit");
                               },
                               onComplete: () => {
                                     this.fighter.abilities.finishActive();
@@ -126,7 +120,7 @@ export class BabyManBehavior extends FighterBehavior {
                   },
             });
 
-            return true;
+            return { defaultBounce: false, allowImpactDamage: false };
       }
 
       override onFighterCollision(target: Fighter): void {

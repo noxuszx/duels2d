@@ -7,8 +7,30 @@ import type {
       Vector2,
 } from "../types/fighter";
 
-type PoseKey = "idle" | "attackWindup" | "attackActive" | "crawl1" | "crawl2";
+type PoseKey =
+      | "idle"
+      | "attackWindup"
+      | "attackActive"
+      | "recovery"
+      | "crawl1"
+      | "crawl2";
 type PoseVisual = Partial<PoseOverrides>;
+type PoseBank = {
+      sprites: Record<PoseKey, HTMLImageElement | null>;
+      visuals: Partial<Record<PoseKey, PoseVisual>>;
+};
+
+const createPoseBank = (): PoseBank => ({
+      sprites: {
+            idle: null,
+            attackWindup: null,
+            attackActive: null,
+            recovery: null,
+            crawl1: null,
+            crawl2: null,
+      },
+      visuals: {},
+});
 
 export interface CurrentSprite {
       image: HTMLImageElement;
@@ -28,19 +50,13 @@ export class FighterPresentation {
       readonly healthBarOffset: Vector2;
 
       sprite: HTMLImageElement | null = null;
-      readonly sprites: Record<PoseKey, HTMLImageElement | null> = {
-            idle: null,
-            attackWindup: null,
-            attackActive: null,
-            crawl1: null,
-            crawl2: null,
-      };
       weaponIdle: HTMLImageElement | null = null;
       weaponAttack: HTMLImageElement | null = null;
       hitFlashTimer = 0;
       private animationFrame = 0;
-
-      private readonly poseVisuals: Partial<Record<PoseKey, PoseVisual>> = {};
+      private transformed = false;
+      private readonly basePoses = createPoseBank();
+      private readonly transformedPoses = createPoseBank();
 
       constructor(config: FighterConfig) {
             this.imageScale = config.imageScale;
@@ -52,19 +68,37 @@ export class FighterPresentation {
             this.healthBarOffset = config.healthBarOffset;
 
             if (config.image) this.loadImage("sprite", config.image);
-            this.loadPose("idle", config.poses?.idle, config.image);
+            this.loadPose(this.basePoses, "idle", config.poses?.idle, config.image);
             this.loadPose(
+                  this.basePoses,
                   "attackWindup",
                   config.poses?.attackWindup,
                   config.image,
             );
             this.loadPose(
+                  this.basePoses,
                   "attackActive",
                   config.poses?.attackActive,
                   config.image,
             );
-            this.loadPose("crawl1", config.poses?.crawl1, config.image);
-            this.loadPose("crawl2", config.poses?.crawl2, config.image);
+            this.loadPose(this.basePoses, "recovery", config.poses?.recovery, config.image);
+            this.loadPose(this.basePoses, "crawl1", config.poses?.crawl1, config.image);
+            this.loadPose(this.basePoses, "crawl2", config.poses?.crawl2, config.image);
+            for (const key of [
+                  "idle",
+                  "attackWindup",
+                  "attackActive",
+                  "recovery",
+                  "crawl1",
+                  "crawl2",
+            ] as const) {
+                  this.loadPose(
+                        this.transformedPoses,
+                        key,
+                        config.transformation?.poses?.[key],
+                        config.image,
+                  );
+            }
             if (config.weaponIdle)
                   this.loadImage("weaponIdle", config.weaponIdle);
             if (config.weaponAttack)
@@ -84,28 +118,35 @@ export class FighterPresentation {
             return this.hitFlashTimer > 0;
       }
 
+      setTransformed(transformed: boolean): void {
+            this.transformed = transformed;
+      }
+
       getCurrentSprite(abilityState: AbilityState, isCrawling = false): CurrentSprite | null {
             const crawlKey: PoseKey = Math.floor(this.animationFrame / 9) % 2 === 0
                   ? "crawl1"
                   : "crawl2";
-            const poseKey = isCrawling && this.sprites[crawlKey]
+            const bank = this.transformed ? this.transformedPoses : this.basePoses;
+            const poseKey = isCrawling && bank.sprites[crawlKey]
                   ? crawlKey
-                  : this.currentPoseKey(abilityState);
+                  : this.currentPoseKey(bank, abilityState);
             const image =
-                  isCrawling && this.sprites[crawlKey]
-                        ? this.sprites[crawlKey]
+                  isCrawling && bank.sprites[crawlKey]
+                        ? bank.sprites[crawlKey]
                   : abilityState === "windup"
-                        ? (this.sprites.attackWindup ??
-                              this.sprites.idle ??
+                        ? (bank.sprites.attackWindup ??
+                              bank.sprites.idle ??
                               this.sprite)
-                        : abilityState === "active"
-                              ? (this.sprites.attackActive ??
-                                    this.sprites.attackWindup ??
-                                    this.sprites.idle ??
+                  : abilityState === "active"
+                              ? (bank.sprites.attackActive ??
+                                    bank.sprites.attackWindup ??
+                                    bank.sprites.idle ??
                                     this.sprite)
-                              : (this.sprites.idle ?? this.sprite);
+                  : abilityState === "recovery"
+                        ? (bank.sprites.recovery ?? bank.sprites.idle ?? this.sprite)
+                        : (bank.sprites.idle ?? this.sprite);
             if (!image) return null;
-            const pose = poseKey ? (this.poseVisuals[poseKey] ?? {}) : {};
+            const pose = poseKey ? (bank.visuals[poseKey] ?? {}) : {};
             return {
                   image,
                   imageScale: pose.imageScale ?? this.imageScale,
@@ -137,25 +178,28 @@ export class FighterPresentation {
             };
       }
 
-      private currentPoseKey(abilityState: AbilityState): PoseKey | null {
+      private currentPoseKey(bank: PoseBank, abilityState: AbilityState): PoseKey | null {
             if (abilityState === "windup")
-                  return this.sprites.attackWindup
+                  return bank.sprites.attackWindup
                         ? "attackWindup"
-                        : this.sprites.idle
+                        : bank.sprites.idle
                               ? "idle"
                               : null;
             if (abilityState === "active")
-                  return this.sprites.attackActive
+                  return bank.sprites.attackActive
                         ? "attackActive"
-                        : this.sprites.attackWindup
+                        : bank.sprites.attackWindup
                               ? "attackWindup"
-                              : this.sprites.idle
+                              : bank.sprites.idle
                                     ? "idle"
                                     : null;
-            return this.sprites.idle ? "idle" : null;
+            if (abilityState === "recovery" && bank.sprites.recovery)
+                  return "recovery";
+            return bank.sprites.idle ? "idle" : null;
       }
 
       private loadPose(
+            bank: PoseBank,
             key: PoseKey,
             value: string | PoseVisual | undefined,
             fallbackImage: string | null,
@@ -165,23 +209,30 @@ export class FighterPresentation {
                   typeof value === "string"
                         ? value
                         : (value.image ?? fallbackImage);
-            if (path) this.loadImage(`sprites.${key}`, path);
-            this.poseVisuals[key] = typeof value === "object" ? value : {};
+            if (path) this.loadPoseImage(bank, key, path);
+            bank.visuals[key] = typeof value === "object" ? value : {};
+      }
+
+      private loadPoseImage(bank: PoseBank, key: PoseKey, src: string): void {
+            const image = new Image();
+            image.onload = () => {
+                  bank.sprites[key] = image;
+            };
+            image.onerror = () =>
+                  console.warn(`[Duels2D] Could not load image: ${src}`);
+            image.src = src;
       }
 
       private loadImage(
             key:
                   | "sprite"
                   | "weaponIdle"
-                  | "weaponAttack"
-                  | `sprites.${PoseKey}`,
+                  | "weaponAttack",
             src: string,
       ): void {
             const image = new Image();
             image.onload = () => {
-                  if (key.startsWith("sprites."))
-                        this.sprites[key.slice(8) as PoseKey] = image;
-                  else if (key === "sprite") this.sprite = image;
+                  if (key === "sprite") this.sprite = image;
                   else if (key === "weaponIdle") this.weaponIdle = image;
                   else this.weaponAttack = image;
             };

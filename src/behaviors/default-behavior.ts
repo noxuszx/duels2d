@@ -1,10 +1,15 @@
 import type { Fighter } from "../entities/fighter";
 import { FighterBehavior } from "./fighter-behavior";
-import type { ArenaBounds, ArenaWall, FighterBehaviorContext } from "./types";
+import type {
+      ArenaBounds,
+      ArenaWall,
+      FighterBehaviorContext,
+      WallCollisionResponse,
+} from "./types";
 
 export interface StandardAbilityHandler {
       updateStandardFighter(fighter: Fighter, deltaMs: number): void;
-      onWallCollision(fighter: Fighter, wall: ArenaWall): boolean;
+      onWallCollision(fighter: Fighter, wall: ArenaWall): WallCollisionResponse;
       onFighterCollision(fighter: Fighter, target: Fighter): void;
       reset(fighter: Fighter): void;
 }
@@ -27,7 +32,7 @@ export class DefaultFighterBehavior extends FighterBehavior {
             this.standardHandler.updateStandardFighter(this.fighter, deltaMs);
       }
 
-      override onWallCollision(wall: ArenaWall, bounds: ArenaBounds): boolean {
+      override onWallCollision(wall: ArenaWall, bounds: ArenaBounds): WallCollisionResponse {
             void bounds;
             return this.standardHandler.onWallCollision(this.fighter, wall);
       }

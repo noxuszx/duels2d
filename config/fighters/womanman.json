@@ -12,7 +12,7 @@
           "active": "attackActive",
           "hit": "weaponSlap"
         },
-        "timing": { "cooldownMs": 1400, "windupFrames": 14, "activeFrames": 12, "recoveryFrames": 18 },
+        "timing": { "cooldownMs": 1400, "windupMs": 117, "activeMs": 100, "recoveryMs": 150 },
         "actions": [
           { "type": "swing", "startDegrees": -177, "endDegrees": -48 },
           { "type": "damage", "amount": 100 },

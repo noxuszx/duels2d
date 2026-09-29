@@ -3,12 +3,17 @@ import type { Fighter } from "../entities/fighter";
 import type { Projectile } from "../entities/projectile";
 import type { IndicatorSystem } from "../systems/indicator-system";
 import { ActionExecutor } from "./action-executor";
+import { attackHitboxOverlaps } from "./actions/attack-hitbox-action";
 import type { ArenaBounds, ArenaWall } from "../skills/types";
 import { enemyInRange, nearestEnemy, selectTarget } from "./targeting";
 import type { AbilityAction, AbilityConfig } from "./types";
 import { createFighterBehavior } from "../behaviors/registry";
 import type { StandardAbilityHandler } from "../behaviors/default-behavior";
-import type { FighterBehaviorContext } from "../behaviors/types";
+import {
+      DEFAULT_WALL_COLLISION_RESPONSE,
+      type FighterBehaviorContext,
+      type WallCollisionResponse,
+} from "../behaviors/types";
 
 interface AbilitySystemGameManager {
       characters: Fighter[];
@@ -25,6 +30,7 @@ export class AbilitySystem implements StandardAbilityHandler {
       private readonly dashDirections = new Map<Fighter, Matter.Vector>();
       private readonly dashHits = new Set<Fighter>();
       private readonly swingHits = new Set<Fighter>();
+      private readonly attackHitTargets = new Map<Fighter, Set<Fighter>>();
       private readonly actions: ActionExecutor;
 
       constructor(private readonly gm: AbilitySystemGameManager) {
@@ -39,45 +45,12 @@ export class AbilitySystem implements StandardAbilityHandler {
                   now: () => this.gm.now(),
                   getNearestEnemy: (source) =>
                         nearestEnemy(source, this.gm.characters),
-                  dealDamage: (source, target, amount) => {
-                        const now = this.gm.now();
-                        const dealt = target.takeDamage(
-                              amount,
-                              now,
-                              this.gm.COLLISION_COOLDOWN,
-                        );
-                        if (dealt) {
-                              target.playSound("hurt");
-                              this.gm.indicators.spawnDamageIndicator(
-                                    target,
-                                    amount,
-                              );
-                              this.gm.indicators.spawnHitSpark(
-                                    target.body.position,
-                                    target.config.color,
-                              );
-                              this.gm.indicators.spawnCharacterLine(
-                                    source,
-                                    "weaponHit",
-                              );
-                        }
-                        return dealt;
-                  },
-                  applyKnockback: (source, target, forceMagnitude) => {
-                        target.applyForceKnockback(
-                              {
-                                    x:
-                                          target.body.position.x -
-                                          source.body.position.x,
-                                    y:
-                                          target.body.position.y -
-                                          source.body.position.y,
-                              },
-                              forceMagnitude,
-                              source.id,
-                              this.gm.now(),
-                        );
-                  },
+                  executeTargetActions: (source, target, ability) =>
+                        this.actions.executeTargetActions(
+                              source,
+                              target,
+                              ability,
+                        ),
             };
       }
 
@@ -90,6 +63,11 @@ export class AbilitySystem implements StandardAbilityHandler {
 
       update(deltaMs: number): void {
             for (const fighter of this.gm.characters) {
+                  if (fighter.isDead) fighter.statuses.clear();
+                  else {
+                        fighter.statuses.update(deltaMs);
+                        fighter.updateTransformation();
+                  }
                   this.ensureBehavior(fighter);
                   fighter.behavior?.onUpdate(deltaMs);
             }
@@ -97,7 +75,6 @@ export class AbilitySystem implements StandardAbilityHandler {
 
       /** Standard JSON ability tick for fighters without custom scripts (DefaultFighterBehavior). */
       updateStandardFighter(fighter: Fighter, deltaMs: number): void {
-            void deltaMs;
             const now = this.gm.now();
             if (fighter.isDead) {
                   fighter.abilities.reset();
@@ -105,35 +82,68 @@ export class AbilitySystem implements StandardAbilityHandler {
                   return;
             }
 
-            const previousState = fighter.abilities.state;
-            fighter.abilities.update();
+            const abilityBeforeUpdate = fighter.abilities.active;
+            const activePhaseVersion = fighter.abilities.activePhaseVersion;
+            fighter.abilities.update(deltaMs);
             const ability = fighter.abilities.active;
+            const enteredActive =
+                  fighter.abilities.activePhaseVersion !== activePhaseVersion;
 
-            if (
-                  ability &&
-                  previousState === "windup" &&
-                  fighter.abilities.state === "active"
-            ) {
+            if (enteredActive && abilityBeforeUpdate) {
                   const target = this.targets.get(fighter);
-                  const swing = this.action<"swing">(ability, "swing");
+                  const activeTarget = target && !target.isDead
+                        ? target
+                        : nearestEnemy(fighter, this.gm.characters);
+                  if (activeTarget) {
+                        this.actions.executeActiveEntryActions(
+                              fighter,
+                              activeTarget,
+                              abilityBeforeUpdate,
+                        );
+                  }
+                  const swing = this.action<"swing">(
+                        abilityBeforeUpdate,
+                        "swing",
+                  );
+                  const attackHitbox = this.action<"attack-hitbox">(
+                        abilityBeforeUpdate,
+                        "attack-hitbox",
+                  );
                   if (
                         swing &&
+                        !attackHitbox &&
                         target &&
                         !target.isDead &&
                         !this.swingHits.has(fighter)
                   ) {
-                        if (
-                              this.actions.executeTargetActions(
-                                    fighter,
-                                    target,
-                                    ability,
-                              )
-                        )
+                        if (this.actions.executeTargetActions(fighter, target, abilityBeforeUpdate).connected)
                               fighter.audio.playAbilityCue(
-                                    ability,
+                                    abilityBeforeUpdate,
                                     "hit",
                               );
                         this.swingHits.add(fighter);
+                  }
+                  const hasDeliveryAction = abilityBeforeUpdate.actions.some(
+                        (action) =>
+                              action.type === "dash" ||
+                              action.type === "spawn-projectile" ||
+                              action.type === "swing" ||
+                              action.type === "attack-hitbox" ||
+                              action.type === "wall-crawl",
+                  );
+                  if (!hasDeliveryAction && activeTarget) {
+                        if (
+                              this.actions.executeTargetActions(
+                                    fighter,
+                                    activeTarget,
+                                    abilityBeforeUpdate,
+                              ).connected
+                        ) {
+                              fighter.audio.playAbilityCue(
+                                    abilityBeforeUpdate,
+                                    "hit",
+                              );
+                        }
                   }
                   const chargeTarget = target && !target.isDead
                         ? target
@@ -153,6 +163,7 @@ export class AbilitySystem implements StandardAbilityHandler {
             }
 
             if (ability && fighter.abilities.state === "active") {
+                  this.applyAttackHitbox(fighter, ability);
                   const dash = this.action<"dash">(ability, "dash");
                   const direction = this.dashDirections.get(fighter);
                   if (dash && direction)
@@ -175,10 +186,9 @@ export class AbilitySystem implements StandardAbilityHandler {
             if (fighter.isDead || fighter.abilities.state !== "idle")
                   return;
 
-            const activation = fighter.config.abilities
+            const activations = fighter.activeAbilities
                   .filter((candidate) =>
-                        candidate.trigger.type !== "wall-contact" &&
-                        fighter.abilities.canUse(candidate, now),
+                        candidate.trigger.type !== "wall-contact",
                   )
                   .map((candidate) => ({
                         ability: candidate,
@@ -187,22 +197,26 @@ export class AbilitySystem implements StandardAbilityHandler {
                               this.gm.characters,
                               candidate.trigger,
                         ),
-                  }))
-                  .find((candidate) => candidate.target !== null);
-            if (activation?.target)
-                  this.activate(
-                        fighter,
-                        activation.target,
-                        activation.ability,
-                        now,
-                  );
+                  }));
+            for (const activation of activations) {
+                  if (!activation.target) continue;
+                  if (
+                        this.activate(
+                              fighter,
+                              activation.target,
+                              activation.ability,
+                              now,
+                        )
+                  )
+                        break;
+            }
       }
 
       /** StandardAbilityHandler implementation */
-      onWallCollision(fighter: Fighter, wall: ArenaWall): boolean {
+      onWallCollision(fighter: Fighter, wall: ArenaWall): WallCollisionResponse {
             void wall;
             this.finishCollisionDash(fighter, "wall-collision");
-            return false;
+            return DEFAULT_WALL_COLLISION_RESPONSE;
       }
 
       /** StandardAbilityHandler implementation */
@@ -230,7 +244,7 @@ export class AbilitySystem implements StandardAbilityHandler {
                               nearestEnemy(fighter, this.gm.characters),
                         );
                   else if (mode === "range") {
-                        const rangeAbility = fighter.config.abilities.find(
+                        const rangeAbility = fighter.activeAbilities.find(
                               (ability) =>
                                     ability.trigger.type === "enemy-in-range",
                         );
@@ -273,9 +287,16 @@ export class AbilitySystem implements StandardAbilityHandler {
             fighter: Fighter,
             wall: ArenaWall,
             bounds: ArenaBounds,
-      ): boolean {
+            wasDashing: boolean,
+      ): WallCollisionResponse {
             this.ensureBehavior(fighter);
-            return fighter.behavior?.onWallCollision(wall, bounds) ?? false;
+            const response = fighter.behavior?.onWallCollision(wall, bounds);
+            if (!response) {
+                  return { defaultBounce: true, allowImpactDamage: !wasDashing };
+            }
+            return wasDashing
+                  ? { ...response, allowImpactDamage: false }
+                  : response;
       }
 
       private activate(
@@ -283,35 +304,49 @@ export class AbilitySystem implements StandardAbilityHandler {
             target: Fighter,
             ability: AbilityConfig,
             nowMs: number,
-      ): void {
-            fighter.abilities.start(ability, fighter.facing, nowMs);
+      ): boolean {
+            const result = fighter.abilities.tryStart(
+                  ability,
+                  fighter.facing,
+                  nowMs,
+            );
+            if (!result.started) return false;
             fighter.abilities.lockFacingToward(
                   target.body.position.x,
                   fighter.body.position.x,
             );
             this.targets.set(fighter, target);
-            const projectile = this.action<"spawn-projectile">(
-                  ability,
-                  "spawn-projectile",
-            );
-            if (projectile)
-                  this.actions.executeProjectileAction(
-                        fighter,
-                        target,
-                        ability,
-                        projectile,
-                  );
+            return true;
+      }
 
-            const dash = this.action<"dash">(ability, "dash");
-            if (!dash && !projectile && !this.action(ability, "swing"))
+      private applyAttackHitbox(fighter: Fighter, ability: AbilityConfig): void {
+            const action = this.action<"attack-hitbox">(
+                  ability,
+                  "attack-hitbox",
+            );
+            if (!action) return;
+            let hitTargets = this.attackHitTargets.get(fighter);
+            if (!hitTargets) {
+                  hitTargets = new Set();
+                  this.attackHitTargets.set(fighter, hitTargets);
+            }
+            for (const target of this.gm.characters) {
                   if (
-                        this.actions.executeTargetActions(
-                              fighter,
-                              target,
-                              ability,
-                        )
-                  )
+                        target === fighter ||
+                        target.isDead ||
+                        hitTargets.has(target) ||
+                        !attackHitboxOverlaps(fighter, target, action)
+                  ) {
+                        continue;
+                  }
+                  if (
+                        this.actions.executeTargetActions(fighter, target, ability)
+                              .connected
+                  ) {
                         fighter.audio.playAbilityCue(ability, "hit");
+                  }
+                  hitTargets.add(target);
+            }
       }
 
       private tryApplyDashHit(attacker: Fighter, target: Fighter): void {
@@ -325,9 +360,7 @@ export class AbilitySystem implements StandardAbilityHandler {
                   this.dashHits.has(attacker)
             )
                   return;
-            if (
-                  this.actions.executeTargetActions(attacker, target, ability)
-            )
+            if (this.actions.executeTargetActions(attacker, target, ability).connected)
                   attacker.audio.playAbilityCue(ability, "hit");
             this.dashHits.add(attacker);
       }
@@ -350,16 +383,21 @@ export class AbilitySystem implements StandardAbilityHandler {
             this.dashDirections.delete(fighter);
             this.dashHits.delete(fighter);
             this.swingHits.delete(fighter);
+            this.attackHitTargets.delete(fighter);
       }
 
       resetAll(): void {
             for (const fighter of this.gm.characters) {
+                  fighter.statuses.clear();
+                  fighter.resetTransformation();
                   fighter.behavior?.reset();
+                  fighter.abilities.reset();
             }
             this.targets.clear();
             this.dashDirections.clear();
             this.dashHits.clear();
             this.swingHits.clear();
+            this.attackHitTargets.clear();
       }
 
       isDashing(fighter: Fighter): boolean {

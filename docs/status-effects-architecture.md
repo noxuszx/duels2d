@@ -1,9 +1,9 @@
-# Status Effects Architecture
+# Status effects
 
-Give every fighter a `StatusEffectController` that tracks active effects and
-their remaining duration.
-
-Other systems should ask what the fighter can currently do:
+Each `Fighter` owns a `StatusEffectController` (`fighter.statuses`). The
+controller stores active effects and exposes combined capabilities; gameplay
+systems ask what actions are currently allowed instead of scattering checks
+for named effects.
 
 ```ts
 fighter.statuses.canStartAbilities
@@ -11,38 +11,54 @@ fighter.statuses.canContinueAbility
 fighter.statuses.canUseMovement
 ```
 
-Start with two effects:
+## Current effects and rules
 
-- **Stun:** interrupts abilities, prevents casting, and disables voluntary
-  movement.
-- **Ability lock:** prevents new abilities, but allows movement and the current
-  ability to finish.
+- `stun` blocks new abilities, interrupts the active ability and behavior, and
+  disables voluntary movement. Its physics body remains active: pending force,
+  knockback, collisions, and wall bounce still work.
+- `ability-lock` blocks new ability starts only. It does not interrupt an
+  active ability or prevent movement.
+- Restrictions from simultaneous effects combine: a capability is allowed
+  only when every active effect allows it.
+- Effects run on deterministic simulation time via `update(deltaMs)`. A
+  duration expires at its boundary; timers do not depend on render rate.
+- Reapplying an effect keeps the longer of its current remaining duration and
+  the new duration. The most recent application replaces `sourceId`, even when
+  it does not extend the timer. Different effect IDs coexist.
+- Statuses are cleared when a fighter dies and on match reset. Interrupting an
+  ability preserves its cooldown history.
 
-A stunned fighter should remain physically active. It can still be knocked
-around, pushed, and bounced off walls; it simply cannot control itself.
-
-Abilities can apply statuses with a new action:
+Abilities use the `apply-status` action:
 
 ```json
-{
-  "type": "apply-status",
-  "effect": "stun",
-  "durationMs": 700
-}
+{ "type": "apply-status", "effect": "stun", "durationMs": 700 }
 ```
 
-Casting restrictions should be enforced inside `FighterAbilities` so custom
-fighter behaviors cannot bypass them accidentally.
+`ActionExecutor.executeTargetActions()` applies status actions after damage or
+knockback connects. When an ability has no damage or knockback action, applying
+a status is itself the connection, even if the ability also contains a swing
+or dash action. `sourceId` is set to the attacking fighter's ID. No live
+fighter currently has `apply-status` configured; the runtime and configuration
+support are ready for a future move to use it.
 
-## Implementation order
+## Extending the system
 
-1. Create the status controller.
-2. Attach it to every fighter.
-3. Block ability activation centrally.
-4. Add ability interruption.
-5. Disable voluntary movement during stun.
-6. Add `apply-status` to ability actions and the fighter JSON schema.
-7. Add tests for duration, refreshing, interruption, and cooldown behavior.
+1. Add the ID and capability definition in `src/status-effects/types.ts` and
+   `src/status-effects/definitions.ts`.
+2. Choose the effect's capability restrictions. Add stacking or stat-modifier
+   data only with an explicit policy; do not overload unrelated capabilities.
+3. Add lifecycle handling if needed. Keep effect durations in simulation
+   milliseconds, define refresh/stack and source-attribution behavior, and
+   clear state on death and match reset.
+4. If fighters can receive the effect from JSON abilities, update
+   `ApplyStatusAction` in `src/abilities/types.ts`, the `apply-status` branch
+   in `config/fighters/fighter.schema.json`, runtime checks in
+   `tools/validate-config.js`, and docs/examples together.
+5. Enforce restrictions at the shared ownership boundary (ability start,
+   ability continuation, or voluntary movement). Preserve physics and external
+   forces unless the effect explicitly requires a separate physics rule.
 
-This foundation can later support slows, poison, shields, regeneration, and
-stat buffs.
+The controller combines capabilities; `Fighter`, `FighterAbilities`,
+`AbilitySystem`, and `CombatSystem` enforce them at their respective shared
+boundaries. Avoid adding `if (status === "stun")` checks to individual fighter
+implementations.

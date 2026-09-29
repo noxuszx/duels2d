@@ -7,6 +7,15 @@ import type {
 } from "../abilities/types";
 import { calculateSwingAngle } from "../abilities/actions/swing-action";
 
+export type AbilityStartFailureReason =
+      | "already-active"
+      | "cooldown"
+      | "casting-locked";
+
+export type AbilityStartResult =
+      | { started: true }
+      | { started: false; reason: AbilityStartFailureReason };
+
 /** Owns the ability runtime state machine, timers, cooldowns, and swing animation for a fighter. */
 export class FighterAbilities {
       private readonly lastUseTimes = new Map<string, number>();
@@ -14,7 +23,12 @@ export class FighterAbilities {
       state: AbilityState = "idle";
       facing: Facing | null = null;
       active: AbilityConfig | null = null;
-      timer = 0;
+      remainingMs = 0;
+      private activePhaseVersionValue = 0;
+
+      get activePhaseVersion(): number {
+            return this.activePhaseVersionValue;
+      }
 
       constructor(
             private readonly onAudioEvent?: (
@@ -26,31 +40,33 @@ export class FighterAbilities {
                   event: AbilityAudioEvent,
             ) => void,
             private readonly canStartAbility: () => boolean = () => true,
-      ) {}
+      ) { }
 
-      canUse(ability: AbilityConfig, nowMs: number): boolean {
-            return (
-                  this.canStartAbility() &&
-                  nowMs - (this.lastUseTimes.get(ability.id) ?? -Infinity) >=
-                  ability.timing.cooldownMs
-            );
-      }
-
-      start(
+      tryStart(
             ability: AbilityConfig,
             currentFacing: Facing,
             nowMs: number,
-      ): void {
-            if (this.active) {
-                  this.onAudioStop?.(this.active, "active");
-                  this.onAudioStop?.(this.active, "windup");
+      ): AbilityStartResult {
+            if (this.state !== "idle" || this.active !== null) {
+                  return { started: false, reason: "already-active" };
             }
+            if (!this.canStartAbility()) {
+                  return { started: false, reason: "casting-locked" };
+            }
+            if (
+                  nowMs - (this.lastUseTimes.get(ability.id) ?? -Infinity) <
+                  ability.timing.cooldownMs
+            ) {
+                  return { started: false, reason: "cooldown" };
+            }
+
             this.active = ability;
             this.facing = currentFacing;
             this.lastUseTimes.set(ability.id, nowMs);
             this.state = "windup";
-            this.timer = ability.timing.windupFrames;
+            this.remainingMs = ability.timing.windupMs;
             this.onAudioEvent?.(ability, "windup");
+            return { started: true };
       }
 
       lockFacingToward(targetX: number, selfX: number): void {
@@ -65,19 +81,32 @@ export class FighterAbilities {
                   dash &&
                   dash.type === "dash" &&
                   (dash.endOn.includes("fighter-collision") ||
-                   dash.endOn.includes("wall-collision")),
+                        dash.endOn.includes("wall-collision")),
             );
       }
 
-      update(): void {
-            if (!this.active || this.timer <= 0) return;
-            this.timer--;
-            if (this.state === "windup" && this.timer <= 0) {
-                  this.beginActive();
-            } else if (this.state === "active" && this.timer <= 0) {
-                  this.finishActive();
-            } else if (this.state === "recovery" && this.timer <= 0) {
-                  this.reset();
+      update(deltaMs: number): void {
+            if (!this.active || deltaMs <= 0) return;
+
+            let elapsedMs = deltaMs;
+            while (this.active) {
+                  if (this.remainingMs > elapsedMs) {
+                        this.remainingMs -= elapsedMs;
+                        return;
+                  }
+
+                  elapsedMs -= this.remainingMs;
+                  this.remainingMs = 0;
+
+                  if (this.state === "windup") {
+                        this.beginActive();
+                  } else if (this.state === "active") {
+                        this.finishActive();
+                  } else if (this.state === "recovery") {
+                        this.reset();
+                  } else {
+                        return;
+                  }
             }
       }
 
@@ -85,9 +114,10 @@ export class FighterAbilities {
             if (this.state !== "windup" || !this.active) return;
             this.onAudioStop?.(this.active, "windup");
             this.state = "active";
-            this.timer = this.hasCollisionDash()
-                  ? 600
-                  : this.active.timing.activeFrames;
+            this.activePhaseVersionValue++;
+            this.remainingMs = this.hasCollisionDash()
+                  ? 5_000
+                  : this.active.timing.activeMs;
             this.onAudioEvent?.(this.active, "active");
       }
 
@@ -95,8 +125,8 @@ export class FighterAbilities {
             if (this.state !== "active" || !this.active) return;
             this.onAudioStop?.(this.active, "active");
             this.state = "recovery";
-            this.timer = this.active.timing.recoveryFrames;
-            if (this.timer <= 0) {
+            this.remainingMs = this.active.timing.recoveryMs;
+            if (this.remainingMs <= 0) {
                   this.reset();
             }
       }
@@ -109,7 +139,7 @@ export class FighterAbilities {
             this.state = "idle";
             this.active = null;
             this.facing = null;
-            this.timer = 0;
+            this.remainingMs = 0;
       }
 
       getSwingAngle(): number | null {
@@ -120,8 +150,8 @@ export class FighterAbilities {
             return calculateSwingAngle(
                   swing,
                   this.state,
-                  this.timer,
-                  this.active?.timing.activeFrames ?? 1,
+                  this.remainingMs,
+                  this.active?.timing.activeMs ?? 1,
             );
       }
 }

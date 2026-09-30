@@ -9,6 +9,11 @@
             "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
             "name": { "type": "string", "minLength": 1 },
             "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+            "skills": {
+                  "type": "object",
+                  "properties": { "aim": { "$ref": "#/$defs/aimSkill" } },
+                  "additionalProperties": false
+            },
             "combat": { "$ref": "#/$defs/combat" },
             "body": { "$ref": "#/$defs/body" },
             "presentation": { "$ref": "#/$defs/presentation" },
@@ -318,6 +323,16 @@
                   },
                   "additionalProperties": false
             },
+            "aimSkill": {
+                  "type": "object",
+                  "required": ["muzzle"],
+                  "properties": {
+                        "muzzle": { "$ref": "#/$defs/vector" },
+                        "pivot": { "$ref": "#/$defs/vector" },
+                        "forwardDegrees": { "type": "number" }
+                  },
+                  "additionalProperties": false
+            },
             "pose": {
                   "oneOf": [
                         { "type": "string", "minLength": 1 },
@@ -338,7 +353,8 @@
                                     "imageScale": {
                                           "$ref": "#/$defs/positiveNumber"
                                     },
-                                    "imageOffset": { "$ref": "#/$defs/vector" }
+                                    "imageOffset": { "$ref": "#/$defs/vector" },
+                                    "aim": { "$ref": "#/$defs/aimSkill" }
                               },
                               "additionalProperties": false
                         }
@@ -395,6 +411,28 @@
                   "required": ["trigger"],
                   "properties": {
                         "trigger": { "$ref": "#/$defs/transformationTrigger" },
+                        "sequence": {
+                              "type": "array",
+                              "items": {
+                                    "type": "object",
+                                    "required": ["pose", "durationMs"],
+                                    "properties": {
+                                          "aimSkill": {
+                  "type": "object",
+                  "required": ["muzzle"],
+                  "properties": {
+                        "muzzle": { "$ref": "#/$defs/vector" },
+                        "pivot": { "$ref": "#/$defs/vector" },
+                        "forwardDegrees": { "type": "number" }
+                  },
+                  "additionalProperties": false
+            },
+            "pose": { "type": "string", "minLength": 1 },
+                                          "durationMs": { "$ref": "#/$defs/positiveNumber" }
+                                    },
+                                    "additionalProperties": false
+                              }
+                        },
                         "combat": {
                               "type": "object",
                               "properties": {

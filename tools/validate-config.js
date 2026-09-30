@@ -82,6 +82,7 @@ function composeFighter(defaults, definition) {
             transformation: fighter.transformation
                   ? {
                           trigger: fighter.transformation.trigger,
+                          sequence: fighter.transformation.sequence,
                           abilities:
                                 fighter.transformation.combat?.abilities ??
                                 fighter.combat.abilities,
@@ -162,6 +163,20 @@ function checkVector(location, value) {
       }
 }
 
+function checkAim(location, aim) {
+      if (!aim || typeof aim !== "object" || Array.isArray(aim)) {
+            fail(location, "must be an aim skill object");
+            return;
+      }
+      checkVector(`${location}.muzzle`, aim.muzzle);
+      if (aim.pivot !== undefined) checkVector(`${location}.pivot`, aim.pivot);
+      if (aim.forwardDegrees !== undefined && !Number.isFinite(aim.forwardDegrees))
+            fail(`${location}.forwardDegrees`, "must be a finite number");
+      for (const key of Object.keys(aim))
+            if (!["muzzle", "pivot", "forwardDegrees"].includes(key))
+                  fail(`${location}.${key}`, "unknown aim skill property");
+}
+
 function checkCrop(location, crop) {
       if (crop == null) return;
       if (!Number.isFinite(crop.x) || crop.x < 0)
@@ -194,6 +209,7 @@ function checkPoses(location, poses) {
             if (pose.imageOffset)
                   checkVector(`${poseLocation}.imageOffset`, pose.imageOffset);
             checkCrop(`${poseLocation}.imageCrop`, pose.imageCrop);
+            if (pose.aim !== undefined) checkAim(`${poseLocation}.aim`, pose.aim);
       });
 }
 
@@ -347,6 +363,16 @@ if (definitions.length < 2) {
 
 definitions.forEach((definition, index) => {
       const location = fighterFiles[index] || `fighter #${index + 1}`;
+      if (definition.skills !== undefined) {
+            if (!definition.skills || typeof definition.skills !== "object" || Array.isArray(definition.skills))
+                  fail(`${location}.skills`, "must be a skills object");
+            else {
+                  for (const key of Object.keys(definition.skills))
+                        if (key !== "aim") fail(`${location}.skills.${key}`, "unknown skill");
+                  if (definition.skills.aim !== undefined)
+                        checkAim(`${location}.skills.aim`, definition.skills.aim);
+            }
+      }
       if (!/^[a-z0-9-]+$/.test(definition.id || "")) {
             fail(
                   location,
@@ -512,6 +538,19 @@ roster.forEach((fighter) => {
 
       if (fighter.transformation) {
             const transformationLocation = `${location}.transformation`;
+            const sequence = fighter.transformation.sequence;
+            if (sequence !== undefined && !Array.isArray(sequence)) {
+                  fail(`${transformationLocation}.sequence`, "must be an array");
+            } else {
+                  (sequence || []).forEach((step, index) => {
+                        const stepLocation = `${transformationLocation}.sequence[${index}]`;
+                        if (!isPositive(step?.durationMs))
+                              fail(`${stepLocation}.durationMs`, "must be greater than 0");
+                        if (typeof step?.pose !== "string" ||
+                              !fighter.transformation.poses?.[step.pose])
+                              fail(`${stepLocation}.pose`, "must reference a transformed pose");
+                  });
+            }
             if (fighter.transformation.trigger?.type !== "health-threshold") {
                   fail(
                         `${transformationLocation}.trigger.type`,

@@ -71,6 +71,7 @@ function materializePoses(
                               : presentation.imageCrop;
                   const materialized: Exclude<PoseConfig, string> = {
                         image,
+                        ...(poseObject?.aim ? { aim: structuredClone(poseObject.aim) } : {}),
                         imageScale:
                               poseObject?.imageScale ?? presentation.imageScale,
                         imageOffset: {
@@ -97,6 +98,7 @@ export function composeFighter(
             id: merged.id,
             name: merged.name,
             color: merged.color,
+            ...(definition.skills ? { skills: structuredClone(definition.skills) } : {}),
             maxHealth: merged.combat.maxHealth,
             speed: merged.combat.speed,
             baseDamage: merged.combat.baseDamage,
@@ -119,6 +121,7 @@ export function composeFighter(
             transformation: merged.transformation
                   ? {
                           trigger: merged.transformation.trigger,
+                          sequence: merged.transformation.sequence,
                           abilities:
                                 merged.transformation.combat?.abilities ??
                                 merged.combat.abilities,

@@ -17,20 +17,21 @@ export function executeProjectileAction(
       const dy = target.body.position.y - source.body.position.y;
       const length = Math.hypot(dx, dy) || 1;
 
-      const spawnX =
+      const aim = source.aimSkill?.current;
+      const spawnX = aim?.origin.x ?? (
             source.body.position.x +
-            (dx / length) * (source.hitbox.halfWidth + config.radius + 2);
-      const spawnY =
+            (dx / length) * (source.hitbox.halfWidth + config.radius + 2));
+      const spawnY = aim?.origin.y ?? (
             source.body.position.y +
-            (dy / length) * (source.hitbox.halfHeight + config.radius + 2);
+            (dy / length) * (source.hitbox.halfHeight + config.radius + 2));
 
       const projectile = new Projectile(
             config,
             source,
             spawnX,
             spawnY,
-            (dx / length) * config.speed,
-            (dy / length) * config.speed,
+            (aim?.direction.x ?? dx / length) * config.speed,
+            (aim?.direction.y ?? dy / length) * config.speed,
             ability.audio?.hit ?? null,
       );
 

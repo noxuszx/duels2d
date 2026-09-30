@@ -1,4 +1,7 @@
+import type { AimTool } from "./aim-tool";
 import type { Vector2 } from "../../src/types/fighter";
+import type { AttackHitboxAction } from "../../src/abilities/types";
+import { attackHitboxRect, movedAttackOffset } from "./attack-hitbox-tool";
 import {
       _getImageRect,
       _hitTestCropHandle,
@@ -18,7 +21,10 @@ import type { DragState, Rect, StudioConfig } from "./studio-types";
 
 export type CanvasToolHost = CropToolHost &
       HitboxToolHost & {
+            aimTool?: AimTool;
             dragState: DragState | null;
+            _attackHitboxAction(): AttackHitboxAction | null;
+            _syncAttackHitboxControls(): void;
       };
 
 function canvasPoint(canvas: HTMLCanvasElement, event: PointerEvent): Vector2 {
@@ -42,12 +48,30 @@ export function installCanvasToolController(host: CanvasToolHost): void {
       host.canvas.addEventListener("pointerleave", (event) =>
             onPointerUp(host, event),
       );
+      host.canvas.addEventListener("pointercancel", (event) =>
+            onPointerUp(host, event),
+      );
 }
 
 function onPointerDown(host: CanvasToolHost, event: PointerEvent): void {
-      if (host.mode !== "crop" && host.mode !== "hitbox") return;
+      if (host.aimTool?.onPointerDown(event)) return;
       const config = host._currentConfig();
       const point = canvasPoint(host.canvas, event);
+      if (host.mode === "default") {
+            const action = host._attackHitboxAction();
+            if (!action) return;
+            const rect = attackHitboxRect(
+                  { x: host.canvas.width / 2, y: host.canvas.height / 2 },
+                  action, config.defaultFacing ?? "right",
+            );
+            if (point.x < rect.x || point.x > rect.x + rect.width || point.y < rect.y || point.y > rect.y + rect.height) return;
+            host.canvas.setPointerCapture(event.pointerId);
+            host.dragState = {
+                  handle: "attack-move", startX: point.x, startY: point.y,
+                  startRect: rect, imageRect: rect, startOffset: { ...action.offset },
+            };
+            return;
+      }
       const rect =
             host.mode === "crop"
                   ? _sourceCropToPreviewRect(
@@ -88,9 +112,19 @@ function onPointerDown(host: CanvasToolHost, event: PointerEvent): void {
 }
 
 function onPointerMove(host: CanvasToolHost, event: PointerEvent): void {
+      if (host.aimTool?.onPointerMove(event)) return;
       if (!host.dragState) return;
       const point = canvasPoint(host.canvas, event);
-      if (host.mode === "hitbox") updateHitboxDrag(host, point);
+      if (host.dragState.handle === "attack-move") {
+            const action = host._attackHitboxAction();
+            if (!action) return;
+            action.offset = movedAttackOffset(
+                  host.dragState.startOffset,
+                  { x: point.x - host.dragState.startX, y: point.y - host.dragState.startY },
+                  host._currentConfig().defaultFacing ?? "right",
+            );
+            host._syncAttackHitboxControls();
+      } else if (host.mode === "hitbox") updateHitboxDrag(host, point);
       else if (host.mode === "crop") updateCropDrag(host, point);
       host._refreshLabels();
       host._draw();
@@ -143,6 +177,8 @@ function updateCropDrag(host: CanvasToolHost, point: Vector2): void {
 }
 
 function onPointerUp(host: CanvasToolHost, event: PointerEvent): void {
+      if (host.aimTool?.onPointerUp(event)) return;
+      if (host.dragState?.handle === "attack-move") host._saveState();
       if (host.dragState && host.canvas.hasPointerCapture(event.pointerId))
             host.canvas.releasePointerCapture(event.pointerId);
       host.dragState = null;

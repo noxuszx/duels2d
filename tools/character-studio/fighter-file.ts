@@ -78,6 +78,20 @@ export function syncFighterDefinition(
       if (!definition)
             throw new Error(`Missing fighter definition for ${config.id}`);
 
+      if (config.skills?.aim) definition.skills = structuredClone(config.skills);
+      else delete definition.skills;
+
+      if (config.transformation) {
+            definition.transformation = {
+                  trigger: structuredClone(config.transformation.trigger),
+                  sequence: structuredClone(config.transformation.sequence ?? []),
+                  combat: { abilities: structuredClone(config.transformation.abilities) },
+                  presentation: { poses: structuredClone(config.transformation.poses) },
+            };
+      } else {
+            delete definition.transformation;
+      }
+
       // Body: strip hitbox and hitboxOffset if equal to defaults
       if (
             definition.body ||
@@ -239,6 +253,7 @@ export function syncFighterDefinition(
                         cleanedPoses[key] = poseVal;
                   } else if (typeof poseVal === "object") {
                         const poseObj: PoseOverrides = { image: poseVal.image };
+                        if (poseVal.aim) poseObj.aim = structuredClone(poseVal.aim);
                         if (poseVal.imageCrop) {
                               poseObj.imageCrop = {
                                     x: cleanNumber(poseVal.imageCrop.x),
@@ -248,6 +263,8 @@ export function syncFighterDefinition(
                                           poseVal.imageCrop.height,
                                     ),
                               };
+                        } else if ("imageCrop" in poseVal) {
+                              poseObj.imageCrop = null;
                         }
                         if (poseVal.imageScale !== undefined) {
                               poseObj.imageScale = cleanNumber(
@@ -300,6 +317,7 @@ export function cleanForSave(value: JSONValue): JSONValue {
                         cleanedItem !== null &&
                         typeof cleanedItem === "object" &&
                         !Array.isArray(cleanedItem) &&
+                        key !== "poses" &&
                         Object.keys(cleanedItem).length === 0
                   ) {
                         continue;

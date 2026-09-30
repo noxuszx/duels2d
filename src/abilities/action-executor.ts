@@ -101,7 +101,7 @@ export class ActionExecutor {
             const dx = target.body.position.x - source.body.position.x;
             const dy = target.body.position.y - source.body.position.y;
             const length = Math.hypot(dx, dy) || 1;
-            const firingDirection = { x: dx / length, y: dy / length };
+            const firingDirection = source.aimSkill?.current?.direction ?? { x: dx / length, y: dy / length };
 
             for (const action of ability.actions) {
                   if (action.type === "spawn-projectile") {

@@ -70,9 +70,7 @@ export function _initPoseCropFromImage(
             _initCropFromImage(studio, config);
             return;
       }
-      const poseVal = config.poses?.[poseKey];
-      const poseObj = poseVal && typeof poseVal === "object" ? poseVal : null;
-      if (poseObj?.imageCrop) return;
+      if (studio._getPoseVisual(config, poseKey).imageCrop) return;
       const img = studio.images.body;
       if (img.complete && img.naturalWidth > 0) {
             studio._setPoseVisual(config, poseKey, {

@@ -62,9 +62,11 @@ export type StudioState = Pick<
       | "weaponOffset"
       | "weaponPivot"
       | "weaponIdle"
+      | "skills"
       | "abilities"
+      | "transformation"
       | "poses"
-> & { activePoseKey: string };
+> & { activePoseKey: string; activeForm: "base" | "transformed" };
 export type JSONValue =
       | string
       | number

@@ -13,6 +13,7 @@ import type {
 } from "../../src/types/fighter";
 import { numberValue, requireElement } from "./studio-elements";
 import { drawStudio } from "./studio-renderer";
+import { AimTool } from "./aim-tool";
 import {
       cleanForSave,
       downloadFighterFile,
@@ -34,6 +35,8 @@ import {
 } from "./crop-tool";
 import { installCanvasToolController } from "./canvas-tool-controller";
 import { spriteCatalog } from "./sprite-catalog";
+import { poseLabel } from "./pose-label";
+import { poseBank, TransformationTool, type StudioForm } from "./transformation-tool";
 import {
       applyHitbox,
       applyHitboxOutput,
@@ -83,20 +86,39 @@ const SUPPORTED_POSE_KEYS = [
       "crawl2",
 ] as const;
 
-function poseLabel(key: string): string {
-      const labels: Record<string, string> = {
-            base: "Base / Default",
-            idle: "Idle",
-            attackWindup: "Attack Windup",
-            attackActive: "Attack Active",
-            recovery: "Recovery",
-            crawl1: "Crawl 1",
-            crawl2: "Crawl 2",
-      };
-      return labels[key] ?? key;
-}
-
 export class CharacterStudio {
+      activeForm: StudioForm = "base";
+      transformationTool!: TransformationTool;
+      aimTool!: AimTool;
+
+      _poseBank(config = this._currentConfig()): Record<string, PoseConfig> {
+            return poseBank(config, this.activeForm);
+      }
+
+      _editingAbilities() {
+            const config = this._currentConfig();
+            return this.activeForm === "transformed" && config.transformation
+                  ? config.transformation.abilities : config.abilities;
+      }
+
+      _refreshForm(): void {
+            this.mode = "default";
+            this.dragState = null;
+            this.cropDraft = null;
+            this.hitboxDraft = null;
+            this.hitboxDraftOffset = null;
+            this.activePoseKey = this.activeForm === "transformed" ? "idle" : "base";
+            this._populatePoseSelect(this._currentConfig());
+            this._populateAttackHitboxSelect();
+            this._populateProjectileSelect();
+            this._syncSwingControls();
+            this._syncHitboxControls(this._currentConfig());
+            this._updateHitboxButtons();
+            _updateCropButtons(this);
+            this.transformationTool.sync();
+            this._onPoseChanged();
+            this._draw();
+      }
       canvas: HTMLCanvasElement;
       ctx: CanvasRenderingContext2D;
       configs: StudioConfig[];
@@ -339,6 +361,7 @@ export class CharacterStudio {
             });
 
             this.poseSelect.addEventListener("change", () => {
+                  this.transformationTool.stopPreview();
                   this.activePoseKey = this.poseSelect.value;
                   this._onPoseChanged();
             });
@@ -573,6 +596,8 @@ export class CharacterStudio {
             };
             requestAnimationFrame(animateProjectile);
 
+            this.transformationTool = new TransformationTool(this);
+            this.aimTool = new AimTool(this);
             this._loadCurrentConfig();
       }
 
@@ -581,7 +606,7 @@ export class CharacterStudio {
       }
 
       _projectileAction() {
-            for (const ability of this._currentConfig().abilities) {
+            for (const ability of this._editingAbilities()) {
                   const action = ability.actions.find(
                         (candidate) => candidate.type === "spawn-projectile",
                   );
@@ -591,7 +616,7 @@ export class CharacterStudio {
       }
 
       _swingAction() {
-            for (const ability of this._currentConfig().abilities) {
+            for (const ability of this._editingAbilities()) {
                   const action = ability.actions.find(
                         (candidate) => candidate.type === "swing",
                   );
@@ -602,7 +627,7 @@ export class CharacterStudio {
 
       _attackHitboxAction(): AttackHitboxAction | null {
             const abilityId = this.attackHitboxAbilitySelect.value;
-            const ability = this._currentConfig().abilities.find(
+            const ability = this._editingAbilities().find(
                   (candidate) => candidate.id === abilityId,
             );
             return (
@@ -615,7 +640,7 @@ export class CharacterStudio {
 
       _populateAttackHitboxSelect(): void {
             const previous = this.attackHitboxAbilitySelect.value;
-            const abilities = this._currentConfig().abilities.filter((ability) =>
+            const abilities = this._editingAbilities().filter((ability) =>
                   ability.actions.some((action) => action.type === "attack-hitbox"),
             );
             this.attackHitboxAbilitySelect.replaceChildren();
@@ -638,6 +663,15 @@ export class CharacterStudio {
 
       _syncAttackHitboxControls(): void {
             const action = this._attackHitboxAction();
+            if (action) {
+                  for (const [key, value] of [
+                        ["attackHitboxOffsetX", action.offset.x],
+                        ["attackHitboxOffsetY", action.offset.y],
+                  ] as const) {
+                        this.controls[key].min = String(Math.min(-250, value));
+                        this.controls[key].max = String(Math.max(250, value));
+                  }
+            }
             this.controls.attackHitboxWidth.value = action?.width ?? 40;
             this.controls.attackHitboxHeight.value = action?.height ?? 100;
             this.controls.attackHitboxOffsetX.value = action?.offset.x ?? 40;
@@ -745,13 +779,13 @@ export class CharacterStudio {
             poseKey: string,
       ): PoseConfig | null | undefined {
             if (poseKey === "base") return null;
-            return config.poses?.[poseKey];
+            return this._poseBank(config)[poseKey];
       }
 
       /** Return the image path for a given pose key. */
       _getPoseImagePath(config: StudioConfig, poseKey: string): string {
             if (poseKey === "base") return config.image ?? "";
-            const poseVal = config.poses?.[poseKey];
+            const poseVal = this._poseBank(config)[poseKey];
             if (!poseVal) return config.image ?? "";
             if (typeof poseVal === "string") return poseVal;
             return poseVal.image ?? config.image ?? "";
@@ -767,9 +801,9 @@ export class CharacterStudio {
                   config.image = imagePath;
                   return;
             }
-            config.poses ??= {};
-            const existing = config.poses[poseKey];
-            config.poses[poseKey] =
+            const poses = this._poseBank(config);
+            const existing = poses[poseKey];
+            poses[poseKey] =
                   existing && typeof existing === "object"
                         ? { ...existing, image: imagePath }
                         : {
@@ -786,6 +820,9 @@ export class CharacterStudio {
             const configuredPaths = [
                   config.image,
                   ...Object.values(config.poses ?? {}).map((pose) =>
+                        typeof pose === "string" ? pose : pose.image,
+                  ),
+                  ...Object.values(config.transformation?.poses ?? {}).map((pose) =>
                         typeof pose === "string" ? pose : pose.image,
                   ),
             ].filter((path): path is string => Boolean(path));
@@ -841,7 +878,7 @@ export class CharacterStudio {
                         imageCrop: config.imageCrop ?? null,
                   };
             }
-            const poseVal = config.poses?.[poseKey];
+            const poseVal = this._poseBank(config)[poseKey];
             const poseObj: Partial<Exclude<PoseConfig, string>> =
                   poseVal && typeof poseVal === "object" ? poseVal : {};
             return {
@@ -875,8 +912,8 @@ export class CharacterStudio {
                               : null;
                   return;
             }
-            config.poses ??= {};
-            const existing = config.poses[poseKey];
+            const poses = this._poseBank(config);
+            const existing = poses[poseKey];
             const poseObj: Exclude<PoseConfig, string> =
                   existing && typeof existing === "object"
                         ? existing
@@ -897,10 +934,10 @@ export class CharacterStudio {
                   poseObj.imageCrop = patch.imageCrop
                         ? { ...patch.imageCrop }
                         : null;
-            config.poses[poseKey] = poseObj;
+            poses[poseKey] = poseObj;
       }
 
-      /** Populate the pose <select> from base + config.poses keys. */
+      /** Show one Idle entry, using the legacy default only when no idle pose exists. */
       _populatePoseSelect(config: StudioConfig): void {
             if (!this.poseSelect) return;
             this.poseSelect.innerHTML = "";
@@ -910,22 +947,22 @@ export class CharacterStudio {
                   opt.textContent = label;
                   this.poseSelect.appendChild(opt);
             };
-            addOpt("base", poseLabel("base"));
-            const poses = config.poses ?? {};
+            const poses = this._poseBank(config);
+            if (this.activeForm === "base" && !poses.idle) addOpt("base", poseLabel("base"));
             for (const key of SUPPORTED_POSE_KEYS) {
-                  if (key in poses) addOpt(key, poseLabel(key));
+                  if (key in poses || this.activeForm === "transformed" && key === "idle") addOpt(key, poseLabel(key));
             }
             // Preserve any older custom entries so they remain editable instead
             // of silently disappearing from the Studio.
             for (const key of Object.keys(poses)) {
                   if (!SUPPORTED_POSE_KEYS.includes(key as typeof SUPPORTED_POSE_KEYS[number])) {
-                        addOpt(key, key);
+                        addOpt(key, poseLabel(key));
                   }
             }
             // Keep or reset activePoseKey to something valid
-            const validKeys = ["base", ...Object.keys(poses)];
+            const validKeys = Array.from(this.poseSelect.options, (option) => option.value);
             if (!validKeys.includes(this.activePoseKey)) {
-                  this.activePoseKey = "base";
+                  this.activePoseKey = validKeys[0] ?? "base";
             }
             this.poseSelect.value = this.activePoseKey;
             this._updatePoseActionButtons();
@@ -937,8 +974,8 @@ export class CharacterStudio {
             this.resetPoseBtn.disabled = isBase;
             this.renamePoseBtn.disabled = isBase;
             this.removePoseBtn.disabled = isBase;
-            this.addPoseBtn.disabled = SUPPORTED_POSE_KEYS.every(
-                  (key) => key in (this._currentConfig().poses ?? {}),
+            this.addPoseBtn.disabled = this.activeForm === "base" && SUPPORTED_POSE_KEYS.every(
+                  (key) => key in this._poseBank(),
             );
             this.poseImageInput.value = this._getPoseImagePath(
                   this._currentConfig(),
@@ -952,6 +989,14 @@ export class CharacterStudio {
 
       /** Called when the pose selector changes. Load new image and sync controls. */
       _onPoseChanged() {
+            this.mode = "default";
+            this.cropDraft = null;
+            this.hitboxDraft = null;
+            this.hitboxDraftOffset = null;
+            this.dragState = null;
+            _updateCropButtons(this);
+            this._updateHitboxButtons();
+            this._syncHitboxControls(this._currentConfig());
             this._updatePoseActionButtons();
             const config = this._currentConfig();
             this._syncImageControls();
@@ -980,18 +1025,20 @@ export class CharacterStudio {
 
       _openPoseDialog(mode: "add" | "rename"): void {
             if (mode === "rename" && this.activePoseKey === "base") return;
-            const poses = this._currentConfig().poses ?? {};
+            const poses = this._poseBank();
             const availableKeys = SUPPORTED_POSE_KEYS.filter(
                   (key) =>
                         !(key in poses) ||
                         (mode === "rename" && key === this.activePoseKey),
             );
-            if (availableKeys.length === 0) return;
+            if (availableKeys.length === 0 && this.activeForm === "base") return;
 
             this.poseDialogMode = mode;
             this.poseDialogTitle.textContent =
                   mode === "add" ? "Add Sprite" : "Rename Sprite";
             this.poseDialogKey.replaceChildren();
+            requireElement<HTMLInputElement>("pose-dialog-custom-key").hidden = this.activeForm !== "transformed";
+            requireElement<HTMLInputElement>("pose-dialog-custom-key").value = "";
             availableKeys.forEach((key) => {
                   const option = document.createElement("option");
                   option.value = key;
@@ -1011,6 +1058,9 @@ export class CharacterStudio {
             );
             if (mode === "rename") {
                   this.poseDialogKey.value = this.activePoseKey;
+                  if (this.activeForm === "transformed" && !SUPPORTED_POSE_KEYS.includes(this.activePoseKey as typeof SUPPORTED_POSE_KEYS[number])) {
+                        requireElement<HTMLInputElement>("pose-dialog-custom-key").value = this.activePoseKey;
+                  }
                   this.poseDialogImage.value = selectedImagePath;
             } else {
                   this.poseDialogImage.value = "";
@@ -1025,9 +1075,10 @@ export class CharacterStudio {
       }
 
       _commitPoseDialog(): void {
-            const nextKey = this.poseDialogKey.value;
+            const customKey = requireElement<HTMLInputElement>("pose-dialog-custom-key").value.trim();
+            const nextKey = this.activeForm === "transformed" && customKey ? customKey : this.poseDialogKey.value;
             const imagePath = this.poseDialogImage.value.trim();
-            if (!SUPPORTED_POSE_KEYS.includes(nextKey as typeof SUPPORTED_POSE_KEYS[number])) {
+            if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(nextKey) || ["base", "constructor", "prototype"].includes(nextKey) || (this.activeForm === "base" && !SUPPORTED_POSE_KEYS.includes(nextKey as typeof SUPPORTED_POSE_KEYS[number]))) {
                   this.poseDialogError.textContent = "Choose a supported game pose.";
                   return;
             }
@@ -1038,10 +1089,10 @@ export class CharacterStudio {
             }
 
             const config = this._currentConfig();
-            config.poses ??= {};
+            const poses = this._poseBank(config);
             const oldKey = this.activePoseKey;
             if (
-                  nextKey in config.poses &&
+                  nextKey in poses &&
                   !(this.poseDialogMode === "rename" && nextKey === oldKey)
             ) {
                   this.poseDialogError.textContent = `${poseLabel(nextKey)} already has a sprite.`;
@@ -1049,20 +1100,25 @@ export class CharacterStudio {
             }
 
             if (this.poseDialogMode === "add") {
-                  config.poses[nextKey] = {
+                  poses[nextKey] = {
                         image: imagePath,
                         imageScale: config.imageScale,
                         imageOffset: { ...config.imageOffset },
                         imageCrop: null,
                   };
             } else {
-                  const existing = config.poses[oldKey];
+                  const existing = poses[oldKey];
                   if (!existing) return;
-                  delete config.poses[oldKey];
-                  config.poses[nextKey] =
+                  delete poses[oldKey];
+                  poses[nextKey] =
                         typeof existing === "string"
                               ? imagePath
                               : { ...existing, image: imagePath };
+                  if (this.activeForm === "transformed") {
+                        config.transformation?.sequence?.forEach((step) => {
+                              if (step.pose === oldKey) step.pose = nextKey;
+                        });
+                  }
             }
 
             this.activePoseKey = nextKey;
@@ -1070,6 +1126,7 @@ export class CharacterStudio {
             this._onPoseChanged();
             this._saveState();
             this.poseDialog.close();
+            this.transformationTool.sync();
       }
 
       _removeCurrentPose(): void {
@@ -1079,26 +1136,30 @@ export class CharacterStudio {
                   return;
             }
             const config = this._currentConfig();
-            if (!config.poses?.[this.activePoseKey]) return;
-            delete config.poses[this.activePoseKey];
-            if (Object.keys(config.poses).length === 0) config.poses = null;
+            const poses = this._poseBank(config);
+            if (!poses[this.activePoseKey]) return;
+            delete poses[this.activePoseKey];
+            if (this.activeForm === "transformed" && config.transformation) {
+                  config.transformation.sequence = config.transformation.sequence?.filter((step) => step.pose !== this.activePoseKey);
+            }
             this.activePoseKey = "base";
             this._populatePoseSelect(config);
             this._onPoseChanged();
             this._saveState();
+            this.transformationTool.sync();
       }
 
       /** Reset this sprite to a snapshot of the base visual without coupling it. */
       _resetCurrentPose() {
             if (this.activePoseKey === "base") return;
             const config = this._currentConfig();
-            const poseVal = config.poses?.[this.activePoseKey];
+            const poseVal = this._poseBank(config)[this.activePoseKey];
             if (!poseVal) return;
             const imagePath = this._getPoseImagePath(
                   config,
                   this.activePoseKey,
             );
-            (config.poses ??= {})[this.activePoseKey] = {
+            this._poseBank(config)[this.activePoseKey] = {
                   image: imagePath,
                   imageScale: config.imageScale,
                   imageOffset: { ...config.imageOffset },
@@ -1220,6 +1281,8 @@ export class CharacterStudio {
       }
 
       _loadCurrentConfig() {
+            this.transformationTool.stopPreview();
+            this.activeForm = "base";
             this.mode = "default";
             this.dragState = null;
             this.cropDraft = null;
@@ -1232,6 +1295,7 @@ export class CharacterStudio {
             this._updateSaveButton();
 
             this._populatePoseSelect(config);
+            this.transformationTool.sync();
 
             this.hitboxType.value = config.hitbox.type;
             this.controls.hitboxWidth.value =
@@ -1255,9 +1319,9 @@ export class CharacterStudio {
             this._populateAttackHitboxSelect();
             this.weaponImagePath.value = config.weaponIdle ?? "";
 
-            // Load base image (activePoseKey == "base" at this point)
-            const imagePath = this._getPoseImagePath(config, "base");
-            _loadBodyImage(this, imagePath, "base");
+            // The visible Idle entry may be an explicit pose or the legacy default.
+            const imagePath = this._getPoseImagePath(config, this.activePoseKey);
+            _loadBodyImage(this, imagePath, this.activePoseKey);
             this.images.weaponIdle.src = "../../" + (config.weaponIdle || "");
             this.images.weaponAttack.src =
                   "../../" + (config.weaponAttack || "");
@@ -1350,6 +1414,7 @@ export class CharacterStudio {
             return snapshotStudioState(
                   this._currentConfig(),
                   this.activePoseKey,
+                  this.activeForm,
             );
       }
 
@@ -1447,7 +1512,12 @@ export class CharacterStudio {
             this.images.weaponIdle.src = config.weaponIdle
                   ? "../../" + config.weaponIdle
                   : "";
+            config.skills = structuredClone(state.skills);
             config.abilities = structuredClone(state.abilities);
+            config.transformation = structuredClone(state.transformation ?? null);
+            this.activeForm = state.activeForm ?? "base";
+            this.transformationTool.stopPreview();
+            this.transformationTool.sync();
 
             // Restore poses with deep copies
             if (state.poses) {
@@ -1625,6 +1695,8 @@ export class CharacterStudio {
       }
 
       _draw(): void {
+            this.aimTool?.sync();
             drawStudio(this);
+            this.aimTool?.draw();
       }
 }

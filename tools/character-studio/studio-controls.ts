@@ -13,6 +13,7 @@ export function installStudioControls(studio: CharacterStudio) {
             document.querySelectorAll<HTMLButtonElement>(".tool-btn").forEach((tool) =>
                   tool.classList.toggle("active", tool.dataset.toolTab === tabName),
             );
+            studio._draw();
             const context = document.getElementById("status-context");
             if (context) context.textContent = `${tabName === "healthbar" ? "Health bar" : tabName} properties`;
       };

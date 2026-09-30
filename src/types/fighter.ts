@@ -25,11 +25,24 @@ export interface CircleHitbox {
       radius: number;
 }
 export type Hitbox = BoxHitbox | CircleHitbox;
+/** Coordinates in the unflipped sprite's local drawing space, in game pixels. */
+export interface AimSkillOptions {
+      muzzle: Vector2;
+      pivot?: Vector2;
+      /** Barrel direction in the authored sprite, degrees clockwise from right. */
+      forwardDegrees?: number;
+}
+
+export interface FighterSkills {
+      aim?: AimSkillOptions;
+}
+
 export interface PoseOverrides {
       image: string;
       imageCrop?: ImageCrop | null;
       imageScale?: number;
       imageOffset?: Vector2;
+      aim?: AimSkillOptions;
 }
 export type PoseConfig = string | PoseOverrides;
 export type FighterPoses = Record<string, PoseConfig> | null;
@@ -42,9 +55,15 @@ export interface HealthThresholdTransformationTrigger {
 
 export type TransformationTrigger = HealthThresholdTransformationTrigger;
 
+export interface TransformationSequenceStep {
+      pose: string;
+      durationMs: number;
+}
+
 /** Optional overrides authored in a fighter JSON file. */
 export interface FighterTransformationDefinition {
       trigger: TransformationTrigger;
+      sequence?: TransformationSequenceStep[];
       combat?: {
             abilities?: AbilityConfig[];
       };
@@ -56,6 +75,7 @@ export interface FighterTransformationDefinition {
 /** Fully-composed transformation data used by the runtime. */
 export interface FighterTransformationConfig {
       trigger: TransformationTrigger;
+      sequence?: TransformationSequenceStep[];
       abilities: AbilityConfig[];
       poses: FighterPoses;
 }
@@ -100,6 +120,7 @@ export interface FighterDefinition {
       id: string;
       name: string;
       color: string;
+      skills?: FighterSkills;
       combat?: FighterCombatOverrides;
       body?: FighterBodyOverrides;
       presentation?: FighterPresentationOverrides;
@@ -119,6 +140,7 @@ export interface FighterConfig {
       id: string;
       name: string;
       color: string;
+      skills?: FighterSkills;
       maxHealth: number;
       speed: number;
       baseDamage: number;

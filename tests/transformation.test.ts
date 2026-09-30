@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { Fighter } from "../src/entities/fighter";
+import type { GameConfig } from "../src/types/game";
 import { composeFighter } from "../src/config/fighter-config";
 import { TransformationController } from "../src/transformations";
 import type {
@@ -13,6 +16,30 @@ const transformation: FighterTransformationConfig = {
 };
 
 describe("TransformationController", () => {
+      it("plays each sequence pose to its boundary before enabling transformed state", () => {
+            const controller = new TransformationController({
+                  ...transformation,
+                  sequence: [
+                        { pose: "realization", durationMs: 600 },
+                        { pose: "rage", durationMs: 800 },
+                  ],
+            });
+            expect(controller.update(40, 100, 8)).toBe(true);
+            expect(controller.isTransforming).toBe(true);
+            expect(controller.currentPose).toBe("realization");
+            controller.update(40, 100, 599);
+            expect(controller.currentPose).toBe("realization");
+            controller.update(40, 100, 1);
+            expect(controller.currentPose).toBe("rage");
+            controller.update(40, 100, 800);
+            expect(controller.isTransformed).toBe(true);
+            expect(controller.currentPose).toBeNull();
+            controller.reset();
+            expect(controller.currentState).toBe("base");
+            expect(controller.transform()).toBe(true);
+            controller.update(40, 100, 1400);
+            expect(controller.isTransformed).toBe(true);
+      });
       it("transforms once when health reaches the configured ratio", () => {
             const controller = new TransformationController(transformation);
 
@@ -44,6 +71,51 @@ describe("TransformationController", () => {
 
             expect(controller.transform()).toBe(false);
             expect(controller.update(1, 100)).toBe(false);
+      });
+});
+
+describe("Granny transformation integration", () => {
+      afterEach(() => vi.unstubAllGlobals());
+
+      it("interrupts melee, shows realization and rage, then enables shotgun and resets", () => {
+            class LoadedImage {
+                  onload: (() => void) | null = null;
+                  onerror: (() => void) | null = null;
+                  naturalWidth = 100;
+                  naturalHeight = 100;
+                  private path = "";
+                  set src(value: string) { this.path = value; this.onload?.(); }
+                  get src() { return this.path; }
+            }
+            vi.stubGlobal("Image", LoadedImage);
+            const defaults = JSON.parse(readFileSync("config/fighters/defaults.json", "utf8"));
+            const definition = JSON.parse(readFileSync("config/fighters/granny.json", "utf8"));
+            const config = composeFighter(defaults, definition);
+            const game = JSON.parse(readFileSync("config/game-settings.json", "utf8")) as GameConfig;
+            const fighter = new Fighter(config, 0, 0, 2, 0, game,
+                  { shared: {}, characters: {} }, () => 0);
+            const baseAbility = fighter.activeAbilities[0];
+            fighter.abilities.tryStart(baseAbility, "left", 0);
+            fighter.currentHealth = 400;
+            fighter.updateTransformation(8);
+            expect(fighter.abilities.active).toBeNull();
+            expect(fighter.canStartAbility()).toBe(false);
+            expect(fighter.presentation.getCurrentSprite("idle")?.image.src)
+                  .toContain("granny-pre-trans.png");
+            fighter.updateTransformation(600);
+            expect(fighter.presentation.getCurrentSprite("idle")?.image.src)
+                  .toContain("granny-trans.png");
+            fighter.updateTransformation(800);
+            expect(fighter.canStartAbility()).toBe(true);
+            expect(fighter.activeAbilities[0].id).toBe("shotgun-blast");
+            expect(fighter.presentation.getCurrentSprite("idle")?.image.src)
+                  .toContain("granny-shotgun.png");
+            expect(fighter.presentation.getCurrentSprite("recovery")?.image.src)
+                  .toContain("granny-recoil.png");
+            fighter.resetTransformation();
+            expect(fighter.activeAbilities[0].id).toBe("rolling-pin-strike");
+            expect(fighter.presentation.getCurrentSprite("idle")?.image.src)
+                  .toContain("granny-idle.png");
       });
 });
 

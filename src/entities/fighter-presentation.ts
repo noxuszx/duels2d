@@ -1,19 +1,14 @@
 import type { AbilityState } from "../abilities/types";
 import { getAspectFitCropDrawRect } from "../rendering/sprite-geometry";
 import type {
+      AimSkillOptions,
       FighterConfig,
       ImageCrop,
       PoseOverrides,
       Vector2,
 } from "../types/fighter";
 
-type PoseKey =
-      | "idle"
-      | "attackWindup"
-      | "attackActive"
-      | "recovery"
-      | "crawl1"
-      | "crawl2";
+type PoseKey = string;
 type PoseVisual = Partial<PoseOverrides>;
 type PoseBank = {
       sprites: Record<PoseKey, HTMLImageElement | null>;
@@ -33,6 +28,7 @@ const createPoseBank = (): PoseBank => ({
 });
 
 export interface CurrentSprite {
+      aim?: AimSkillOptions;
       image: HTMLImageElement;
       imageScale: number;
       imageOffset: Vector2;
@@ -55,6 +51,7 @@ export class FighterPresentation {
       hitFlashTimer = 0;
       private animationFrame = 0;
       private transformed = false;
+      private transformationPose: string | null = null;
       private readonly basePoses = createPoseBank();
       private readonly transformedPoses = createPoseBank();
 
@@ -84,14 +81,7 @@ export class FighterPresentation {
             this.loadPose(this.basePoses, "recovery", config.poses?.recovery, config.image);
             this.loadPose(this.basePoses, "crawl1", config.poses?.crawl1, config.image);
             this.loadPose(this.basePoses, "crawl2", config.poses?.crawl2, config.image);
-            for (const key of [
-                  "idle",
-                  "attackWindup",
-                  "attackActive",
-                  "recovery",
-                  "crawl1",
-                  "crawl2",
-            ] as const) {
+            for (const key of Object.keys(config.transformation?.poses ?? {})) {
                   this.loadPose(
                         this.transformedPoses,
                         key,
@@ -122,7 +112,24 @@ export class FighterPresentation {
             this.transformed = transformed;
       }
 
+      setTransformationPose(pose: string | null): void {
+            this.transformationPose = pose;
+      }
+
       getCurrentSprite(abilityState: AbilityState, isCrawling = false): CurrentSprite | null {
+            if (this.transformationPose) {
+                  const image = this.transformedPoses.sprites[this.transformationPose];
+                  if (image) {
+                        const pose = this.transformedPoses.visuals[this.transformationPose] ?? {};
+                        return {
+                              image,
+                              aim: pose.aim,
+                              imageScale: pose.imageScale ?? this.imageScale,
+                              imageOffset: pose.imageOffset ?? this.imageOffset,
+                              imageCrop: pose.imageCrop ?? this.imageCrop,
+                        };
+                  }
+            }
             const crawlKey: PoseKey = Math.floor(this.animationFrame / 9) % 2 === 0
                   ? "crawl1"
                   : "crawl2";
@@ -149,6 +156,7 @@ export class FighterPresentation {
             const pose = poseKey ? (bank.visuals[poseKey] ?? {}) : {};
             return {
                   image,
+                  aim: pose.aim,
                   imageScale: pose.imageScale ?? this.imageScale,
                   imageOffset: pose.imageOffset ?? this.imageOffset,
                   imageCrop: pose.imageCrop ?? this.imageCrop,

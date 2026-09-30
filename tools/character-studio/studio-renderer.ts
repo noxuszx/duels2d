@@ -1,5 +1,6 @@
 import type { CharacterStudio } from "./studio-app";
 import type { StudioConfig, StudioTextStyle } from "./studio-types";
+import { attackHitboxRect } from "./attack-hitbox-tool";
 import {
       _clampCrop,
       _getCropDrawRect,
@@ -278,12 +279,9 @@ export function drawStudio(studio: CharacterStudio): void {
 
       const attackHitbox = studio._attackHitboxAction();
       if (attackHitbox) {
-            const facingSign = config.defaultFacing === "left" ? -1 : 1;
-            const attackCenterX =
-                  centerX + attackHitbox.offset.x * facingSign;
-            const attackCenterY = centerY + attackHitbox.offset.y;
-            const x = attackCenterX - attackHitbox.width / 2;
-            const y = attackCenterY - attackHitbox.height / 2;
+            const { x, y } = attackHitboxRect(
+                  { x: centerX, y: centerY }, attackHitbox, config.defaultFacing ?? "right",
+            );
             ctx.save();
             ctx.fillStyle = "rgba(235, 76, 76, 0.16)";
             ctx.strokeStyle = "rgba(255, 82, 82, 0.95)";
@@ -302,7 +300,7 @@ export function drawStudio(studio: CharacterStudio): void {
             ctx.restore();
       }
 
-      const projectileAction = config.abilities
+      const projectileAction = studio._editingAbilities()
             .flatMap((ability) => ability.actions)
             .find((action) => action.type === "spawn-projectile");
       if (
@@ -382,7 +380,7 @@ export function drawStudio(studio: CharacterStudio): void {
                   studio.images.weaponIdle.naturalWidth * weaponScale;
             const weaponHeight =
                   studio.images.weaponIdle.naturalHeight * weaponScale;
-            const swing = config.abilities
+            const swing = studio._editingAbilities()
                   .flatMap((ability) => ability.actions)
                   .find((action) => action.type === "swing");
             const previewAngle =

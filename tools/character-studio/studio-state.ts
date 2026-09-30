@@ -1,10 +1,12 @@
 import type { PoseConfig } from "../../src/types/fighter";
 import type { StudioConfig } from "./studio-types";
+import type { StudioForm } from "./transformation-tool";
 
 /** Creates an isolated, serializable history entry for the current fighter edit. */
 export function snapshotStudioState(
       config: StudioConfig,
       activePoseKey: string,
+      activeForm: StudioForm = "base",
 ): string {
       const posesSnapshot: Record<string, PoseConfig> = {};
       for (const [key, pose] of Object.entries(config.poses ?? {})) {
@@ -28,7 +30,10 @@ export function snapshotStudioState(
             weaponOffset: structuredClone(config.weaponOffset),
             weaponPivot: structuredClone(config.weaponPivot),
             weaponIdle: config.weaponIdle,
+            skills: structuredClone(config.skills),
             abilities: structuredClone(config.abilities),
+            transformation: structuredClone(config.transformation),
+            activeForm,
             poses: posesSnapshot,
             activePoseKey,
       });

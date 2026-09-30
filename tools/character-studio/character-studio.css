@@ -756,3 +756,20 @@ button, input, select { font: inherit; }
   #status-bar { padding-left: 9px; }
   #status-context, #status-bar span:nth-last-child(2) { display: none; }
 }
+/* Transformation authoring reuses the existing form and canvas controls. */
+#transformation-settings { border: 0; padding: 0; margin: 0; min-width: 0; }
+.sequence-step { display: grid; grid-template-columns: minmax(0, 1fr) 80px 28px 28px; gap: 6px; margin-bottom: 10px; }
+.sequence-step input, .sequence-step select { min-width: 0; width: 100%; }
+.sequence-step button { cursor: pointer; }
+.sequence-step input, .sequence-step select, #transformation-threshold {
+  padding: 6px; border: 1px solid var(--border); background: var(--bg-elevated); color: var(--text-primary);
+}
+.sequence-step button { border: 1px solid var(--border); background: var(--bg-hover); color: var(--text-primary); }
+.sequence-step button:disabled { opacity: .35; cursor: default; }
+#transformation-enabled { width: auto; margin-right: 6px; }
+#transformation-settings:disabled { opacity: .45; }
+#pose-dialog-custom-key { margin-top: 8px; width: 100%; }
+
+#aim-settings { border: 0; padding: 0; margin: 0; min-width: 0; }
+#aim-settings:disabled { opacity: .45; }
+#aim-enabled, #aim-pose-override { width: auto; margin-right: 6px; }

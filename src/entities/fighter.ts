@@ -1,4 +1,5 @@
 import * as Matter from "matter-js";
+import { AimSkill } from "../skills/aim-skill";
 import type { Facing, FighterConfig, Vector2 } from "../types/fighter";
 import type { GameConfig, SoundManifest } from "../types/game";
 import { FighterAudio } from "./fighter-audio";
@@ -50,6 +51,7 @@ export class Fighter {
       readonly presentation: FighterPresentation;
       readonly audio: FighterAudio;
       readonly abilities: FighterAbilities;
+      readonly aimSkill: AimSkill | null;
       readonly statuses = new StatusEffectController();
       readonly transformation: TransformationController;
 
@@ -70,6 +72,7 @@ export class Fighter {
             private readonly now: () => number = () => performance.now(),
       ) {
             this.config = config;
+            this.aimSkill = config.skills?.aim ? new AimSkill() : null;
             this.id = config.id;
             this.currentHealth = config.maxHealth;
             this.hitbox = this.normalizeHitbox(config);
@@ -121,35 +124,48 @@ export class Fighter {
       }
 
       /** Applies an automatic transformation and synchronizes runtime collaborators. */
-      updateTransformation(): boolean {
-            if (!this.transformation.update(this.currentHealth, this.config.maxHealth)) {
-                  return false;
-            }
-            this.finishTransformation();
-            return true;
+      updateTransformation(deltaMs = 0): boolean {
+            const wasTransformed = this.transformation.isTransformed;
+            const started = this.transformation.update(
+                  this.currentHealth, this.config.maxHealth, deltaMs,
+            );
+            if (started) this.interruptForTransformation();
+            this.syncTransformationPresentation();
+            if (!wasTransformed && this.transformation.isTransformed)
+                  this.behavior?.onTransform();
+            return started;
       }
 
       /** Public boundary for behavior- or action-driven transformations. */
       transform(): boolean {
+            if (this.isDead) return false;
             if (!this.transformation.transform()) return false;
-            this.finishTransformation();
+            this.interruptForTransformation();
+            this.syncTransformationPresentation();
+            if (this.transformation.isTransformed) this.behavior?.onTransform();
             return true;
       }
 
-      private finishTransformation(): void {
+      private interruptForTransformation(): void {
+            this.aimSkill?.stop();
             this.behavior?.reset();
             this.abilities.reset();
-            this.presentation.setTransformed(true);
-            this.behavior?.onTransform();
+      }
+
+      private syncTransformationPresentation(): void {
+            this.presentation.setTransformed(this.transformation.isTransformed);
+            this.presentation.setTransformationPose(this.transformation.currentPose);
       }
 
       resetTransformation(): void {
             this.transformation.reset();
             this.presentation.setTransformed(false);
+            this.presentation.setTransformationPose(null);
       }
 
       canStartAbility(): boolean {
-            if (this.isDead || !this.statuses.canStartAbilities) return false;
+            if (this.isDead || this.transformation.isTransforming ||
+                  !this.statuses.canStartAbilities) return false;
             const speed = Math.hypot(
                   this.body.velocity.x,
                   this.body.velocity.y,
@@ -160,6 +176,7 @@ export class Fighter {
       applyStatus(application: StatusEffectApplication): StatusApplicationResult {
             const result = this.statuses.apply(application);
             if (result.applied && !this.statuses.canContinueAbility) {
+                  this.aimSkill?.stop();
                   this.behavior?.reset();
                   // The default behavior reset clears its targeting runtime only.
                   // Reset centrally as well; cooldown timestamps are retained.
@@ -279,6 +296,24 @@ export class Fighter {
                   nowMs,
                   !this.isDead && this.abilities.state === "idle",
             );
+      }
+
+      updateAim(target: Fighter | null): void {
+            if (!this.aimSkill || !this.config.skills?.aim) return;
+            if (this.isDead || this.transformation.isTransforming || !this.statuses.canContinueAbility ||
+                  this.behavior?.isWallCrawling()) {
+                  this.aimSkill.stop();
+                  return;
+            }
+            if (target && !target.isDead) this.setFacingToward(target);
+            const sprite = this.presentation.getCurrentSprite(this.abilities.state);
+            const offset = sprite?.imageOffset ?? this.config.imageOffset;
+            this.aimSkill.update({
+                  center: { x: this.visualPosition.x + offset.x, y: this.visualPosition.y + offset.y },
+                  facing: this.facing,
+                  defaultFacing: this.config.defaultFacing,
+            }, target && !target.isDead ? target.body.position : null,
+            sprite?.aim ?? this.config.skills.aim);
       }
 
       get visualPosition(): Point {

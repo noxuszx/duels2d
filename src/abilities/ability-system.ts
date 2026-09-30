@@ -66,10 +66,13 @@ export class AbilitySystem implements StandardAbilityHandler {
                   if (fighter.isDead) fighter.statuses.clear();
                   else {
                         fighter.statuses.update(deltaMs);
-                        fighter.updateTransformation();
+                        fighter.updateTransformation(deltaMs);
                   }
                   this.ensureBehavior(fighter);
                   fighter.behavior?.onUpdate(deltaMs);
+                  const aimTarget = this.targets.get(fighter);
+                  fighter.updateAim?.(aimTarget && !aimTarget.isDead
+                        ? aimTarget : nearestEnemy(fighter, this.gm.characters));
             }
       }
 
@@ -95,6 +98,7 @@ export class AbilitySystem implements StandardAbilityHandler {
                         ? target
                         : nearestEnemy(fighter, this.gm.characters);
                   if (activeTarget) {
+                        fighter.updateAim?.(activeTarget);
                         this.actions.executeActiveEntryActions(
                               fighter,
                               activeTarget,
@@ -238,6 +242,11 @@ export class AbilitySystem implements StandardAbilityHandler {
                         this.isDashing(fighter)
                   )
                         continue;
+                  if (fighter.aimSkill && fighter.config.skills?.aim) {
+                        fighter.setFacingToward(this.targets.get(fighter) ?? nearestEnemy(fighter, this.gm.characters));
+                        fighter.updateAim(this.targets.get(fighter) ?? nearestEnemy(fighter, this.gm.characters));
+                        continue;
+                  }
                   const mode = fighter.config.faceTarget?.mode ?? "never";
                   if (mode === "always")
                         fighter.setFacingToward(
@@ -392,6 +401,7 @@ export class AbilitySystem implements StandardAbilityHandler {
                   fighter.resetTransformation();
                   fighter.behavior?.reset();
                   fighter.abilities.reset();
+                  fighter.aimSkill?.stop();
             }
             this.targets.clear();
             this.dashDirections.clear();

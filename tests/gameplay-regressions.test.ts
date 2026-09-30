@@ -15,6 +15,7 @@ import { createFighterBehavior } from "../src/behaviors/registry";
 import { DefaultFighterBehavior } from "../src/behaviors/default-behavior";
 import { BabyManBehavior } from "../src/behaviors/fighters/babyman.behavior";
 import { AngryManBehavior } from "../src/behaviors/fighters/angryman.behavior";
+import { TransformationController } from "../src/transformations";
 import { getAttackHitboxGeometry } from "../src/abilities/actions/attack-hitbox-action";
 
 function makeAbility(overrides: Partial<AbilityConfig> = {}): AbilityConfig {
@@ -284,6 +285,7 @@ describe("gameplay regression characterization", () => {
                   baseSpeed: 5,
                   body: { velocity: { x: 0, y: 0 } },
                   statuses: new StatusEffectController(),
+                  transformation: new TransformationController(null),
                   abilities: runtime,
                   behavior: { reset: behaviorReset },
             });
@@ -315,6 +317,7 @@ describe("gameplay regression characterization", () => {
                   baseSpeed: 5,
                   body: { velocity: { x: 0, y: 0 } },
                   statuses: new StatusEffectController(),
+                  transformation: new TransformationController(null),
                   abilities: runtime,
                   behavior: { reset: behaviorReset },
             });
@@ -671,6 +674,7 @@ describe("gameplay regression characterization", () => {
                   baseSpeed: 5,
                   body: { velocity: { x: 10, y: 0 } },
                   statuses: new StatusEffectController(),
+                  transformation: new TransformationController(null),
             });
 
             expect(fighter.canStartAbility()).toBe(true);
@@ -1006,6 +1010,7 @@ function makeCombatFighter(id: string, body: ReturnType<typeof Bodies.circle>) {
             applyForceKnockback: vi.fn(),
             applyRecoil: vi.fn(),
             statuses: new StatusEffectController(),
+            transformation: new TransformationController(null),
             applyStatus(application: Parameters<Fighter["applyStatus"]>[0]) {
                   return this.statuses.apply(application);
             },

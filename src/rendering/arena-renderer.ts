@@ -206,9 +206,17 @@ export class ArenaRenderer {
             const shakeRotation = windingUp ? Math.sin(time * 0.23) * 0.0125 : 0;
             const { ctx } = this;
             ctx.save();
-            ctx.translate(position.x + imageOffset.x + shakeX, position.y + imageOffset.y + shakeY);
-            ctx.rotate(angle + shakeRotation);
-            ctx.scale(flip ? -1 : 1, 1);
+            const aim = fighter.aimSkill?.current;
+            if (aim) {
+                  ctx.translate(aim.pivot.x, aim.pivot.y);
+                  ctx.rotate(aim.angle);
+                  ctx.scale(aim.flip ? -1 : 1, 1);
+                  ctx.translate(-aim.localPivot.x, -aim.localPivot.y);
+            } else {
+                  ctx.translate(position.x + imageOffset.x + shakeX, position.y + imageOffset.y + shakeY);
+                  ctx.rotate(angle + shakeRotation);
+                  ctx.scale(flip ? -1 : 1, 1);
+            }
             ctx.drawImage(
                   image,
                   rect.crop.x,

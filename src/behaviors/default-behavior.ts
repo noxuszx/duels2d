@@ -12,6 +12,7 @@ export interface StandardAbilityHandler {
       onWallCollision(fighter: Fighter, wall: ArenaWall): WallCollisionResponse;
       onFighterCollision(fighter: Fighter, target: Fighter): void;
       reset(fighter: Fighter): void;
+      isStandardDashing?(fighter: Fighter): boolean;
 }
 
 /**
@@ -43,5 +44,9 @@ export class DefaultFighterBehavior extends FighterBehavior {
 
       override reset(): void {
             this.standardHandler.reset(this.fighter);
+      }
+
+      override isDashing(): boolean | null {
+            return this.standardHandler.isStandardDashing?.(this.fighter) ?? null;
       }
 }

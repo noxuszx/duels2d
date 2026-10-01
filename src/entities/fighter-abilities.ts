@@ -10,7 +10,13 @@ import { calculateSwingAngle } from "../abilities/actions/swing-action";
 export type AbilityStartFailureReason =
       | "already-active"
       | "cooldown"
-      | "casting-locked";
+      | "casting-locked"
+      | "invalid-target";
+
+export interface AbilityPhaseObserver {
+      tick(phase: Exclude<AbilityState, "idle">, deltaMs: number): void;
+      transition(): void;
+}
 
 export type AbilityStartResult =
       | { started: true }
@@ -85,18 +91,21 @@ export class FighterAbilities {
             );
       }
 
-      update(deltaMs: number): void {
+      update(deltaMs: number, observer?: AbilityPhaseObserver): void {
             if (!this.active || deltaMs <= 0) return;
 
             let elapsedMs = deltaMs;
             while (this.active) {
-                  if (this.remainingMs > elapsedMs) {
-                        this.remainingMs -= elapsedMs;
-                        return;
-                  }
-
-                  elapsedMs -= this.remainingMs;
-                  this.remainingMs = 0;
+                  const phase = this.state;
+                  if (phase === "idle") return;
+                  const consumed = Math.min(this.remainingMs, elapsedMs);
+                  this.remainingMs -= consumed;
+                  elapsedMs -= consumed;
+                  if (consumed > 0) observer?.tick(phase, consumed);
+                  // A component may end/cancel the phase from its update callback.
+                  if (!this.active) return;
+                  if (this.state !== phase) continue;
+                  if (this.remainingMs > 0) return;
 
                   if (this.state === "windup") {
                         this.beginActive();
@@ -107,6 +116,7 @@ export class FighterAbilities {
                   } else {
                         return;
                   }
+                  observer?.transition();
             }
       }
 

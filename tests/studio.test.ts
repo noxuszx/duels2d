@@ -206,12 +206,13 @@ describe("Studio transformation editing", () => {
 
       it("saves disabling transformation and captures isolated history for both forms", () => {
             const { config, definition } = granny();
+            const originalDuration = config.transformation!.sequence![0].durationMs;
             const snapshot = snapshotStudioState(config, "rage", "transformed");
             config.transformation!.sequence![0].durationMs = 100;
             const state = JSON.parse(snapshot);
             expect(state.activeForm).toBe("transformed");
             expect(state.activePoseKey).toBe("rage");
-            expect(state.transformation.sequence[0].durationMs).toBe(600);
+            expect(state.transformation.sequence[0].durationMs).toBe(originalDuration);
             config.transformation = null;
             expect(
                   JSON.parse(getSaveContent([definition], config, defaults))

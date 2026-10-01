@@ -1,5 +1,9 @@
 # Gameplay architecture migration plan
 
+> Legacy migration record. The agreed next architecture and migration workflow
+> are in [Fighter architecture and agent guide](fighter-architecture.md).
+> The ownership below describes the earlier JSON-runner design, not the new target.
+
 ## Target ownership
 
 - Fighter JSON declares standard ability triggers, timing, and actions.

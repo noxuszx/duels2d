@@ -5,6 +5,9 @@ fighters bounce around a mobile-friendly 9:16 arena, deal damage on impact, and
 use their own weapons until one is left standing. It was built for recording
 vertical video content.
 
+For fighter and gameplay development, read the
+[fighter architecture and agent guide](docs/fighter-architecture.md).
+
 ---
 
 ## Installation

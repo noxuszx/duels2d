@@ -133,6 +133,8 @@ export class BabyManBehavior extends FighterBehavior {
             return this.crawlSkill.isActive;
       }
 
+      override isDashing(): boolean { return this.dashSkill.isActive; }
+
       override getWallCrawlAngle(): number | null {
             return this.crawlSkill.getAngle();
       }

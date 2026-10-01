@@ -1,5 +1,9 @@
 # Gameplay extension guide
 
+> Legacy runtime reference. For new content and migrations, follow
+> [Fighter architecture and agent guide](fighter-architecture.md).
+> The JSON-first authoring guidance below describes the existing implementation.
+
 Use fighter JSON for ordinary moves. A fighter behavior should choose targets,
 start configured abilities, and coordinate a sequence that JSON cannot express.
 Keep shared combat rules in the shared systems so a new fighter does not need a
@@ -19,7 +23,7 @@ new combat branch.
 | Shared damage rules and feedback | `src/combat/combat-resolver.ts` |
 | Projectile construction and launch | `src/abilities/actions/projectile-action.ts` |
 | Swing timing and weapon angle | `src/abilities/ability-system.ts`, `src/entities/fighter-abilities.ts`, `src/abilities/actions/swing-action.ts` |
-| Dash and wall-crawl action helpers | `src/abilities/actions/dash-action.ts`, `src/abilities/actions/wall-crawl-action.ts` |
+| Dash component and wall-crawl action helper | `src/skills/dash-skill.ts`, `src/abilities/actions/wall-crawl-action.ts` |
 | Status definitions and runtime | `src/status-effects/definitions.ts`, `src/status-effects/status-effect-controller.ts` |
 
 `FighterBehavior` in `src/behaviors/fighter-behavior.ts` is the custom

@@ -1,4 +1,5 @@
 import type { Fighter } from "../entities/fighter";
+import type { CancellationReason } from "../gameplay/action-scope";
 import {
       DEFAULT_WALL_COLLISION_RESPONSE,
       type ArenaBounds,
@@ -59,6 +60,14 @@ export abstract class FighterBehavior {
       getWeaponSwingAngle(): number | null {
             return null;
       }
+
+      /** null lets legacy behaviors use ability-state detection during migration. */
+      isDashing(): boolean | null { return null; }
+
+      /** Called before removal; release owned operations and subscriptions. */
+      dispose(): void { this.reset(); }
+
+      interrupt(_reason: CancellationReason): void { this.reset(); }
 
       /** Resets any active skills or temporary state when fighter dies or match restarts. */
       reset(): void {}

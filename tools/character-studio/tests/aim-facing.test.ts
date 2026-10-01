@@ -11,7 +11,7 @@ describe("Original sprite facing", () => {
             const config = {
                   skills: { aim: { muzzle: { x: -50, y: 0 } } },
                   transformation: { trigger: { type: "health-threshold", healthRatio: 0.4 }, abilities: [], poses: null },
-            } as StudioConfig;
+            } as unknown as StudioConfig;
             expect(formSkills(config, "transformed")?.aim).toEqual(config.skills?.aim);
             const transformed = ensureFormSkills(config, "transformed");
             transformed.aim!.muzzle.x = -80;

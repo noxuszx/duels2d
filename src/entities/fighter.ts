@@ -1,5 +1,6 @@
 import * as Matter from "matter-js";
 import { AimSkill } from "../skills/aim-skill";
+import { FighterMovement } from "../gameplay/movement";
 import type { Facing, FighterConfig, FighterSkills, Vector2 } from "../types/fighter";
 import type { GameConfig, SoundManifest } from "../types/game";
 import { FighterAudio } from "./fighter-audio";
@@ -48,6 +49,7 @@ export class Fighter {
       readonly hitbox: NormalizedHitbox;
       readonly baseSpeed: number;
       readonly body: Matter.Body;
+      readonly movement: FighterMovement;
       readonly presentation: FighterPresentation;
       readonly audio: FighterAudio;
       readonly abilities: FighterAbilities;
@@ -107,6 +109,7 @@ export class Fighter {
                               bodyOptions,
                         );
             Matter.Body.setVelocity(this.body, { x: velX, y: velY });
+            this.movement = new FighterMovement(this.body);
 
             this.presentation = new FighterPresentation(config);
             this.transformation = new TransformationController(config.transformation);
@@ -155,7 +158,7 @@ export class Fighter {
 
       private interruptForTransformation(): void {
             this.aimSkill?.stop();
-            this.behavior?.reset();
+            this.behavior?.interrupt("interrupted");
             this.abilities.reset();
       }
 
@@ -185,7 +188,7 @@ export class Fighter {
             const result = this.statuses.apply(application);
             if (result.applied && !this.statuses.canContinueAbility) {
                   this.aimSkill?.stop();
-                  this.behavior?.reset();
+                  this.behavior?.interrupt("interrupted");
                   // The default behavior reset clears its targeting runtime only.
                   // Reset centrally as well; cooldown timestamps are retained.
                   this.abilities.reset();
@@ -256,6 +259,7 @@ export class Fighter {
       }
 
       applyCruiseForce(): void {
+            if (this.movement.isCruiseSuppressed) return;
             const speed = Math.hypot(
                   this.body.velocity.x,
                   this.body.velocity.y,
@@ -276,26 +280,6 @@ export class Fighter {
             Matter.Body.applyForce(this.body, this.body.position, {
                   x: direction.x * forceMagnitude,
                   y: direction.y * forceMagnitude,
-            });
-      }
-
-      applyChargeForce(
-            direction: Point,
-            forceMagnitude: number,
-            speedMultiplier: number,
-      ): void {
-            const length = Math.hypot(direction.x, direction.y) || 1;
-            const unitX = direction.x / length;
-            const unitY = direction.y / length;
-            const forwardSpeed =
-                  this.body.velocity.x * unitX + this.body.velocity.y * unitY;
-            const targetSpeed = this.baseSpeed * Math.max(1, speedMultiplier);
-            if (forwardSpeed >= targetSpeed) return;
-            const remaining = Math.max(0, 1 - forwardSpeed / targetSpeed);
-            this.knockbackOwnerId = null;
-            Matter.Body.applyForce(this.body, this.body.position, {
-                  x: unitX * forceMagnitude * remaining * FORCE_SCALE,
-                  y: unitY * forceMagnitude * remaining * FORCE_SCALE,
             });
       }
 
@@ -386,9 +370,14 @@ export class Fighter {
             return true;
       }
       destroy(): void {
+            this.behavior?.dispose();
+            this.abilities.reset();
+            this.movement.reset();
             this.audio.destroy();
       }
       onDeath(): void {
+            this.behavior?.interrupt("death");
+            this.abilities.reset();
             this.playSound("death", 0);
       }
       get isDead(): boolean {

@@ -234,24 +234,18 @@ export class ArenaRenderer {
                   imageCrop,
                   radius * imageScale,
             );
-            const windingUp = fighter.abilities.state === "windup" &&
-                  !this.abilities.isWallCrawling(fighter) &&
-                  fighter.abilities.active?.actions.some((action) => action.type === "dash");
-            const time = performance.now();
-            const shakeX = windingUp ? Math.sin(time * 0.18) * 1.25 : 0;
-            const shakeY = windingUp ? Math.cos(time * 0.21) : 0;
-            const shakeRotation = windingUp ? Math.sin(time * 0.23) * 0.0125 : 0;
+            const motion = fighter.presentation.motion;
             const { ctx } = this;
             ctx.save();
             const aim = fighter.aimSkill?.current;
             if (aim) {
-                  ctx.translate(aim.pivot.x, aim.pivot.y);
-                  ctx.rotate(aim.angle);
+                  ctx.translate(aim.pivot.x + motion.x, aim.pivot.y + motion.y);
+                  ctx.rotate(aim.angle + motion.rotation);
                   ctx.scale(aim.flip ? -1 : 1, 1);
                   ctx.translate(-aim.localPivot.x, -aim.localPivot.y);
             } else {
-                  ctx.translate(position.x + imageOffset.x + shakeX, position.y + imageOffset.y + shakeY);
-                  ctx.rotate(angle + shakeRotation);
+                  ctx.translate(position.x + imageOffset.x + motion.x, position.y + imageOffset.y + motion.y);
+                  ctx.rotate(angle + motion.rotation);
                   ctx.scale(flip ? -1 : 1, 1);
             }
             ctx.drawImage(

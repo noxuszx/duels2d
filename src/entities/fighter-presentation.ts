@@ -9,6 +9,7 @@ import type {
 } from "../types/fighter";
 
 type PoseKey = string;
+export interface PresentationMotion { x: number; y: number; rotation: number; }
 type PoseVisual = Partial<PoseOverrides>;
 type PoseBank = {
       sprites: Record<PoseKey, HTMLImageElement | null>;
@@ -54,6 +55,26 @@ export class FighterPresentation {
       private transformationPose: string | null = null;
       private readonly basePoses = createPoseBank();
       private readonly transformedPoses = createPoseBank();
+      private readonly motions = new Map<symbol, PresentationMotion>();
+
+      get motion(): PresentationMotion {
+            const sum = { x: 0, y: 0, rotation: 0 };
+            for (const motion of this.motions.values()) {
+                  sum.x += motion.x;
+                  sum.y += motion.y;
+                  sum.rotation += motion.rotation;
+            }
+            return sum;
+      }
+
+      acquireMotion(): { set(motion: PresentationMotion): void; release(): void } {
+            const owner = Symbol();
+            this.motions.set(owner, { x: 0, y: 0, rotation: 0 });
+            return {
+                  set: (motion) => { if (this.motions.has(owner)) this.motions.set(owner, { ...motion }); },
+                  release: () => { this.motions.delete(owner); },
+            };
+      }
 
       constructor(config: FighterConfig) {
             this.imageScale = config.imageScale;

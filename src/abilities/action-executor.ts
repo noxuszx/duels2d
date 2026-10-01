@@ -1,4 +1,3 @@
-import type * as Matter from "matter-js";
 import type { Fighter } from "../entities/fighter";
 import type { AbilityAction, AbilityConfig } from "./types";
 import type { CombatResult } from "../combat/combat-result";
@@ -6,7 +5,6 @@ import type { StatusEffectId } from "../status-effects";
 import {
       executeDamageAction,
       executeKnockbackAction,
-      executeDashAction,
       executeProjectileAction,
       executeRecoilAction,
       type ActionExecutionContext,
@@ -117,11 +115,4 @@ export class ActionExecutor {
             }
       }
 
-      applyDash(
-            source: Fighter,
-            direction: Matter.Vector,
-            action: Extract<AbilityAction, { type: "dash" }>,
-      ): void {
-            executeDashAction(action, source, direction);
-      }
 }

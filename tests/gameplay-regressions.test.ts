@@ -287,7 +287,7 @@ describe("gameplay regression characterization", () => {
                   statuses: new StatusEffectController(),
                   transformation: new TransformationController(null),
                   abilities: runtime,
-                  behavior: { reset: behaviorReset },
+                  behavior: { interrupt: behaviorReset },
             });
             const ability = makeAbility({ timing: {
                   cooldownMs: 1_000,

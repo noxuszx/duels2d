@@ -3,6 +3,7 @@ import type { Fighter } from "../entities/fighter";
 import type { Projectile } from "../entities/projectile";
 import type { IndicatorSystem } from "../systems/indicator-system";
 import { ActionExecutor } from "./action-executor";
+import { DashSkill } from "../skills/dash-skill";
 import { attackHitboxOverlaps } from "./actions/attack-hitbox-action";
 import type { ArenaBounds, ArenaWall } from "../skills/types";
 import { enemyInRange, nearestEnemy, selectTarget } from "./targeting";
@@ -27,8 +28,8 @@ interface AbilitySystemGameManager {
 
 export class AbilitySystem implements StandardAbilityHandler {
       private readonly targets = new Map<Fighter, Fighter>();
-      private readonly dashDirections = new Map<Fighter, Matter.Vector>();
-      private readonly dashHits = new Set<Fighter>();
+      // Legacy JSON adapter: shares DashSkill with scripted moves and Baby Man.
+      private readonly dashes = new Map<Fighter, DashSkill>();
       private readonly swingHits = new Set<Fighter>();
       private readonly attackHitTargets = new Map<Fighter, Set<Fighter>>();
       private readonly actions: ActionExecutor;
@@ -38,8 +39,9 @@ export class AbilitySystem implements StandardAbilityHandler {
       }
 
       private getBehaviorContext(): FighterBehaviorContext {
+            const gm = this.gm;
             return {
-                  characters: this.gm.characters,
+                  get characters() { return gm.characters; },
                   world: this.gm.world,
                   addProjectile: (projectile) => this.gm.projectiles.push(projectile),
                   now: () => this.gm.now(),
@@ -149,40 +151,43 @@ export class AbilitySystem implements StandardAbilityHandler {
                               );
                         }
                   }
-                  const chargeTarget = target && !target.isDead
-                        ? target
-                        : nearestEnemy(fighter, this.gm.characters);
-                  if (chargeTarget) {
-                        const dx =
-                              chargeTarget.body.position.x -
-                              fighter.body.position.x;
-                        const dy =
-                              chargeTarget.body.position.y -
-                              fighter.body.position.y;
-                        this.dashDirections.set(fighter, { x: dx, y: dy });
-                        if (dx !== 0) {
-                              fighter.facing = dx < 0 ? "left" : "right";
-                        }
+                  const dashAction = this.action<"dash">(abilityBeforeUpdate, "dash");
+                  if (dashAction && activeTarget && fighter.abilities.state === "active") {
+                        const dash = new DashSkill();
+                        this.dashes.set(fighter, dash);
+                        const started = dash.startToward(fighter, activeTarget, {
+                              speedMultiplier: dashAction.speedMultiplier,
+                              accelerationForce: dashAction.accelerationForce,
+                              stopOn: dashAction.endOn,
+                              onHitEnemy: (enemy) => {
+                                    if (fighter.isDead || enemy.isDead || !this.gm.characters.includes(enemy)) return;
+                                    if (this.actions.executeTargetActions(fighter, enemy, abilityBeforeUpdate).connected)
+                                          fighter.audio.playAbilityCue(abilityBeforeUpdate, "hit");
+                              },
+                              onComplete: () => fighter.abilities.finishActive(),
+                        });
+                        if (!started) fighter.abilities.finishActive();
                   }
             }
 
             if (ability && fighter.abilities.state === "active") {
                   this.applyAttackHitbox(fighter, ability);
-                  const dash = this.action<"dash">(ability, "dash");
-                  const direction = this.dashDirections.get(fighter);
-                  if (dash && direction)
-                        this.actions.applyDash(fighter, direction, dash);
+                  const dash = this.dashes.get(fighter);
+                  dash?.update(deltaMs);
 
                   const target = this.targets.get(fighter);
                   if (
                         dash &&
                         target &&
-                        !this.dashHits.has(fighter) &&
                         enemyInRange(fighter, [target], 0)
                   ) {
-                        this.tryApplyDashHit(fighter, target);
-                        this.finishCollisionDash(fighter, "fighter-collision");
+                        dash.handleFighterCollision(target);
                   }
+            }
+
+            if (fighter.abilities.state !== "active") {
+                  this.dashes.get(fighter)?.cancel("phase-ended");
+                  this.dashes.delete(fighter);
             }
 
             if (fighter.abilities.state === "idle")
@@ -200,7 +205,7 @@ export class AbilitySystem implements StandardAbilityHandler {
                               fighter,
                               this.gm.characters,
                               candidate.trigger,
-                              this.action<"attack-hitbox">(candidate, "attack-hitbox"),
+                              this.action<"attack-hitbox">(candidate, "attack-hitbox") ?? undefined,
                         ),
                   }));
             for (const activation of activations) {
@@ -219,15 +224,13 @@ export class AbilitySystem implements StandardAbilityHandler {
 
       /** StandardAbilityHandler implementation */
       onWallCollision(fighter: Fighter, wall: ArenaWall): WallCollisionResponse {
-            void wall;
-            this.finishCollisionDash(fighter, "wall-collision");
+            this.dashes.get(fighter)?.handleWallCollision(wall);
             return DEFAULT_WALL_COLLISION_RESPONSE;
       }
 
       /** StandardAbilityHandler implementation */
       onFighterCollision(fighter: Fighter, target: Fighter): void {
-            this.tryApplyDashHit(fighter, target);
-            this.finishCollisionDash(fighter, "fighter-collision");
+            this.dashes.get(fighter)?.handleFighterCollision(target);
       }
 
       /** StandardAbilityHandler implementation */
@@ -359,39 +362,10 @@ export class AbilitySystem implements StandardAbilityHandler {
             }
       }
 
-      private tryApplyDashHit(attacker: Fighter, target: Fighter): void {
-            const ability = attacker.abilities.active;
-            if (
-                  !ability ||
-                  attacker.abilities.state !== "active" ||
-                  !this.action(ability, "dash") ||
-                  attacker.isDead ||
-                  target.isDead ||
-                  this.dashHits.has(attacker)
-            )
-                  return;
-            if (this.actions.executeTargetActions(attacker, target, ability).connected)
-                  attacker.audio.playAbilityCue(ability, "hit");
-            this.dashHits.add(attacker);
-      }
-
-      private finishCollisionDash(
-            fighter: Fighter,
-            event: "fighter-collision" | "wall-collision",
-      ): void {
-            const ability = fighter.abilities.active;
-            const dash = ability ? this.action<"dash">(ability, "dash") : null;
-            if (
-                  fighter.abilities.state === "active" &&
-                  dash?.endOn.includes(event)
-            )
-                  fighter.abilities.finishActive();
-      }
-
       private clearRuntime(fighter: Fighter): void {
             this.targets.delete(fighter);
-            this.dashDirections.delete(fighter);
-            this.dashHits.delete(fighter);
+            this.dashes.get(fighter)?.cancel("interrupted");
+            this.dashes.delete(fighter);
             this.swingHits.delete(fighter);
             this.attackHitTargets.delete(fighter);
       }
@@ -405,22 +379,28 @@ export class AbilitySystem implements StandardAbilityHandler {
                   fighter.aimSkill?.stop();
             }
             this.targets.clear();
-            this.dashDirections.clear();
-            this.dashHits.clear();
+            for (const dash of this.dashes.values()) dash.cancel("reset");
+            this.dashes.clear();
             this.swingHits.clear();
             this.attackHitTargets.clear();
       }
 
       isDashing(fighter: Fighter): boolean {
+            const scripted = fighter.behavior?.isDashing?.();
+            if (scripted != null) return scripted;
             return (
                   fighter.abilities.state === "active" &&
-                  (this.dashDirections.has(fighter) ||
+                  (this.dashes.get(fighter)?.isActive ||
                         Boolean(
                               fighter.abilities.active?.actions.some(
                                     (a) => a.type === "dash",
                               ),
                         ))
             );
+      }
+
+      isStandardDashing(fighter: Fighter): boolean {
+            return fighter.abilities.state === "active" && !!this.dashes.get(fighter)?.isActive;
       }
 
       private action<T extends AbilityAction["type"]>(

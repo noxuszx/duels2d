@@ -121,6 +121,9 @@ export function composeFighter(
             transformation: merged.transformation
                   ? {
                           trigger: merged.transformation.trigger,
+                          ...(merged.transformation.skills !== undefined
+                                ? { skills: structuredClone(merged.transformation.skills) }
+                                : {}),
                           sequence: merged.transformation.sequence,
                           abilities:
                                 merged.transformation.combat?.abilities ??

@@ -577,6 +577,34 @@ describe("gameplay regression characterization", () => {
             expect(target.takeDamage).toHaveBeenCalledOnce();
       });
 
+      it.each(["left", "right"] as const)("starts range-triggered melee only inside its %s-facing attack hitbox", (facing) => {
+            const ability = makeAbility({
+                  trigger: { type: "enemy-in-range", rangePadding: 42 },
+                  timing: { cooldownMs: 1_000, windupMs: 5, activeMs: 20, recoveryMs: 5 },
+                  actions: [
+                        { type: "attack-hitbox", width: 20, height: 40, offset: { x: 88, y: 0 } },
+                        { type: "damage", amount: 12 },
+                  ],
+            });
+            const source = makeAbilitySystemFighter("source", Bodies.circle(0, 0, 5), [ability]);
+            source.facing = facing;
+            const direction = facing === "right" ? 1 : -1;
+            const target = makeAbilitySystemFighter("target", Bodies.circle(-88 * direction, 0, 5));
+            const system = makeTestAbilitySystem([source, target]);
+
+            system.update(0);
+            expect(source.abilities.state).toBe("idle");
+            Body.setPosition(target.body, { x: 20 * direction, y: 0 });
+            system.update(0);
+            expect(source.abilities.state).toBe("idle");
+            Body.setPosition(target.body, { x: 88 * direction, y: 0 });
+            system.update(0);
+            expect(source.abilities.state).toBe("windup");
+            expect(target.takeDamage).not.toHaveBeenCalled();
+            system.update(5);
+            expect(target.takeDamage).toHaveBeenCalledOnce();
+      });
+
       it("mirrors attack-hitbox forward offset and follows body rotation", () => {
             const source = makeAbilitySystemFighter(
                   "source",

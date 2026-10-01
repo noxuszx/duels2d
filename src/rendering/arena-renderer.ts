@@ -1,10 +1,14 @@
 import type { AbilitySystem } from "../abilities/ability-system";
+import { getAttackHitboxGeometry } from "../abilities/actions/attack-hitbox-action";
 import type { Fighter } from "../entities/fighter";
 import type { Projectile } from "../entities/projectile";
 import type { IndicatorSystem } from "../systems/indicator-system";
 import type { RuntimeConfig } from "../config/runtime-config";
 
 type Point = { x: number; y: number };
+
+// Temporary overlay for diagnosing Granny's melee attacks. Set false to hide.
+const SHOW_GRANNY_ATTACK_HITBOX = true;
 
 export interface ArenaRenderState {
       width: number;
@@ -33,6 +37,7 @@ export class ArenaRenderer {
             this.drawProjectiles(state.projectiles);
             this.drawCharacters(state.characters, state.paused);
             this.drawHeldWeapons(state.characters);
+            this.drawGrannyAttackHitbox(state.characters);
             this.indicators.drawDamageIndicators(ctx);
             this.indicators.drawDialogueIndicators(ctx);
             this.indicators.drawHitSparks(ctx);
@@ -46,6 +51,38 @@ export class ArenaRenderer {
             ctx.lineWidth = border * 2;
             ctx.strokeRect(ax, ay, aw, ah);
             ctx.restore();
+      }
+
+      private drawGrannyAttackHitbox(characters: readonly Fighter[]): void {
+            if (!SHOW_GRANNY_ATTACK_HITBOX) return;
+            for (const fighter of characters) {
+                  if (fighter.id !== "granny" || fighter.isDead) continue;
+                  const abilities = fighter.abilities.active
+                        ? [fighter.abilities.active]
+                        : fighter.activeAbilities;
+                  for (const ability of abilities) {
+                        for (const action of ability.actions) {
+                              if (action.type !== "attack-hitbox") continue;
+                              const geometry = getAttackHitboxGeometry(fighter, action);
+                              const active = fighter.abilities.state === "active";
+                              const { ctx } = this;
+                              ctx.save();
+                              ctx.translate(geometry.center.x, geometry.center.y);
+                              ctx.rotate(geometry.angle);
+                              ctx.strokeStyle = active ? "#ff4040" : "#00e5ff";
+                              ctx.fillStyle = active
+                                    ? "rgba(255, 64, 64, 0.22)"
+                                    : "rgba(0, 229, 255, 0.08)";
+                              ctx.lineWidth = 2;
+                              ctx.setLineDash(active ? [] : [6, 4]);
+                              ctx.fillRect(-geometry.width / 2, -geometry.height / 2,
+                                    geometry.width, geometry.height);
+                              ctx.strokeRect(-geometry.width / 2, -geometry.height / 2,
+                                    geometry.width, geometry.height);
+                              ctx.restore();
+                        }
+                  }
+            }
       }
 
       private drawWatermark({ ax, ay, aw, ah }: ArenaRenderState["arena"]): void {

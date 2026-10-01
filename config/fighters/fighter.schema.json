@@ -410,6 +410,11 @@
                   "type": "object",
                   "required": ["trigger"],
                   "properties": {
+                        "skills": {
+                              "type": "object",
+                              "properties": { "aim": { "$ref": "#/$defs/aimSkill" } },
+                              "additionalProperties": false
+                        },
                         "trigger": { "$ref": "#/$defs/transformationTrigger" },
                         "sequence": {
                               "type": "array",

@@ -1,7 +1,7 @@
 import { loadFighterConfig } from "../../src/config/fighter-loader";
 import { loadRuntimeConfig } from "../../src/config/runtime-config";
-import { CharacterStudio } from "./studio-app";
-import { installStudioControls } from "./studio-controls";
+import { CharacterStudio } from "./app/studio-app";
+import { installStudioControls } from "./ui/studio-controls";
 
 window.addEventListener("DOMContentLoaded", async () => {
       try {

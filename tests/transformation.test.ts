@@ -94,6 +94,11 @@ describe("Granny transformation integration", () => {
             const game = JSON.parse(readFileSync("config/game-settings.json", "utf8")) as GameConfig;
             const fighter = new Fighter(config, 0, 0, 2, 0, game,
                   { shared: {}, characters: {} }, () => 0);
+            const target = { body: { position: { x: 200, y: -30 } }, isDead: false } as Fighter;
+            expect(config.skills?.aim).toBeUndefined();
+            expect(config.transformation?.skills?.aim).toBeDefined();
+            fighter.updateAim(target);
+            expect(fighter.aimSkill?.current).toBeNull();
             const baseAbility = fighter.activeAbilities[0];
             fighter.abilities.tryStart(baseAbility, "left", 0);
             fighter.currentHealth = 400;
@@ -102,17 +107,26 @@ describe("Granny transformation integration", () => {
             expect(fighter.canStartAbility()).toBe(false);
             expect(fighter.presentation.getCurrentSprite("idle")?.image.src)
                   .toContain("granny-pre-trans.png");
-            fighter.updateTransformation(600);
+            fighter.updateAim(target);
+            expect(fighter.aimSkill?.current).toBeNull();
+            fighter.updateTransformation(config.transformation!.sequence![0].durationMs);
             expect(fighter.presentation.getCurrentSprite("idle")?.image.src)
                   .toContain("granny-trans.png");
-            fighter.updateTransformation(800);
+            fighter.updateAim(target);
+            expect(fighter.aimSkill?.current).toBeNull();
+            fighter.updateTransformation(config.transformation!.sequence![1].durationMs);
             expect(fighter.canStartAbility()).toBe(true);
             expect(fighter.activeAbilities[0].id).toBe("shotgun-blast");
             expect(fighter.presentation.getCurrentSprite("idle")?.image.src)
                   .toContain("granny-shotgun.png");
             expect(fighter.presentation.getCurrentSprite("recovery")?.image.src)
                   .toContain("granny-recoil.png");
+            fighter.updateAim(target);
+            expect(fighter.aimSkill?.current).not.toBeNull();
             fighter.resetTransformation();
+            expect(fighter.aimSkill?.current).toBeNull();
+            fighter.updateAim(target);
+            expect(fighter.aimSkill?.current).toBeNull();
             expect(fighter.activeAbilities[0].id).toBe("rolling-pin-strike");
             expect(fighter.presentation.getCurrentSprite("idle")?.image.src)
                   .toContain("granny-idle.png");

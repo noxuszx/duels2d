@@ -17,7 +17,7 @@
             "type": "attack-hitbox",
             "width": 109,
             "height": 165,
-            "offset": { "x": -88, "y": -12 }
+            "offset": { "x": 88, "y": -12 }
           },
           { "type": "damage", "amount": 90 },
           { "type": "knockback", "forceMagnitude": 0.1 }
@@ -37,30 +37,37 @@
     "poses": {
       "idle": {
         "image": "assets/fighters/granny/sprites/granny-idle.png",
-        "imageCrop": { "x": 0, "y": 0, "width": 1145, "height": 1275 },
+        "imageCrop": { "x": 0, "y": 0, "width": 985, "height": 1301 },
         "imageScale": 2.6,
-        "imageOffset": { "x": 13, "y": -18 }
+        "imageOffset": { "x": -12, "y": -23 }
       },
       "attackWindup": {
         "image": "assets/fighters/granny/sprites/granny-windup.png",
-        "imageCrop": { "x": 0, "y": 0, "width": 1145, "height": 1275 },
+        "imageCrop": { "x": 0, "y": 0, "width": 1145, "height": 1290 },
         "imageScale": 2.6,
-        "imageOffset": { "x": 13, "y": -18 }
+        "imageOffset": { "x": -12, "y": -18 }
       },
       "attackActive": {
         "image": "assets/fighters/granny/sprites/granny-attack.png",
-        "imageCrop": { "x": 0, "y": 0, "width": 1145, "height": 1275 },
+        "imageCrop": { "x": 0, "y": 0, "width": 1145, "height": 1297 },
         "imageScale": 2.6,
-        "imageOffset": { "x": 20, "y": -18 }
+        "imageOffset": { "x": -17, "y": -12 }
       }
     },
     "imageCrop": { "x": 0, "y": 0, "width": 1147, "height": 1203 }
   },
   "transformation": {
+    "skills": {
+      "aim": {
+        "muzzle": { "x": -58.4, "y": -17.3 },
+        "pivot": { "x": 10.7, "y": 0 },
+        "forwardDegrees": -163.7
+      }
+    },
     "trigger": { "type": "health-threshold", "healthRatio": 0.4 },
     "sequence": [
-      { "pose": "realization", "durationMs": 600 },
-      { "pose": "rage", "durationMs": 800 }
+      { "pose": "realization", "durationMs": 1000 },
+      { "pose": "rage", "durationMs": 1000 }
     ],
     "combat": {
       "abilities": [
@@ -90,47 +97,40 @@
         "realization": {
           "image": "assets/fighters/granny/sprites/granny-pre-trans.png",
           "imageScale": 2.6,
-          "imageOffset": { "x": 21, "y": -18 },
+          "imageOffset": { "x": -21, "y": -18 },
           "imageCrop": { "x": 0, "y": 0, "width": 1145, "height": 1203 }
         },
         "rage": {
           "image": "assets/fighters/granny/sprites/granny-trans.png",
           "imageScale": 2.6,
-          "imageOffset": { "x": 20, "y": -14 },
+          "imageOffset": { "x": -19, "y": -14 },
           "imageCrop": { "x": 0, "y": 0, "width": 1145, "height": 1131 }
         },
         "idle": {
           "image": "assets/fighters/granny/sprites/granny-shotgun.png",
           "imageScale": 2.5,
-          "imageOffset": { "x": 20, "y": -8 },
-          "imageCrop": { "x": 0, "y": 0, "width": 1046, "height": 1105 }
+          "imageOffset": { "x": -15, "y": -8 },
+          "imageCrop": { "x": 0, "y": 0, "width": 1046, "height": 1193 }
         },
         "attackWindup": {
           "image": "assets/fighters/granny/sprites/granny-shotgun.png",
           "imageScale": 2.5,
-          "imageOffset": { "x": 20, "y": -8 },
-          "imageCrop": { "x": 0, "y": 0, "width": 1046, "height": 1105 }
+          "imageOffset": { "x": -15, "y": -8 },
+          "imageCrop": { "x": 0, "y": 0, "width": 1046, "height": 1193 }
         },
         "attackActive": {
           "image": "assets/fighters/granny/sprites/granny-shotgun.png",
           "imageScale": 2.5,
-          "imageOffset": { "x": 20, "y": -8 },
-          "imageCrop": { "x": 0, "y": 0, "width": 1046, "height": 1105 }
+          "imageOffset": { "x": -15, "y": -8 },
+          "imageCrop": { "x": 0, "y": 0, "width": 1046, "height": 1193 }
         },
         "recovery": {
           "image": "assets/fighters/granny/sprites/granny-recoil.png",
           "imageScale": 2.5,
-          "imageOffset": { "x": 20, "y": -8 },
+          "imageOffset": { "x": -13, "y": -8 },
           "imageCrop": { "x": 0, "y": 0, "width": 1174, "height": 1123 }
         }
       }
-    }
-  },
-  "skills": {
-    "aim": {
-      "muzzle": { "x": -58.4, "y": -17.3 },
-      "pivot": { "x": 10.7, "y": 0 },
-      "forwardDegrees": -163.7
     }
   }
 }

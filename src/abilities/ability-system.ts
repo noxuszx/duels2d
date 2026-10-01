@@ -200,6 +200,7 @@ export class AbilitySystem implements StandardAbilityHandler {
                               fighter,
                               this.gm.characters,
                               candidate.trigger,
+                              this.action<"attack-hitbox">(candidate, "attack-hitbox"),
                         ),
                   }));
             for (const activation of activations) {
@@ -242,7 +243,7 @@ export class AbilitySystem implements StandardAbilityHandler {
                         this.isDashing(fighter)
                   )
                         continue;
-                  if (fighter.aimSkill && fighter.config.skills?.aim) {
+                  if (fighter.aimSkill && fighter.activeSkills?.aim) {
                         fighter.setFacingToward(this.targets.get(fighter) ?? nearestEnemy(fighter, this.gm.characters));
                         fighter.updateAim(this.targets.get(fighter) ?? nearestEnemy(fighter, this.gm.characters));
                         continue;

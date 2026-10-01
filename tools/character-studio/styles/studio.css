@@ -1,0 +1,5 @@
+/* Keep imports in this order: workspace styles override the original base rules. */
+@import "./layout.css";
+@import "./canvas.css";
+@import "./controls.css";
+@import "./workspace.css";

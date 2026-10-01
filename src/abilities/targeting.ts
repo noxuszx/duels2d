@@ -1,5 +1,6 @@
 import type { Fighter } from "../entities/fighter";
-import type { AbilityTrigger } from "./types";
+import type { AbilityTrigger, AttackHitboxAction } from "./types";
+import { attackHitboxOverlaps } from "./actions/attack-hitbox-action";
 
 type Rectangle = { x: number; y: number; width: number; height: number };
 
@@ -60,7 +61,15 @@ export function selectTarget(
       fighter: Fighter,
       fighters: readonly Fighter[],
       trigger: AbilityTrigger,
+      attackHitbox?: AttackHitboxAction,
 ): Fighter | null {
+      // Range-triggered melee abilities use the same geometry for starting and hitting.
+      if (trigger.type === "enemy-in-range" && attackHitbox) {
+            return fighters.find((enemy) =>
+                  enemy !== fighter && !enemy.isDead &&
+                  attackHitboxOverlaps(fighter, enemy, attackHitbox),
+            ) ?? null;
+      }
       return trigger.type === "enemy-in-range"
             ? enemyInRange(fighter, fighters, trigger.rangePadding)
             : nearestEnemy(fighter, fighters);

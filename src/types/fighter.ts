@@ -63,6 +63,8 @@ export interface TransformationSequenceStep {
 /** Optional overrides authored in a fighter JSON file. */
 export interface FighterTransformationDefinition {
       trigger: TransformationTrigger;
+      /** Overrides base skills after the sequence finishes; an empty object disables them. */
+      skills?: FighterSkills;
       sequence?: TransformationSequenceStep[];
       combat?: {
             abilities?: AbilityConfig[];
@@ -75,6 +77,7 @@ export interface FighterTransformationDefinition {
 /** Fully-composed transformation data used by the runtime. */
 export interface FighterTransformationConfig {
       trigger: TransformationTrigger;
+      skills?: FighterSkills;
       sequence?: TransformationSequenceStep[];
       abilities: AbilityConfig[];
       poses: FighterPoses;

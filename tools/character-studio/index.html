@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="character-studio.css" />
+    <link rel="stylesheet" href="styles/studio.css" />
   </head>
   <body>
     <header id="app-bar">
@@ -437,8 +437,8 @@
           <div class="section-divider"><span>Shared Character Settings</span></div>
 
           <div class="control-group">
-            <label for="defaultFacing">Default Facing</label>
-            <select id="defaultFacing">
+            <label for="defaultFacing">Default Facing (Original Image)</label>
+            <select id="defaultFacing" title="The direction the original sprite faces. The game mirrors it when facing an enemy on the opposite side.">
               <option value="right">Right</option>
               <option value="left">Left</option>
             </select>
@@ -952,7 +952,7 @@
     </dialog>
 
     <footer id="status-bar">
-      <span><span class="status-dot"></span> Ready</span><span id="status-context">Character preview</span><span class="status-spacer"></span><span>RGB</span><span>8 bpc</span><span>100%</span>
+      <span><span class="status-dot"></span> <span id="save-status">Ready</span></span><span id="status-context">Character preview</span><span class="status-spacer"></span><span>RGB</span><span>8 bpc</span><span>100%</span>
     </footer>
     <script type="module" src="main.ts"></script>
   </body>

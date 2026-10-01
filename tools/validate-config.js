@@ -177,6 +177,17 @@ function checkAim(location, aim) {
                   fail(`${location}.${key}`, "unknown aim skill property");
 }
 
+function checkSkills(location, skills) {
+      if (skills === undefined) return;
+      if (!skills || typeof skills !== "object" || Array.isArray(skills)) {
+            fail(location, "must be a skills object");
+            return;
+      }
+      for (const key of Object.keys(skills))
+            if (key !== "aim") fail(`${location}.${key}`, "unknown skill");
+      if (skills.aim !== undefined) checkAim(`${location}.aim`, skills.aim);
+}
+
 function checkCrop(location, crop) {
       if (crop == null) return;
       if (!Number.isFinite(crop.x) || crop.x < 0)
@@ -363,16 +374,8 @@ if (definitions.length < 2) {
 
 definitions.forEach((definition, index) => {
       const location = fighterFiles[index] || `fighter #${index + 1}`;
-      if (definition.skills !== undefined) {
-            if (!definition.skills || typeof definition.skills !== "object" || Array.isArray(definition.skills))
-                  fail(`${location}.skills`, "must be a skills object");
-            else {
-                  for (const key of Object.keys(definition.skills))
-                        if (key !== "aim") fail(`${location}.skills.${key}`, "unknown skill");
-                  if (definition.skills.aim !== undefined)
-                        checkAim(`${location}.skills.aim`, definition.skills.aim);
-            }
-      }
+      checkSkills(`${location}.skills`, definition.skills);
+      checkSkills(`${location}.transformation.skills`, definition.transformation?.skills);
       if (!/^[a-z0-9-]+$/.test(definition.id || "")) {
             fail(
                   location,

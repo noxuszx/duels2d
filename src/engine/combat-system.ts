@@ -1,9 +1,11 @@
 import { Body, Events, World, type Engine, type World as MatterWorld } from "matter-js";
 import type { AbilitySystem } from "../abilities/ability-system";
 import type { Fighter } from "../entities/fighter";
-import type { Projectile } from "../entities/projectile";
+import type { Projectile, ProjectileRemovalReason } from "../entities/projectile";
 import type { IndicatorSystem } from "../systems/indicator-system";
 import type { GameConfig } from "../types/game";
+import { executeKnockbackAction } from "../abilities/actions/knockback-action";
+import type { ProjectileFlightContext } from "../skills/projectile-flight";
 import { applyDamage } from "../combat/combat-resolver";
 
 type Point = { x: number; y: number };
@@ -35,7 +37,6 @@ export class CombatSystem {
 
       register(): void {
             Events.on(this.engine, "collisionStart", (event) => {
-                  if (this.host.isGameOver()) return;
                   const now = this.host.now();
                   for (const { bodyA, bodyB, collision } of event.pairs) {
                         const projectile = this.projectileFromBody(bodyA) ??
@@ -47,7 +48,7 @@ export class CombatSystem {
                               this.handleProjectileHit(projectile, fighter, now);
                               continue;
                         }
-                        if (!first || !second || first === second) continue;
+                        if (this.host.isGameOver() || !first || !second || first === second) continue;
                         first.noteImpact(now);
                         second.noteImpact(now);
                         const firstWasDashing = this.abilities.isDashing(first);
@@ -70,12 +71,19 @@ export class CombatSystem {
       updateProjectiles(deltaMs: number): void {
             for (let i = this.host.projectiles.length - 1; i >= 0; i--) {
                   const projectile = this.host.projectiles[i];
-                  projectile.update(deltaMs);
-                  if (!projectile.expired) continue;
-                  projectile.dead = true;
+                  projectile.update(deltaMs, this.projectileContext());
+                  if (!projectile.dead) continue;
                   World.remove(this.host.world, projectile.body);
                   this.host.projectiles.splice(i, 1);
             }
+      }
+
+      clearProjectiles(reason: ProjectileRemovalReason): void {
+            for (const projectile of [...this.host.projectiles]) {
+                  projectile.remove(reason);
+                  World.remove(this.host.world, projectile.body);
+            }
+            this.host.projectiles.length = 0;
       }
 
       private handleProjectileHit(
@@ -83,10 +91,9 @@ export class CombatSystem {
             fighter: Fighter,
             now: number,
       ): void {
-            if (projectile.ownerId === fighter.id || projectile.dead) return;
-            const owner = this.host.characters.find(
-                  (candidate) => candidate.id === projectile.ownerId,
-            ) ?? null;
+            if (!projectile.flight.handleFighterContact(fighter, this.projectileContext())) return;
+            if (this.host.isGameOver()) return;
+            const owner = projectile.flight.getOwner(this.host.characters);
             const result = applyDamage({
                   source: owner,
                   target: fighter,
@@ -95,13 +102,29 @@ export class CombatSystem {
                   cooldownMs: this.gameConfig.physics.collisionCooldownMs,
                   indicators: this.indicators,
             });
-            if (result.applied && owner && projectile.hitSoundCue) {
+            const knockback = projectile.flight.settings.knockback;
+            if (knockback && !fighter.isDead)
+                  executeKnockbackAction({ type: "knockback", ...knockback },
+                        { id: projectile.ownerId, body: projectile.body }, fighter,
+                        projectile.body.velocity, now);
+            if ((result.applied || (knockback && !fighter.isDead)) && owner && projectile.hitSoundCue)
                   owner.audio.play(projectile.hitSoundCue);
-            }
-            projectile.dead = true;
+            projectile.flight.completeEnemyContact();
+            if (!projectile.dead) return;
             World.remove(this.host.world, projectile.body);
             const index = this.host.projectiles.indexOf(projectile);
             if (index !== -1) this.host.projectiles.splice(index, 1);
+      }
+
+      private projectileContext(): ProjectileFlightContext {
+            const { ax, ay, aw, ah } = this.host.getArena();
+            const padding = this.gameConfig.arena.borderWidth;
+            return {
+                  characters: this.host.characters,
+                  bounds: { minX: ax + padding, maxX: ax + aw - padding,
+                        minY: ay + padding, maxY: ay + ah - padding },
+                  matchEnded: this.host.isGameOver(),
+            };
       }
 
       private constrainFighters(): void {

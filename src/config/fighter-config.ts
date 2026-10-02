@@ -99,6 +99,7 @@ export function composeFighter(
             name: merged.name,
             color: merged.color,
             ...(definition.skills ? { skills: structuredClone(definition.skills) } : {}),
+            ...(definition.behavior ? { behavior: structuredClone(definition.behavior) } : {}),
             maxHealth: merged.combat.maxHealth,
             speed: merged.combat.speed,
             baseDamage: merged.combat.baseDamage,

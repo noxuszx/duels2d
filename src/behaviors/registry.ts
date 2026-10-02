@@ -2,6 +2,7 @@ import type { Fighter } from "../entities/fighter";
 import { DefaultFighterBehavior, type StandardAbilityHandler } from "./default-behavior";
 import { FighterBehavior } from "./fighter-behavior";
 import { BabyManBehavior } from "./fighters/babyman.behavior";
+import { MuscleManBehavior } from "./fighters/muscleman.behavior";
 import { AngryManBehavior } from "./fighters/angryman.behavior";
 import type { FighterBehaviorContext } from "./types";
 
@@ -13,6 +14,7 @@ export type FighterBehaviorConstructor = new (
 const BEHAVIOR_REGISTRY = new Map<string, FighterBehaviorConstructor>([
       ["babyman", BabyManBehavior],
       ["angryman", AngryManBehavior],
+      ["muscleman", MuscleManBehavior],
 ]);
 
 /**

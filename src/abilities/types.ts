@@ -1,3 +1,4 @@
+import type { ProjectileFlightSettings } from "../gameplay/projectile-settings";
 import type { StatusEffectId } from "../status-effects";
 
 export interface AbilityTiming {
@@ -20,7 +21,9 @@ export interface ProjectileConfig {
       radius: number;
       speed: number;
       damage: number;
+      /** Legacy body-response setting; explicit flight policies supersede it. */
       knockback?: boolean | ForceKnockbackConfig;
+      flight?: ProjectileFlightSettings;
       lifetimeMs: number;
       rotationSpeed?: number;
       image: string | string[];

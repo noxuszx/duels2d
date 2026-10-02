@@ -30,6 +30,7 @@ export function restoreStudioState(
                   ...structuredClone(config),
                   ...structuredClone(fields),
                   skills: structuredClone(state.skills),
+                  behavior: structuredClone(state.behavior),
                   weaponIdle: state.weaponIdle,
                   hitboxOffset: structuredClone(
                         state.hitboxOffset ?? { x: 0, y: 0 },

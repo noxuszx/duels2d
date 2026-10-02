@@ -358,6 +358,7 @@ export class GameManager {
 
             this.gameOver = true;
             this.characters.filter((c) => c.isDead).forEach((c) => c.onDeath());
+            this.combatSystem.updateProjectiles(0);
             let victoryPlayback: SoundPlayback | null = null;
             if (alive.length === 1 && !this.victorySoundPlayed) {
                   this.victorySoundPlayed = true;
@@ -383,6 +384,7 @@ export class GameManager {
             if (this._animId !== null) cancelAnimationFrame(this._animId);
 
             this.abilitySystem.resetAll();
+            this.combatSystem.clearProjectiles("reset");
             World.clear(this.world, false);
             this._cleanupCharacters();
             this.projectiles = [];

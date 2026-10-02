@@ -19,31 +19,32 @@ export class AbilityRunner {
 
       constructor(
             private readonly fighter: Fighter,
-            private readonly context: Pick<FighterBehaviorContext, "now" | "characters">,
+            private readonly context: Pick<FighterBehaviorContext, "now" | "characters" | "isCombatActive">,
       ) {}
 
       start(ability: AbilityConfig, target: Fighter, script: AbilityScript): AbilityStartResult {
             if (this.script && this.fighter.abilities.active !== this.ability) this.cancel();
+            if (this.context.isCombatActive?.() === false) return { started: false, reason: "combat-ended" };
             if (!this.validTarget(target)) return { started: false, reason: "invalid-target" };
             const result = this.fighter.abilities.tryStart(ability, this.fighter.facing, this.context.now());
             if (!result.started) return result;
             this.fighter.abilities.lockFacingToward(target.body.position.x, this.fighter.body.position.x);
             this.ability = ability;
             this.script = script;
-            try { this.enterPhase(); }
+            try {
+                  this.enterPhase();
+                  this.advance(0);
+            }
             catch (error) { this.cancel(); throw error; }
             return result;
       }
 
       update(deltaMs: number): void {
             if (this.fighter.isDead) return this.cancel("death");
-            if (!this.script || deltaMs <= 0) return;
+            if (!this.script || deltaMs < 0) return;
             if (this.fighter.abilities.active !== this.ability) return this.cancel("interrupted");
             try {
-                  this.fighter.abilities.update(deltaMs, {
-                        tick: (_phase, elapsedMs) => this.scope.update(elapsedMs),
-                        transition: () => this.enterPhase(),
-                  });
+                  this.advance(deltaMs);
             } catch (error) { this.cancel(); throw error; }
       }
 
@@ -81,6 +82,14 @@ export class AbilityRunner {
                   this.fighter.abilities.state !== "active") return;
             this.fighter.abilities.finishActive();
             this.enterPhase();
+            this.advance(0);
+      }
+
+      private advance(deltaMs: number): void {
+            this.fighter.abilities.update(deltaMs, {
+                  tick: (_phase, elapsedMs) => this.scope.update(elapsedMs),
+                  transition: () => this.enterPhase(),
+            });
       }
 
       private enterPhase(): void {

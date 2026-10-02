@@ -21,6 +21,9 @@ export class ActionExecutor {
             target: Fighter,
             ability: AbilityConfig,
       ): CombatResult {
+            if (this.context.isGameOver?.()) return {
+                  connected: false, damageApplied: 0, knockbackApplied: false, statusesApplied: [],
+            };
             let damageApplied = 0;
             let damageConnected = false;
             let knockbackApplied = false;
@@ -96,6 +99,7 @@ export class ActionExecutor {
             target: Fighter,
             ability: AbilityConfig,
       ): void {
+            if (this.context.isGameOver?.()) return;
             const dx = target.body.position.x - source.body.position.x;
             const dy = target.body.position.y - source.body.position.y;
             const length = Math.hypot(dx, dy) || 1;

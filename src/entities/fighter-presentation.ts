@@ -17,15 +17,8 @@ type PoseBank = {
 };
 
 const createPoseBank = (): PoseBank => ({
-      sprites: {
-            idle: null,
-            attackWindup: null,
-            attackActive: null,
-            recovery: null,
-            crawl1: null,
-            crawl2: null,
-      },
-      visuals: {},
+      sprites: Object.create(null),
+      visuals: Object.create(null),
 });
 
 export interface CurrentSprite {
@@ -55,6 +48,7 @@ export class FighterPresentation {
       private transformationPose: string | null = null;
       private readonly basePoses = createPoseBank();
       private readonly transformedPoses = createPoseBank();
+      private readonly poseOverrides = new Map<symbol, string>();
       private readonly motions = new Map<symbol, PresentationMotion>();
 
       get motion(): PresentationMotion {
@@ -76,6 +70,13 @@ export class FighterPresentation {
             };
       }
 
+      /** Leased presentation intent; releasing an old lease cannot clear a newer one. */
+      acquirePose(pose: string): () => void {
+            const owner = Symbol();
+            this.poseOverrides.set(owner, pose);
+            return () => { this.poseOverrides.delete(owner); };
+      }
+
       constructor(config: FighterConfig) {
             this.imageScale = config.imageScale;
             this.imageOffset = config.imageOffset;
@@ -86,22 +87,8 @@ export class FighterPresentation {
             this.healthBarOffset = config.healthBarOffset;
 
             if (config.image) this.loadImage("sprite", config.image);
-            this.loadPose(this.basePoses, "idle", config.poses?.idle, config.image);
-            this.loadPose(
-                  this.basePoses,
-                  "attackWindup",
-                  config.poses?.attackWindup,
-                  config.image,
-            );
-            this.loadPose(
-                  this.basePoses,
-                  "attackActive",
-                  config.poses?.attackActive,
-                  config.image,
-            );
-            this.loadPose(this.basePoses, "recovery", config.poses?.recovery, config.image);
-            this.loadPose(this.basePoses, "crawl1", config.poses?.crawl1, config.image);
-            this.loadPose(this.basePoses, "crawl2", config.poses?.crawl2, config.image);
+            for (const [key, value] of Object.entries(config.poses ?? {}))
+                  this.loadPose(this.basePoses, key, value, config.image);
             for (const key of Object.keys(config.transformation?.poses ?? {})) {
                   this.loadPose(
                         this.transformedPoses,
@@ -138,23 +125,36 @@ export class FighterPresentation {
       }
 
       getCurrentSprite(abilityState: AbilityState, isCrawling = false): CurrentSprite | null {
+            const requestedPose = [...this.poseOverrides.values()].at(-1);
+            const requestedBank = this.currentBank();
+            if (!this.transformationPose && requestedPose && requestedBank.sprites[requestedPose]) {
+                  const pose = requestedBank.visuals[requestedPose] ?? {};
+                  return {
+                        image: requestedBank.sprites[requestedPose]!,
+                        aim: pose.aim,
+                        imageScale: pose.imageScale ?? this.imageScale,
+                        imageOffset: pose.imageOffset ?? this.imageOffset,
+                        imageCrop: pose.imageCrop === undefined ? this.imageCrop : pose.imageCrop,
+                  };
+            }
             if (this.transformationPose) {
-                  const image = this.transformedPoses.sprites[this.transformationPose];
+                  const transitionBank = this.inheritedTransformedBank();
+                  const image = transitionBank.sprites[this.transformationPose];
                   if (image) {
-                        const pose = this.transformedPoses.visuals[this.transformationPose] ?? {};
+                        const pose = transitionBank.visuals[this.transformationPose] ?? {};
                         return {
                               image,
                               aim: pose.aim,
                               imageScale: pose.imageScale ?? this.imageScale,
                               imageOffset: pose.imageOffset ?? this.imageOffset,
-                              imageCrop: pose.imageCrop ?? this.imageCrop,
+                              imageCrop: pose.imageCrop === undefined ? this.imageCrop : pose.imageCrop,
                         };
                   }
             }
             const crawlKey: PoseKey = Math.floor(this.animationFrame / 9) % 2 === 0
                   ? "crawl1"
                   : "crawl2";
-            const bank = this.transformed ? this.transformedPoses : this.basePoses;
+            const bank = this.currentBank();
             const poseKey = isCrawling && bank.sprites[crawlKey]
                   ? crawlKey
                   : this.currentPoseKey(bank, abilityState);
@@ -180,7 +180,7 @@ export class FighterPresentation {
                   aim: pose.aim,
                   imageScale: pose.imageScale ?? this.imageScale,
                   imageOffset: pose.imageOffset ?? this.imageOffset,
-                  imageCrop: pose.imageCrop ?? this.imageCrop,
+                  imageCrop: pose.imageCrop === undefined ? this.imageCrop : pose.imageCrop,
             };
       }
 
@@ -204,6 +204,19 @@ export class FighterPresentation {
                         drawRadius,
                   ),
                   crop: safeCrop,
+            };
+      }
+
+      /** Missing transformed keys inherit the corresponding base pose. Transition poses stay first. */
+      private currentBank(): PoseBank {
+            if (!this.transformed) return this.basePoses;
+            return this.inheritedTransformedBank();
+      }
+
+      private inheritedTransformedBank(): PoseBank {
+            return {
+                  sprites: Object.assign(Object.create(null), this.basePoses.sprites, this.transformedPoses.sprites),
+                  visuals: Object.assign(Object.create(null), this.basePoses.visuals, this.transformedPoses.visuals),
             };
       }
 

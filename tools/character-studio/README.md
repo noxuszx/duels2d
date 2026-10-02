@@ -6,6 +6,13 @@ Default Facing describes the direction the original sprite image faces. Studio d
 
 Skills are declared in fighter JSON. Top-level `skills` apply to the base form; `transformation.skills` override them after the transformation sequence finishes. Omitting that override inherits base skills, while `{}` disables them in the transformed form. Studio's existing form selector routes aim editing to the selected form.
 
+Typed top-level `behavior` definitions and projectile `flight` policies are
+preserved through serialization and undo/redo. Behavior settings are tuned in
+JSON; the Studio does not add a panel for each behavior. Muscle Man's former
+`combat.damageRamp` tuning now lives in `behavior.settings` with type `damage-ramp`.
+Arbitrary pose names can be leased by gameplay scripts; missing transformed
+pose keys inherit base poses, and transformation transition poses retain priority.
+
 ## Folder responsibilities
 
 | Folder | Responsibility |

@@ -12,7 +12,7 @@
       "timing": { "cooldownMs": 6000, "windupMs": 875, "activeMs": 183, "recoveryMs": 150 },
       "actions": [
         { "type": "dash", "speedMultiplier": 6, "accelerationForce": 0.018, "endOn": ["fighter-collision", "wall-collision"] },
-        { "type": "damage", "amount": 100 },
+        { "type": "damage", "amount": 50 },
         { "type": "knockback", "forceMagnitude": 0.1 }
       ]
     }]

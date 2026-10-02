@@ -63,6 +63,7 @@ export type StudioState = Pick<
       | "weaponPivot"
       | "weaponIdle"
       | "skills"
+      | "behavior"
       | "abilities"
       | "transformation"
       | "poses"

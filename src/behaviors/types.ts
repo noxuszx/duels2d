@@ -22,6 +22,8 @@ export interface FighterBehaviorContext {
       world: Matter.World;
       addProjectile(projectile: Projectile): void;
       now(): number;
+      /** Optional only for older structural adapters; live game contexts always provide it. */
+      isCombatActive?(): boolean;
       getNearestEnemy(source: Fighter): Fighter | null;
       executeTargetActions(
             source: Fighter,

@@ -19,7 +19,7 @@
             "height": 165,
             "offset": { "x": 88, "y": -12 }
           },
-          { "type": "damage", "amount": 90 },
+          { "type": "damage", "amount": 45 },
           { "type": "knockback", "forceMagnitude": 0.1 }
         ]
       }
@@ -81,7 +81,7 @@
               "projectile": {
                 "radius": 6,
                 "speed": 12,
-                "damage": 180,
+                "damage": 90,
                 "lifetimeMs": 1500,
                 "knockback": false,
                 "image": "assets/fighters/granny/projectiles/shot.svg"

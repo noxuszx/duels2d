@@ -19,7 +19,7 @@
                         "projectile": {
                               "radius": 30,
                               "speed": 2.4,
-                              "damage": 50,
+                              "damage": 25,
                               "knockback": false,
                               "lifetimeMs": 2500,
                               "image": "assets/fighters/depressedman/projectiles/tear.png"

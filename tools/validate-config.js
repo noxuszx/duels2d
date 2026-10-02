@@ -312,6 +312,7 @@ function checkAbilities(location, fighterId, abilities) {
                         fail(projectileLocation, "speed must be greater than 0");
                   if (!isPositive(projectile?.radius))
                         fail(projectileLocation, "radius must be greater than 0");
+                  checkProjectileFlight(`${projectileLocation}.flight`, projectile?.flight);
                   if (!isPositive(projectile?.lifetimeMs))
                         fail(projectileLocation, "lifetimeMs must be greater than 0");
                   const images = Array.isArray(projectile?.image)
@@ -325,6 +326,25 @@ function checkAbilities(location, fighterId, abilities) {
                   );
             });
       });
+}
+
+function checkProjectileFlight(location, flight) {
+      if (flight === undefined) return;
+      if (!flight || typeof flight !== "object" || Array.isArray(flight)) {
+            fail(location, "must be a flight settings object");
+            return;
+      }
+      const allowed = {
+            response: ["physical", "sensor"], enemyContact: ["consume", "pierce"],
+            ownerContact: ["ignore", "catch"], walls: ["ignore", "bounce"],
+      };
+      for (const [key, choices] of Object.entries(allowed))
+            if (!choices.includes(flight.collision?.[key])) fail(`${location}.collision.${key}`, "unsupported or missing policy");
+      for (const key of ["onOwnerDeath", "onOwnerRemoval", "onMatchEnd"])
+            if (!["persist", "remove"].includes(flight.ownership?.[key])) fail(`${location}.ownership.${key}`, "unsupported or missing policy");
+      if (!["duration", "persistent"].includes(flight.lifetime?.type)) fail(`${location}.lifetime`, "unsupported lifetime");
+      if (flight.lifetime?.type === "duration" && !isPositive(flight.lifetime.durationMs)) fail(`${location}.lifetime.durationMs`, "must be positive");
+      if (flight.knockback !== undefined && !isPositive(flight.knockback?.forceMagnitude)) fail(`${location}.knockback`, "must specify positive forceMagnitude");
 }
 
 function checkSoundCue(location, cue) {
@@ -373,6 +393,35 @@ if (definitions.length < 2) {
 }
 
 definitions.forEach((definition, index) => {
+      if (definition.behavior && definition.behavior.type !== "damage-ramp")
+            fail(`${fighterFiles[index]}.behavior.type`, "unsupported behavior settings type");
+      if (definition.behavior?.type === "damage-ramp" && !definition.behavior.settings)
+            fail(`${fighterFiles[index]}.behavior.settings`, "is required");
+      if (definition.combat?.damageRamp !== undefined)
+            fail(`${fighterFiles[index]}.combat.damageRamp`, "move to behavior: { type: damage-ramp, settings: ... }");
+      const ramp = definition.behavior?.settings;
+      if (ramp !== undefined) {
+            const location = `config/fighters/${fighterFiles[index]}.behavior.settings`;
+            if (!ramp || typeof ramp !== "object" || Array.isArray(ramp)) fail(location, "must be an object");
+            else {
+                  for (const key of ["amountPerIncrease", "maxDamage"])
+                        if (!isPositive(ramp[key])) fail(`${location}.${key}`, "must be positive");
+                  for (const key of ["increasePoseMs"])
+                        if (!Number.isFinite(ramp[key]) || ramp[key] < 0) fail(`${location}.${key}`, "must be non-negative");
+                  if (ramp.hurtThrowThreshold !== undefined) {
+                        if (!Number.isFinite(ramp.hurtThrowThreshold) || ramp.hurtThrowThreshold < 0)
+                              fail(`${location}.hurtThrowThreshold`, "must be non-negative");
+                        if (ramp.hurtThrowThreshold >= ramp.maxDamage)
+                              fail(location, "hurt threshold must be below maximum damage");
+                  }
+                  if (!Array.isArray(ramp.ratesPerSecond) || !ramp.ratesPerSecond.length ||
+                        ramp.ratesPerSecond.some(rate => !Number.isInteger(rate) || rate < 1))
+                        fail(`${location}.ratesPerSecond`, "must contain positive integer rates");
+                  for (const key of Object.keys(ramp))
+                        if (!["amountPerIncrease", "maxDamage", "hurtThrowThreshold", "increasePoseMs", "ratesPerSecond"].includes(key))
+                              fail(`${location}.${key}`, "unknown ramp property");
+            }
+      }
       const location = fighterFiles[index] || `fighter #${index + 1}`;
       checkSkills(`${location}.skills`, definition.skills);
       checkSkills(`${location}.transformation.skills`, definition.transformation?.skills);

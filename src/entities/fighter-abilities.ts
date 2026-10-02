@@ -11,7 +11,8 @@ export type AbilityStartFailureReason =
       | "already-active"
       | "cooldown"
       | "casting-locked"
-      | "invalid-target";
+      | "invalid-target"
+      | "combat-ended";
 
 export interface AbilityPhaseObserver {
       tick(phase: Exclude<AbilityState, "idle">, deltaMs: number): void;
@@ -30,12 +31,6 @@ export class FighterAbilities {
       facing: Facing | null = null;
       active: AbilityConfig | null = null;
       remainingMs = 0;
-      private activePhaseVersionValue = 0;
-
-      get activePhaseVersion(): number {
-            return this.activePhaseVersionValue;
-      }
-
       constructor(
             private readonly onAudioEvent?: (
                   ability: AbilityConfig,
@@ -91,8 +86,9 @@ export class FighterAbilities {
             );
       }
 
+      /** Zero delta drains zero-duration boundaries without ticking timed operations. */
       update(deltaMs: number, observer?: AbilityPhaseObserver): void {
-            if (!this.active || deltaMs <= 0) return;
+            if (!this.active || !Number.isFinite(deltaMs) || deltaMs < 0) return;
 
             let elapsedMs = deltaMs;
             while (this.active) {
@@ -124,21 +120,18 @@ export class FighterAbilities {
             if (this.state !== "windup" || !this.active) return;
             this.onAudioStop?.(this.active, "windup");
             this.state = "active";
-            this.activePhaseVersionValue++;
             this.remainingMs = this.hasCollisionDash()
                   ? 5_000
                   : this.active.timing.activeMs;
             this.onAudioEvent?.(this.active, "active");
       }
 
+      /** Enters recovery; update(0, observer) drains an immediate recovery with its phase hook. */
       finishActive(): void {
             if (this.state !== "active" || !this.active) return;
             this.onAudioStop?.(this.active, "active");
             this.state = "recovery";
             this.remainingMs = this.active.timing.recoveryMs;
-            if (this.remainingMs <= 0) {
-                  this.reset();
-            }
       }
 
       reset(): void {

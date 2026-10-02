@@ -34,6 +34,8 @@ export function applyDamage({
       indicators.spawnHitSpark(target.body.position, target.config.color);
       if (source) indicators.spawnCharacterLine(source, "weaponHit");
 
+      if (actualDamage > 0) target.behavior?.onDamaged(actualDamage, source);
+
       return {
             applied: true,
             actualDamage,

@@ -1,3 +1,4 @@
+import type { FighterBehaviorDefinition } from "../behaviors/settings";
 import type { AbilityConfig } from "../abilities/types";
 
 export interface Vector2 {
@@ -124,6 +125,7 @@ export interface FighterDefinition {
       name: string;
       color: string;
       skills?: FighterSkills;
+      behavior?: FighterBehaviorDefinition;
       combat?: FighterCombatOverrides;
       body?: FighterBodyOverrides;
       presentation?: FighterPresentationOverrides;
@@ -144,6 +146,7 @@ export interface FighterConfig {
       name: string;
       color: string;
       skills?: FighterSkills;
+      behavior?: FighterBehaviorDefinition;
       maxHealth: number;
       speed: number;
       baseDamage: number;

@@ -3,7 +3,7 @@
             "scale": 3
       },
       "physics": {
-            "globalSpeedMultiplier": 0.225,
+            "globalSpeedMultiplier": 0.25,
             "collisionCooldownMs": 100,
             "impactDamage": {
                   "minSpeedMultiplier": 2.8,

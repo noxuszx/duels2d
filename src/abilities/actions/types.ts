@@ -9,4 +9,5 @@ export interface ActionExecutionContext {
       indicators: IndicatorSystem;
       COLLISION_COOLDOWN: number;
       now(): number;
+      isGameOver?(): boolean;
 }

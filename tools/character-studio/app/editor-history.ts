@@ -31,6 +31,7 @@ export function snapshotStudioState(
             weaponPivot: structuredClone(config.weaponPivot),
             weaponIdle: config.weaponIdle,
             skills: structuredClone(config.skills),
+            behavior: structuredClone(config.behavior),
             abilities: structuredClone(config.abilities),
             transformation: structuredClone(config.transformation),
             activeForm,

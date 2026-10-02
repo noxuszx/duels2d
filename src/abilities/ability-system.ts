@@ -24,6 +24,7 @@ interface AbilitySystemGameManager {
       indicators: IndicatorSystem;
       ARENA_BORDER: number;
       now(): number;
+      isGameOver?(): boolean;
 }
 
 export class AbilitySystem implements StandardAbilityHandler {
@@ -43,8 +44,12 @@ export class AbilitySystem implements StandardAbilityHandler {
             return {
                   get characters() { return gm.characters; },
                   world: this.gm.world,
-                  addProjectile: (projectile) => this.gm.projectiles.push(projectile),
+                  addProjectile: (projectile) => {
+                        this.gm.projectiles.push(projectile);
+                        Matter.World.add(this.gm.world, projectile.body);
+                  },
                   now: () => this.gm.now(),
+                  isCombatActive: () => !this.gm.isGameOver?.(),
                   getNearestEnemy: (source) =>
                         nearestEnemy(source, this.gm.characters),
                   executeTargetActions: (source, target, ability) =>
@@ -80,6 +85,7 @@ export class AbilitySystem implements StandardAbilityHandler {
 
       /** Standard JSON ability tick for fighters without custom scripts (DefaultFighterBehavior). */
       updateStandardFighter(fighter: Fighter, deltaMs: number): void {
+            if (this.gm.isGameOver?.()) return;
             const now = this.gm.now();
             if (fighter.isDead) {
                   fighter.abilities.reset();
@@ -87,113 +93,8 @@ export class AbilitySystem implements StandardAbilityHandler {
                   return;
             }
 
-            const abilityBeforeUpdate = fighter.abilities.active;
-            const activePhaseVersion = fighter.abilities.activePhaseVersion;
-            fighter.abilities.update(deltaMs);
-            const ability = fighter.abilities.active;
-            const enteredActive =
-                  fighter.abilities.activePhaseVersion !== activePhaseVersion;
-
-            if (enteredActive && abilityBeforeUpdate) {
-                  const target = this.targets.get(fighter);
-                  const activeTarget = target && !target.isDead
-                        ? target
-                        : nearestEnemy(fighter, this.gm.characters);
-                  if (activeTarget) {
-                        fighter.updateAim?.(activeTarget);
-                        this.actions.executeActiveEntryActions(
-                              fighter,
-                              activeTarget,
-                              abilityBeforeUpdate,
-                        );
-                  }
-                  const swing = this.action<"swing">(
-                        abilityBeforeUpdate,
-                        "swing",
-                  );
-                  const attackHitbox = this.action<"attack-hitbox">(
-                        abilityBeforeUpdate,
-                        "attack-hitbox",
-                  );
-                  if (
-                        swing &&
-                        !attackHitbox &&
-                        target &&
-                        !target.isDead &&
-                        !this.swingHits.has(fighter)
-                  ) {
-                        if (this.actions.executeTargetActions(fighter, target, abilityBeforeUpdate).connected)
-                              fighter.audio.playAbilityCue(
-                                    abilityBeforeUpdate,
-                                    "hit",
-                              );
-                        this.swingHits.add(fighter);
-                  }
-                  const hasDeliveryAction = abilityBeforeUpdate.actions.some(
-                        (action) =>
-                              action.type === "dash" ||
-                              action.type === "spawn-projectile" ||
-                              action.type === "swing" ||
-                              action.type === "attack-hitbox" ||
-                              action.type === "wall-crawl",
-                  );
-                  if (!hasDeliveryAction && activeTarget) {
-                        if (
-                              this.actions.executeTargetActions(
-                                    fighter,
-                                    activeTarget,
-                                    abilityBeforeUpdate,
-                              ).connected
-                        ) {
-                              fighter.audio.playAbilityCue(
-                                    abilityBeforeUpdate,
-                                    "hit",
-                              );
-                        }
-                  }
-                  const dashAction = this.action<"dash">(abilityBeforeUpdate, "dash");
-                  if (dashAction && activeTarget && fighter.abilities.state === "active") {
-                        const dash = new DashSkill();
-                        this.dashes.set(fighter, dash);
-                        const started = dash.startToward(fighter, activeTarget, {
-                              speedMultiplier: dashAction.speedMultiplier,
-                              accelerationForce: dashAction.accelerationForce,
-                              stopOn: dashAction.endOn,
-                              onHitEnemy: (enemy) => {
-                                    if (fighter.isDead || enemy.isDead || !this.gm.characters.includes(enemy)) return;
-                                    if (this.actions.executeTargetActions(fighter, enemy, abilityBeforeUpdate).connected)
-                                          fighter.audio.playAbilityCue(abilityBeforeUpdate, "hit");
-                              },
-                              onComplete: () => fighter.abilities.finishActive(),
-                        });
-                        if (!started) fighter.abilities.finishActive();
-                  }
-            }
-
-            if (ability && fighter.abilities.state === "active") {
-                  this.applyAttackHitbox(fighter, ability);
-                  const dash = this.dashes.get(fighter);
-                  dash?.update(deltaMs);
-
-                  const target = this.targets.get(fighter);
-                  if (
-                        dash &&
-                        target &&
-                        enemyInRange(fighter, [target], 0)
-                  ) {
-                        dash.handleFighterCollision(target);
-                  }
-            }
-
-            if (fighter.abilities.state !== "active") {
-                  this.dashes.get(fighter)?.cancel("phase-ended");
-                  this.dashes.delete(fighter);
-            }
-
-            if (fighter.abilities.state === "idle")
-                  this.clearRuntime(fighter);
-            if (fighter.isDead || fighter.abilities.state !== "idle")
-                  return;
+            this.advanceStandardMove(fighter, deltaMs);
+            if (fighter.isDead || fighter.abilities.state !== "idle") return;
 
             const activations = fighter.activeAbilities
                   .filter((candidate) =>
@@ -222,8 +123,116 @@ export class AbilitySystem implements StandardAbilityHandler {
             }
       }
 
+      /** Legacy adapter: component ticks get only the time consumed in their active phase. */
+      private advanceStandardMove(fighter: Fighter, deltaMs: number): void {
+            fighter.abilities.update(deltaMs, {
+                  transition: () => {
+                        const ability = fighter.abilities.active;
+                        if (ability && fighter.abilities.state === "active") this.enterStandardActive(fighter, ability);
+                  },
+                  tick: (phase, elapsedMs) => {
+                        const ability = fighter.abilities.active;
+                        if (phase !== "active" || !ability) return;
+                        this.applyAttackHitbox(fighter, ability);
+                        const dash = this.dashes.get(fighter);
+                        dash?.update(elapsedMs);
+                        const target = this.targets.get(fighter);
+                        if (dash && target && enemyInRange(fighter, [target], 0)) dash.handleFighterCollision(target);
+                  },
+            });
+            if (fighter.abilities.state !== "active") {
+                  this.dashes.get(fighter)?.cancel("phase-ended");
+                  this.dashes.delete(fighter);
+            }
+            if (fighter.abilities.state === "idle") this.clearRuntime(fighter);
+      }
+
+      private enterStandardActive(fighter: Fighter, ability: AbilityConfig): void {
+            const target = this.targets.get(fighter);
+            const activeTarget = target && !target.isDead
+                  ? target
+                  : nearestEnemy(fighter, this.gm.characters);
+            if (activeTarget) {
+                  fighter.updateAim?.(activeTarget);
+                  this.actions.executeActiveEntryActions(
+                        fighter,
+                        activeTarget,
+                        ability,
+                  );
+            }
+            const swing = this.action<"swing">(
+                  ability,
+                  "swing",
+            );
+            const attackHitbox = this.action<"attack-hitbox">(
+                  ability,
+                  "attack-hitbox",
+            );
+            if (
+                  swing &&
+                  !attackHitbox &&
+                  target &&
+                  !target.isDead &&
+                  !this.swingHits.has(fighter)
+            ) {
+                  if (this.actions.executeTargetActions(fighter, target, ability).connected)
+                        fighter.audio.playAbilityCue(
+                              ability,
+                              "hit",
+                        );
+                  this.swingHits.add(fighter);
+            }
+            const hasDeliveryAction = ability.actions.some(
+                  (action) =>
+                        action.type === "dash" ||
+                        action.type === "spawn-projectile" ||
+                        action.type === "swing" ||
+                        action.type === "attack-hitbox" ||
+                        action.type === "wall-crawl",
+            );
+            if (!hasDeliveryAction && activeTarget) {
+                  if (
+                        this.actions.executeTargetActions(
+                              fighter,
+                              activeTarget,
+                              ability,
+                        ).connected
+                  ) {
+                        fighter.audio.playAbilityCue(
+                              ability,
+                              "hit",
+                        );
+                  }
+            }
+            if (attackHitbox) this.applyAttackHitbox(fighter, ability);
+            const dashAction = this.action<"dash">(ability, "dash");
+            if (dashAction && activeTarget && fighter.abilities.state === "active") {
+                  const dash = new DashSkill();
+                  this.dashes.set(fighter, dash);
+                  const started = dash.startToward(fighter, activeTarget, {
+                        speedMultiplier: dashAction.speedMultiplier,
+                        accelerationForce: dashAction.accelerationForce,
+                        stopOn: dashAction.endOn,
+                        onHitEnemy: (enemy) => {
+                              if (this.dashes.get(fighter) !== dash || fighter.abilities.active !== ability ||
+                                    fighter.isDead || enemy.isDead || !this.gm.characters.includes(enemy)) return;
+                              if (this.actions.executeTargetActions(fighter, enemy, ability).connected)
+                                    fighter.audio.playAbilityCue(ability, "hit");
+                        },
+                        onComplete: () => {
+                              if (this.dashes.get(fighter) !== dash || fighter.abilities.active !== ability ||
+                                    fighter.abilities.state !== "active" || fighter.isDead) return;
+                              fighter.abilities.finishActive();
+                              fighter.abilities.update(0);
+                        },
+                  });
+                  if (!started) { fighter.abilities.finishActive(); fighter.abilities.update(0); }
+            }
+      }
+
       /** StandardAbilityHandler implementation */
       onWallCollision(fighter: Fighter, wall: ArenaWall): WallCollisionResponse {
+            if (this.gm.isGameOver?.()) return DEFAULT_WALL_COLLISION_RESPONSE;
             this.dashes.get(fighter)?.handleWallCollision(wall);
             return DEFAULT_WALL_COLLISION_RESPONSE;
       }
@@ -329,6 +338,7 @@ export class AbilitySystem implements StandardAbilityHandler {
                   fighter.body.position.x,
             );
             this.targets.set(fighter, target);
+            this.advanceStandardMove(fighter, 0);
             return true;
       }
 

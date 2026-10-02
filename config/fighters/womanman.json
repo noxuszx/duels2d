@@ -15,7 +15,7 @@
         "timing": { "cooldownMs": 1400, "windupMs": 117, "activeMs": 100, "recoveryMs": 150 },
         "actions": [
           { "type": "swing", "startDegrees": -177, "endDegrees": -48 },
-          { "type": "damage", "amount": 100 },
+          { "type": "damage", "amount": 50 },
           { "type": "knockback", "forceMagnitude": 0.12 }
         ]
       }

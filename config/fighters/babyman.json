@@ -25,7 +25,7 @@
               "wall-collision"
             ]
           },
-          { "type": "damage", "amount": 150 },
+          { "type": "damage", "amount": 75 },
           { "type": "knockback", "forceMagnitude": 0.45 }
         ]
       }

@@ -10,7 +10,7 @@ export const DEFAULT_FIGHTER_DEFAULTS: FighterDefaults = {
       combat: {
             maxHealth: 1000,
             speed: 10,
-            baseDamage: 100,
+            baseDamage: 50,
             abilities: [],
             faceTarget: { mode: "never" },
       },
@@ -77,6 +77,9 @@ export function syncFighterDefinition(
       const definition = definitions.find((item) => item.id === config.id);
       if (!definition)
             throw new Error(`Missing fighter definition for ${config.id}`);
+
+      if (config.behavior) definition.behavior = structuredClone(config.behavior);
+      else delete definition.behavior;
 
       if (config.skills?.aim)
             definition.skills = structuredClone(config.skills);

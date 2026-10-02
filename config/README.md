@@ -148,11 +148,44 @@ presentation values, then keeps its own crop, scale, and offset independently.
 1. Copy the closest fighter JSON file and make its filename match its unique `id`.
 2. Add its assets under `assets/fighters/<fighter-id>/`.
 3. Add its filename to the `fighters` array in `fighters/index.json`.
-4. Define ordinary moves in `combat.abilities`; fighters without a custom
-   registration in `src/behaviors/registry.ts` use `DefaultFighterBehavior`.
-5. Add a registry entry only when the fighter needs custom decision logic or
-   event sequencing that configured triggers and actions cannot express.
-6. Run `node tools/validate-config.js`.
+4. Read `docs/fighter-architecture.md` and the migration checklist. New fighters
+   use `AbilityRunner` scripts or presets on that API; keep tunable move data in
+   `combat.abilities`.
+5. Register the script in `src/behaviors/registry.ts`. `DefaultFighterBehavior`
+   remains only for existing unmigrated fighters.
+6. Run `node tools/validate-config.js` only when explicitly requested by the user.
 7. Open Character Studio for visual tuning and save back to the same JSON file.
 
 The validator catches malformed manifests, duplicate or mismatched IDs, invalid ranges, unsupported modes and actions, malformed geometry and poses, bad dialogue, missing ability fields, and missing assets.
+
+### Muscle Man testing settings
+
+`fighters/muscleman.json` has `behavior: { type: "damage-ramp", settings: ... }`:
+`amountPerIncrease` (30),
+`maxDamage` (350), `hurtThrowThreshold` (0, strict greater-than, so taking damage
+with accumulated damage throws the projectile),
+`ratesPerSecond` (`[1, 2, 3]`, positive integer increases per second; final rate
+repeats), and `increasePoseMs` (150 simulation milliseconds). A hurt reset/catch
+starts a fresh rate schedule. These fields survive Studio saves; edit tuning in
+JSON. Movement speed and health inherit defaults. Projectile radius/speed/art
+remain in the configured `spawn-projectile` action; damage is replaced by the
+launch snapshot. `projectile.flight` explicitly configures sensor/pierce/catch/bounce,
+persistent lifetime, and removal on owner death, owner removal, and match end.
+Collision response, piercing, and optional `flight.knockback.forceMagnitude` are
+independent. Projectiles without `flight` retain their legacy physics, enemy-hit
+consumption, configured `lifetimeMs`, and ownership persistence through an adapter.
+Explicit flight policy supersedes legacy `knockback`/`lifetimeMs` interpretation;
+the existing editor format still requires `lifetimeMs` for round trips.
+
+Sprite 1 is `idle`, sprite 2 is `attackWindup`, sprite 3 is `attackActive`.
+The script plays these poses independently of casting phases. The supplied PNG
+body sprites and projectile art are installed under
+`assets/fighters/muscleman/sprites/`; crop, scale, and offsets remain editable in
+Studio. The current schedule reaches 350 damage in 5.0 simulation seconds.
+
+The old `combat.damageRamp` field is retired; move older saved tuning into
+`behavior.settings` with `behavior.type` set to `damage-ramp`. The typed behavior
+union and typed projectile policies are copied by common loading/save/history
+paths. No per-mechanic runtime composer or Studio save branch is needed, and there
+is no untyped settings bag or new ramp panel. Match-end cleanup now releases the
+throwing pose without allowing additional combat damage.

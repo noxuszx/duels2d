@@ -856,10 +856,13 @@ describe("gameplay regression characterization", () => {
                   0,
             );
 
-            projectile.update(999);
-            expect(projectile.expired).toBe(false);
-            projectile.update(1);
-            expect(projectile.expired).toBe(true);
+            const flightContext = {
+                  characters: [], bounds: { minX: 0, maxX: 100, minY: 0, maxY: 100 }, matchEnded: false,
+            };
+            projectile.update(999, flightContext);
+            expect(projectile.dead).toBe(false);
+            projectile.update(1, flightContext);
+            expect(projectile.dead).toBe(true);
       });
 
       it("routes impact damage through shared feedback with no source dialogue", () => {

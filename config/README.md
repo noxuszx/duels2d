@@ -145,6 +145,20 @@ presentation values, then keeps its own crop, scale, and offset independently.
 
 ## Adding a fighter
 
+Alien Man (`alienman.json`) uses typed `saucer-support` behavior data for saucer
+art/geometry, horizontal speed, beam cadence/damage, and deployment timing. His
+transformation sequence is authored normally; his script decides when to start it.
+`alien.json` is a summon definition with `selectable: false`, so Studio can edit
+it while match selection hides it. Its `alien-laser` settings configure instant
+damage, firing interval, range/width, color, and a visual-only flash duration.
+`skills.weaponAim` aims the held gun independently of the body; edit its pivot and
+muzzle through Studio Aim → Held weapon. When the gun PNG is supplied, assign it
+through the Weapon tab's Image path field (currently unset), then tune scale/offset there.
+
+Teams are assigned to match instances, never fighter JSON. Summons inherit the
+owner's team but retain separate runtime identities. Team selection UI remains
+future work; the shared match API accepts explicit team membership now.
+
 1. Copy the closest fighter JSON file and make its filename match its unique `id`.
 2. Add its assets under `assets/fighters/<fighter-id>/`.
 3. Add its filename to the `fighters` array in `fighters/index.json`.

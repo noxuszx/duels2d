@@ -1,3 +1,4 @@
+import { areEnemies } from "./teams";
 import type { AbilityConfig, AbilityState } from "../abilities/types";
 import type { Fighter } from "../entities/fighter";
 import type { FighterBehaviorContext } from "../behaviors/types";
@@ -39,9 +40,15 @@ export class AbilityRunner {
             return result;
       }
 
+      /** Readiness without consuming a cooldown or entering a phase. Start remains authoritative. */
+      canStart(ability: AbilityConfig): boolean {
+            return !this.fighter.isDead && this.context.isCombatActive?.() !== false &&
+                  this.fighter.abilities.isReady(ability, this.context.now());
+      }
+
       update(deltaMs: number): void {
             if (this.fighter.isDead) return this.cancel("death");
-            if (!this.script || deltaMs < 0) return;
+            if (!this.script || !Number.isFinite(deltaMs) || deltaMs < 0) return;
             if (this.fighter.abilities.active !== this.ability) return this.cancel("interrupted");
             try {
                   this.advance(deltaMs);
@@ -74,7 +81,7 @@ export class AbilityRunner {
       }
 
       validTarget(target: Fighter): boolean {
-            return target !== this.fighter && !target.isDead && this.context.characters.includes(target);
+            return areEnemies(this.fighter, target) && !target.isDead && this.context.characters.includes(target);
       }
 
       finishActive(): void {

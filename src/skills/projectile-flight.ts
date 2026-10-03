@@ -13,6 +13,8 @@ export interface ProjectileFlightContext {
 
 export interface ProjectileOwner {
       id: string;
+      teamId?: string;
+      runtimeId?: string;
       body?: Body;
 }
 
@@ -21,12 +23,14 @@ export class ProjectileFlight {
       private elapsedMs = 0;
       private closed = false;
       private catchArmed = false;
+      readonly ownerTeamId: string | undefined;
 
       constructor(
             private readonly projectile: Projectile,
             private readonly owner: ProjectileOwner,
             readonly settings: Readonly<ProjectileFlightSettings>,
       ) {
+            this.ownerTeamId = owner.teamId;
             // Arm on launch if already outside the owner: no lost first return contact.
             if (owner.body) this.catchArmed = !this.overlaps(owner.body);
       }
@@ -64,7 +68,7 @@ export class ProjectileFlight {
                         this.projectile.remove("caught");
                   return false;
             }
-            return true;
+            return this.ownerTeamId === undefined || target.teamId !== this.ownerTeamId;
       }
 
       /** Called after a routed enemy contact has attempted its shared effects. */
@@ -79,7 +83,7 @@ export class ProjectileFlight {
 
       getOwner(characters: readonly Fighter[]): Fighter | null {
             return characters.find(fighter => this.owner.body
-                  ? fighter.body === this.owner.body : fighter.id === this.owner.id) ?? null;
+                  ? fighter.body === this.owner.body : this.owner.runtimeId ? fighter.runtimeId === this.owner.runtimeId : fighter.id === this.owner.id) ?? null;
       }
 
       private checkOwnership(context: ProjectileFlightContext): boolean {

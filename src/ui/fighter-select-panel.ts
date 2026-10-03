@@ -68,6 +68,7 @@ export class FighterSelectPanel {
             const normalizedQuery = this.query.trim().toLowerCase();
             const configs = this.game.fighterRoster.filter(
                   (config: FighterConfig) => {
+                        if (config.selectable === false) return false;
                         if (!normalizedQuery) return true;
                         return `${config.name} ${config.id}`
                               .toLowerCase()

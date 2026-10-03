@@ -1,3 +1,4 @@
+import { areEnemies } from "../gameplay/teams";
 import type * as Matter from "matter-js";
 import type { Fighter } from "../entities/fighter";
 import type { ArenaWall, DashSkillOptions, DashEndResult } from "./types";
@@ -23,7 +24,7 @@ export class DashSkill implements GameplayOperation {
       get isDashing(): boolean { return this.isActive; }
 
       startToward(fighter: Fighter, target: Fighter, options: DashSkillOptions): boolean {
-            if (fighter === target || fighter.isDead || target.isDead) return false;
+            if (!areEnemies(fighter, target) || fighter.isDead || target.isDead) return false;
             const direction = {
                   x: target.body.position.x - fighter.body.position.x,
                   y: target.body.position.y - fighter.body.position.y,
@@ -86,7 +87,7 @@ export class DashSkill implements GameplayOperation {
 
       handleFighterCollision(target: Fighter): boolean {
             if (this.fighter?.isDead) { this.cancel("death"); return false; }
-            if (!this._isActive || !this.options || target === this.fighter || target.isDead || this.hitFighters.has(target)) {
+            if (!this._isActive || !this.options || !this.fighter || !areEnemies(this.fighter, target) || target.isDead || this.hitFighters.has(target)) {
                   return false;
             }
 

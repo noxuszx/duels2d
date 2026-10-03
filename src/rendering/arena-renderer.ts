@@ -297,9 +297,11 @@ export class ArenaRenderer {
 
       private drawHeldWeapons(characters: readonly Fighter[]): void {
             for (const fighter of characters) {
-                  if (fighter.isDead || fighter.abilities.state === "idle") continue;
+                  if (fighter.isDead) continue;
+                  const weaponAim = fighter.behavior?.getWeaponAim();
+                  if (fighter.abilities.state === "idle" && !fighter.activeSkills?.weaponAim) continue;
                   const presentation = fighter.presentation;
-                  const image = presentation.weaponAttack ?? presentation.weaponIdle;
+                  const image = fighter.activeSkills?.weaponAim ? presentation.weaponIdle : presentation.weaponAttack ?? presentation.weaponIdle;
                   if (!image || image.naturalWidth <= 0 || image.naturalHeight <= 0) continue;
                   const scale = fighter.config.radius * 2 * presentation.weaponScale /
                         Math.max(image.naturalWidth, image.naturalHeight);
@@ -307,16 +309,23 @@ export class ArenaRenderer {
                   const height = image.naturalHeight * scale;
                   const { ctx } = this;
                   ctx.save();
-                  ctx.translate(fighter.visualPosition.x, fighter.visualPosition.y);
-                  ctx.rotate(this.abilities.getWallCrawlAngle(fighter) ?? fighter.body.angle);
-                  const facing = fighter.abilities.facing ?? fighter.facing;
-                  ctx.scale(facing !== fighter.config.defaultFacing ? -1 : 1, 1);
-                  ctx.translate(presentation.weaponPivot.x, presentation.weaponPivot.y);
-                  ctx.rotate(this.abilities.getWeaponSwingAngle(fighter) ?? 0);
+                  const pivot = weaponAim?.localPivot ?? fighter.activeSkills?.weaponAim?.pivot ?? presentation.weaponPivot;
+                  if (weaponAim) {
+                        ctx.translate(weaponAim.pivot.x, weaponAim.pivot.y);
+                        ctx.rotate(weaponAim.angle);
+                        ctx.scale(weaponAim.flip ? -1 : 1, 1);
+                  } else {
+                        ctx.translate(fighter.visualPosition.x, fighter.visualPosition.y);
+                        ctx.rotate(this.abilities.getWallCrawlAngle(fighter) ?? fighter.body.angle);
+                        const facing = fighter.abilities.facing ?? fighter.facing;
+                        ctx.scale(facing !== fighter.config.defaultFacing ? -1 : 1, 1);
+                        ctx.translate(pivot.x, pivot.y);
+                        ctx.rotate(this.abilities.getWeaponSwingAngle(fighter) ?? 0);
+                  }
                   ctx.drawImage(
                         image,
-                        presentation.weaponOffset.x - presentation.weaponPivot.x - width / 2,
-                        presentation.weaponOffset.y - presentation.weaponPivot.y - height / 2,
+                        presentation.weaponOffset.x - pivot.x - width / 2,
+                        presentation.weaponOffset.y - pivot.y - height / 2,
                         width,
                         height,
                   );

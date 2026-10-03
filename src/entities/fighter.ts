@@ -1,3 +1,4 @@
+import type { FighterMembership } from "../gameplay/teams";
 import * as Matter from "matter-js";
 import { AimSkill } from "../skills/aim-skill";
 import { FighterMovement } from "../gameplay/movement";
@@ -19,6 +20,8 @@ export { getRandomPitch } from "./fighter-audio";
 export type { PitchVariationOptions } from "./fighter-audio";
 
 type Point = Vector2;
+
+let nextFighterRuntimeId = 0;
 
 const PHYSICS_BASE_STEP_MS = 1000 / 60;
 const SIMULATION_STEP_MS = 1000 / 120;
@@ -45,6 +48,10 @@ export class Fighter {
       private lastHitTime = -Infinity;
 
       readonly id: string;
+      readonly runtimeId: string;
+      readonly teamId: string;
+      readonly ownerRuntimeId: string | null;
+      readonly isSummon: boolean;
       readonly config: FighterConfig;
       readonly hitbox: NormalizedHitbox;
       readonly baseSpeed: number;
@@ -72,11 +79,16 @@ export class Fighter {
             gameConfig: GameConfig,
             soundManifest: SoundManifest,
             private readonly now: () => number = () => performance.now(),
+            membership?: FighterMembership,
       ) {
             this.config = config;
             this.aimSkill = config.skills?.aim || config.transformation?.skills?.aim
                   ? new AimSkill() : null;
             this.id = config.id;
+            this.runtimeId = membership?.runtimeId ?? `standalone:${++nextFighterRuntimeId}`;
+            this.teamId = membership?.teamId ?? this.runtimeId;
+            this.ownerRuntimeId = membership?.ownerRuntimeId ?? null;
+            this.isSummon = this.ownerRuntimeId !== null;
             this.currentHealth = config.maxHealth;
             this.hitbox = this.normalizeHitbox(config);
             this.baseSpeed = Math.hypot(velX, velY);
@@ -89,6 +101,7 @@ export class Fighter {
                   frictionStatic: 0,
                   label: this.id,
                   collisionFilter: {
+                        group: membership?.collisionGroup ?? 0,
                         category: 0x0001,
                         mask: 0x0001 | 0x0002,
                   },
@@ -138,6 +151,7 @@ export class Fighter {
             const wasTransformed = this.transformation.isTransformed;
             const started = this.transformation.update(
                   this.currentHealth, this.config.maxHealth, deltaMs,
+                  !this.behavior?.usesScriptedTransformation(),
             );
             if (started) this.interruptForTransformation();
             this.syncTransformationPresentation();
@@ -158,7 +172,7 @@ export class Fighter {
 
       private interruptForTransformation(): void {
             this.aimSkill?.stop();
-            this.behavior?.interrupt("interrupted");
+            this.behavior?.handleInterrupt("interrupted");
             this.abilities.reset();
       }
 
@@ -188,7 +202,7 @@ export class Fighter {
             const result = this.statuses.apply(application);
             if (result.applied && !this.statuses.canContinueAbility) {
                   this.aimSkill?.stop();
-                  this.behavior?.interrupt("interrupted");
+                  this.behavior?.handleInterrupt("interrupted");
                   // The default behavior reset clears its targeting runtime only.
                   // Reset centrally as well; cooldown timestamps are retained.
                   this.abilities.reset();
@@ -362,21 +376,22 @@ export class Fighter {
             }
             return this.knockbackOwnerId === ownerId;
       }
-      takeDamage(amount: number, nowMs: number, cooldownMs: number): boolean {
-            if (nowMs - this.lastHitTime < cooldownMs) return false;
-            this.lastHitTime = nowMs;
+      takeDamage(amount: number, nowMs: number, cooldownMs: number, independentCooldown = false): boolean {
+            if (this.isDead || !Number.isFinite(amount) || amount <= 0) return false;
+            if (!independentCooldown && nowMs - this.lastHitTime < cooldownMs) return false;
+            if (!independentCooldown) this.lastHitTime = nowMs;
             this.currentHealth = Math.max(0, this.currentHealth - amount);
             this.presentation.triggerHitFlash();
             return true;
       }
       destroy(): void {
-            this.behavior?.dispose();
+            this.behavior?.handleDispose();
             this.abilities.reset();
             this.movement.reset();
             this.audio.destroy();
       }
       onDeath(): void {
-            this.behavior?.interrupt("death");
+            this.behavior?.handleInterrupt("death");
             this.abilities.reset();
             this.playSound("death", 0);
       }

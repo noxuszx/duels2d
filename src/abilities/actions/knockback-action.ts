@@ -4,7 +4,7 @@ import type { KnockbackAction } from "../types";
 /** Applies directional force knockback to a target away from the source. */
 export function executeKnockbackAction(
       action: KnockbackAction,
-      source: Pick<Fighter, "id" | "body">,
+      source: Pick<Fighter, "id" | "body"> & Partial<Pick<Fighter, "runtimeId">>,
       target: Fighter,
       customDirection?: { x: number; y: number },
       nowMs?: number,
@@ -16,7 +16,7 @@ export function executeKnockbackAction(
       target.applyForceKnockback(
             direction,
             action.forceMagnitude,
-            source.id,
+            source.runtimeId ?? source.id,
             nowMs,
       );
 }

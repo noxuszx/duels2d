@@ -36,6 +36,8 @@ export interface AimSkillOptions {
 
 export interface FighterSkills {
       aim?: AimSkillOptions;
+      /** Aims an attached weapon independently of the body sprite. */
+      weaponAim?: AimSkillOptions;
 }
 
 export interface PoseOverrides {
@@ -124,6 +126,8 @@ export interface FighterDefinition {
       id: string;
       name: string;
       color: string;
+      /** Summon definitions remain editable in Studio but can be hidden from match selection. */
+      selectable?: boolean;
       skills?: FighterSkills;
       behavior?: FighterBehaviorDefinition;
       combat?: FighterCombatOverrides;
@@ -145,6 +149,7 @@ export interface FighterConfig {
       id: string;
       name: string;
       color: string;
+      selectable?: boolean;
       skills?: FighterSkills;
       behavior?: FighterBehaviorDefinition;
       maxHealth: number;

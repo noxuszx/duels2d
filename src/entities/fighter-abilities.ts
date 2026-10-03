@@ -48,18 +48,8 @@ export class FighterAbilities {
             currentFacing: Facing,
             nowMs: number,
       ): AbilityStartResult {
-            if (this.state !== "idle" || this.active !== null) {
-                  return { started: false, reason: "already-active" };
-            }
-            if (!this.canStartAbility()) {
-                  return { started: false, reason: "casting-locked" };
-            }
-            if (
-                  nowMs - (this.lastUseTimes.get(ability.id) ?? -Infinity) <
-                  ability.timing.cooldownMs
-            ) {
-                  return { started: false, reason: "cooldown" };
-            }
+            const failure = this.readinessFailure(ability, nowMs);
+            if (failure) return { started: false, reason: failure };
 
             this.active = ability;
             this.facing = currentFacing;
@@ -68,6 +58,21 @@ export class FighterAbilities {
             this.remainingMs = ability.timing.windupMs;
             this.onAudioEvent?.(ability, "windup");
             return { started: true };
+      }
+
+      /** Reports whether this ability can start now without changing cooldown or casting state. */
+      isReady(ability: AbilityConfig, nowMs: number): boolean {
+            return this.readinessFailure(ability, nowMs) === null;
+      }
+
+      private readinessFailure(ability: AbilityConfig, nowMs: number): AbilityStartFailureReason | null {
+            if (this.state !== "idle" || this.active !== null) return "already-active";
+            if (!this.canStartAbility()) return "casting-locked";
+            if (
+                  nowMs - (this.lastUseTimes.get(ability.id) ?? -Infinity) <
+                  ability.timing.cooldownMs
+            ) return "cooldown";
+            return null;
       }
 
       lockFacingToward(targetX: number, selfX: number): void {

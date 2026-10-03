@@ -1,17 +1,13 @@
 import type { Fighter } from "../../entities/fighter";
-import { AbilityRunner } from "../../gameplay/ability-runner";
-import type { CancellationReason } from "../../gameplay/action-scope";
+import type { AbilityConfig } from "../../abilities/types";
+import { AbilityRunner, type AbilityScript } from "../../gameplay/ability-runner";
+import { AutoUseAbility } from "../../gameplay/auto-use-ability";
+import { nearestEnemy } from "../../gameplay/targeting";
 import { dashToward } from "../../gameplay/dash-move";
 import { hitWithAbility } from "../../combat/ability-hit";
 import { StopMovementSkill } from "../../skills/stop-movement-skill";
 import { ShakeSkill } from "../../skills/shake-skill";
-import {
-      DEFAULT_WALL_COLLISION_RESPONSE,
-      type ArenaBounds,
-      type ArenaWall,
-      type FighterBehaviorContext,
-      type WallCollisionResponse,
-} from "../types";
+import type { FighterBehaviorContext } from "../types";
 import { FighterBehavior } from "../fighter-behavior";
 
 /** Stop and shake during windup, then charge and apply the configured hit effects. */
@@ -20,46 +16,32 @@ export class AngryManBehavior extends FighterBehavior {
 
       constructor(fighter: Fighter, context: FighterBehaviorContext) {
             super(fighter, context);
-            this.moves = new AbilityRunner(fighter, context);
+            this.moves = this.runtime.use(new AbilityRunner(fighter, context));
+            this.runtime.use(new AutoUseAbility(this.moves, {
+                  ability: () => fighter.activeAbilities.find(ability =>
+                        ability.trigger.type === "nearest-enemy" &&
+                        ability.actions.some(action => action.type === "dash") &&
+                        this.moves.canStart(ability)) ?? null,
+                  target: () => nearestEnemy(fighter, context.characters),
+                  script: (target, ability) => this.charge(target, ability),
+            }));
       }
 
-      override onUpdate(deltaMs: number): void {
-            this.moves.update(deltaMs);
-            if (deltaMs <= 0 || this.fighter.isDead || this.fighter.abilities.state !== "idle") return;
-            const target = this.context.getNearestEnemy(this.fighter);
-            if (!target) return;
-            for (const ability of this.fighter.activeAbilities) {
-                  const dash = ability.actions.find((action) => action.type === "dash");
-                  if (!dash || ability.trigger.type !== "nearest-enemy") continue;
-                  const result = this.moves.start(ability, target, {
-                        windup: (scope) => {
-                              scope.use(new StopMovementSkill(this.fighter.movement));
-                              scope.use(new ShakeSkill(this.fighter));
-                        },
-                        active: (scope) => {
-                              const currentTarget = !target.isDead && this.context.characters.includes(target)
-                                    ? target : this.context.getNearestEnemy(this.fighter);
-                              if (!currentTarget) return this.moves.cancel();
-                              dashToward(scope, this.moves, currentTarget, dash,
-                                    (enemy) => hitWithAbility(this.fighter, enemy, ability, this.context));
-                        },
-                  });
-                  if (result.started) break;
-            }
+      private charge(target: Fighter, ability: AbilityConfig): AbilityScript | null {
+            const dash = ability.actions.find(action => action.type === "dash");
+            if (!dash) return null;
+            return {
+                  windup: scope => {
+                        scope.use(new StopMovementSkill(this.fighter.movement));
+                        scope.use(new ShakeSkill(this.fighter));
+                  },
+                  active: scope => {
+                        const currentTarget = this.moves.validTarget(target)
+                              ? target : nearestEnemy(this.fighter, this.context.characters);
+                        if (!currentTarget) return this.moves.cancel();
+                        dashToward(scope, this.moves, currentTarget, dash,
+                              enemy => hitWithAbility(this.fighter, enemy, ability, this.context));
+                  },
+            };
       }
-
-      override onFighterCollision(target: Fighter): void {
-            this.moves.handleFighterCollision(target);
-      }
-
-      override onWallCollision(wall: ArenaWall, bounds: ArenaBounds): WallCollisionResponse {
-            void bounds;
-            this.moves.handleWallCollision(wall);
-            return DEFAULT_WALL_COLLISION_RESPONSE;
-      }
-
-      override isDashing(): boolean { return this.moves.isDashing; }
-      override reset(): void { this.moves.cancel("reset"); }
-      override dispose(): void { this.moves.cancel("removed"); }
-      override interrupt(reason: CancellationReason): void { this.moves.cancel(reason); }
 }

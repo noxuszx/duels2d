@@ -34,7 +34,7 @@ export class TransformationController {
       }
 
       /** Evaluates automatic triggers. Returns true only on the transition tick. */
-      update(currentHealth: number, maxHealth: number, deltaMs = 0): boolean {
+      update(currentHealth: number, maxHealth: number, deltaMs = 0, automaticTrigger = true): boolean {
             if (!Number.isFinite(deltaMs) || deltaMs < 0) {
                   throw new Error("Transformation deltaMs must be finite and non-negative.");
             }
@@ -58,7 +58,7 @@ export class TransformationController {
             ) {
                   return false;
             }
-            if (!this.isTriggered(this.config.trigger, currentHealth, maxHealth)) {
+            if (!automaticTrigger || !this.isTriggered(this.config.trigger, currentHealth, maxHealth)) {
                   return false;
             }
             return this.transform();

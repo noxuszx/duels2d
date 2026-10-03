@@ -184,8 +184,9 @@ function checkSkills(location, skills) {
             return;
       }
       for (const key of Object.keys(skills))
-            if (key !== "aim") fail(`${location}.${key}`, "unknown skill");
+            if (!["aim", "weaponAim"].includes(key)) fail(`${location}.${key}`, "unknown skill");
       if (skills.aim !== undefined) checkAim(`${location}.aim`, skills.aim);
+      if (skills.weaponAim !== undefined) checkAim(`${location}.weaponAim`, skills.weaponAim);
 }
 
 function checkCrop(location, crop) {
@@ -393,13 +394,13 @@ if (definitions.length < 2) {
 }
 
 definitions.forEach((definition, index) => {
-      if (definition.behavior && definition.behavior.type !== "damage-ramp")
+      if (definition.behavior && !["damage-ramp", "alien-laser", "saucer-support"].includes(definition.behavior.type))
             fail(`${fighterFiles[index]}.behavior.type`, "unsupported behavior settings type");
-      if (definition.behavior?.type === "damage-ramp" && !definition.behavior.settings)
+      if (definition.behavior && !definition.behavior.settings)
             fail(`${fighterFiles[index]}.behavior.settings`, "is required");
       if (definition.combat?.damageRamp !== undefined)
             fail(`${fighterFiles[index]}.combat.damageRamp`, "move to behavior: { type: damage-ramp, settings: ... }");
-      const ramp = definition.behavior?.settings;
+      const ramp = definition.behavior?.type === "damage-ramp" ? definition.behavior.settings : undefined;
       if (ramp !== undefined) {
             const location = `config/fighters/${fighterFiles[index]}.behavior.settings`;
             if (!ramp || typeof ramp !== "object" || Array.isArray(ramp)) fail(location, "must be an object");
@@ -422,7 +423,39 @@ definitions.forEach((definition, index) => {
                               fail(`${location}.${key}`, "unknown ramp property");
             }
       }
+      const behavior = definition.behavior;
+      if (behavior && ["alien-laser", "saucer-support"].includes(behavior.type)) {
+            const settings = behavior.settings;
+            const location = `${fighterFiles[index]}.behavior.settings`;
+            if (!settings || typeof settings !== "object" || Array.isArray(settings)) fail(location, "must be an object");
+            else {
+                  const positive = behavior.type === "alien-laser"
+                        ? ["intervalMs", "width", "range"]
+                        : ["width", "height", "speed", "beamWidth", "beamDamageIntervalMs", "beamDurationMs", "beamIntervalMs", "spawnIntervalMs"];
+                  const nonNegative = behavior.type === "alien-laser" ? ["damage", "flashMs"]
+                        : ["altitude", "beamDamage", "firstSpawnDelayMs"];
+                  for (const key of positive) if (!isPositive(settings[key])) fail(`${location}.${key}`, "must be positive");
+                  for (const key of nonNegative) if (!Number.isFinite(settings[key]) || settings[key] < 0)
+                        fail(`${location}.${key}`, "must be non-negative");
+                  const colorKey = behavior.type === "alien-laser" ? "color" : "beamColor";
+                  if (typeof settings[colorKey] !== "string" || !settings[colorKey].length)
+                        fail(`${location}.${colorKey}`, "must be a color string");
+                  const extra = behavior.type === "alien-laser" ? [] : ["image", "imageCrop", "summonConfigId", "maxSpawns"];
+                  for (const key of Object.keys(settings)) if (![...positive, ...nonNegative, colorKey, ...extra].includes(key))
+                        fail(`${location}.${key}`, "unknown behavior setting");
+                  if (behavior.type === "saucer-support") {
+                        if (settings.beamDurationMs > settings.beamIntervalMs) fail(location, "beam duration exceeds its interval");
+                        if (!Number.isInteger(settings.maxSpawns) || settings.maxSpawns < 0) fail(`${location}.maxSpawns`, "must be a non-negative integer");
+                        if (!definitions.some(candidate => candidate.id === settings.summonConfigId))
+                              fail(`${location}.summonConfigId`, "must reference a fighter definition");
+                        if (settings.image !== null) checkAsset(`${location}.image`, settings.image);
+                        checkCrop(`${location}.imageCrop`, settings.imageCrop);
+                  }
+            }
+      }
       const location = fighterFiles[index] || `fighter #${index + 1}`;
+      if (definition.selectable !== undefined && typeof definition.selectable !== "boolean")
+            fail(`${location}.selectable`, "must be boolean");
       checkSkills(`${location}.skills`, definition.skills);
       checkSkills(`${location}.transformation.skills`, definition.transformation?.skills);
       if (!/^[a-z0-9-]+$/.test(definition.id || "")) {

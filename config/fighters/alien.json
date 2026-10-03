@@ -1,0 +1,47 @@
+{
+      "$schema": "./fighter.schema.json",
+      "id": "alien",
+      "name": "Alien",
+      "color": "#74dbbf",
+      "selectable": false,
+      "behavior": {
+            "type": "alien-laser",
+            "settings": {
+                  "damage": 10,
+                  "intervalMs": 2000,
+                  "width": 8,
+                  "range": 2000,
+                  "flashMs": 60,
+                  "color": "#5cfff0"
+            }
+      },
+      "skills": {
+            "weaponAim": {
+                  "muzzle": { "x": 32, "y": 15 },
+                  "pivot": { "x": 10, "y": 15 },
+                  "forwardDegrees": 0
+            }
+      },
+      "combat": {
+            "maxHealth": 100,
+            "baseDamage": 0,
+            "abilities": [],
+            "faceTarget": { "mode": "always" }
+      },
+      "body": {
+            "radius": 20,
+            "hitbox": { "type": "box", "width": 38, "height": 65 },
+            "hitboxOffset": { "x": 0, "y": 0 }
+      },
+      "presentation": {
+            "image": "assets/fighters/alien/sprites/alien.png",
+            "imageCrop": { "x": 260, "y": 0, "width": 515, "height": 711 },
+            "imageScale": 2,
+            "weaponIdle": null,
+            "weaponAttack": null,
+            "weaponScale": 0.8,
+            "weaponOffset": { "x": 20, "y": 15 },
+            "weaponPivot": { "x": 10, "y": 15 },
+            "healthBarOffset": { "x": 0, "y": -32 }
+      }
+}

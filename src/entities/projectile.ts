@@ -16,6 +16,7 @@ export interface ProjectileOptions {
 
 export class Projectile {
       readonly ownerId: string;
+      readonly ownerRuntimeId: string;
       readonly damage: number;
       image: HTMLImageElement | null = null;
       readonly radius: number;
@@ -42,6 +43,7 @@ export class Projectile {
             this.options = { ...options };
             const settings = projectileFlightSettings(config);
             this.ownerId = owner.id;
+            this.ownerRuntimeId = owner.runtimeId ?? owner.id;
             this.damage = config.damage;
             this.radius = config.radius;
             this.imageScale = 1;
@@ -55,7 +57,7 @@ export class Projectile {
                   inertia: Infinity,
                   inverseInertia: 0,
                   label: `projectile:${owner.id}`,
-                  collisionFilter: { category: 0x0002, mask: 0x0001 },
+                  collisionFilter: { group: owner.body?.collisionFilter.group ?? 0, category: 0x0002, mask: 0x0001 },
             });
             Matter.Body.setVelocity(this.body, { x: vx, y: vy });
             this.flight = new ProjectileFlight(this, owner, settings);

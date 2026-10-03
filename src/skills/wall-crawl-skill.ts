@@ -10,13 +10,15 @@ import {
       type WallCrawlState,
 } from "../abilities/actions/wall-crawl-action";
 import type { WallCrawlSkillOptions } from "./types";
+import type { GameplayOperation, CancellationReason } from "../gameplay/action-scope";
+import { areEnemies } from "../gameplay/teams";
 
 /**
  * Reusable wall-crawling skill.
  * Manages body attachment to arena boundaries, movement along walls,
  * duration timer, and completion callbacks.
  */
-export class WallCrawlSkill {
+export class WallCrawlSkill implements GameplayOperation {
       private _isActive = false;
       private state: WallCrawlState | null = null;
       private bounds: ArenaBounds | null = null;
@@ -43,7 +45,10 @@ export class WallCrawlSkill {
             wall: ArenaWall,
             bounds: ArenaBounds,
             options: WallCrawlSkillOptions,
-      ): void {
+      ): boolean {
+            if (this._isActive || fighter.isDead || target.isDead || !areEnemies(fighter, target) ||
+                  !Number.isFinite(options.durationMs) || options.durationMs <= 0 ||
+                  !Number.isFinite(options.speedMultiplier) || options.speedMultiplier <= 0) return false;
             this.fighter = fighter;
             this.bounds = bounds;
             this.options = options;
@@ -56,16 +61,22 @@ export class WallCrawlSkill {
             Matter.Body.setAngle(fighter.body, 0);
             this.elapsedMs = 0;
             this._isActive = true;
+            return true;
       }
 
       update(deltaMs: number): void {
             if (!this._isActive || !this.fighter || !this.state || !this.bounds || !this.options) {
                   return;
             }
+            if (this.fighter.isDead) return this.cancel("death");
+            if (!Number.isFinite(deltaMs) || deltaMs <= 0) return;
 
             this.elapsedMs += deltaMs;
+            const options = this.options;
+            const state = this.state;
             const progress = Math.min(1, this.elapsedMs / this.options.durationMs);
             this.options.onTick?.(this.elapsedMs, progress);
+            if (!this._isActive || this.options !== options || this.state !== state) return;
 
             executeWallCrawlAction(
                   {
@@ -80,12 +91,16 @@ export class WallCrawlSkill {
 
             if (this.elapsedMs >= this.options.durationMs) {
                   const onComplete = this.options.onComplete;
-                  this.stop();
+                  this.clear();
                   onComplete?.();
             }
       }
 
-      stop(): void {
+      cancel(_reason: CancellationReason): void {
+            this.clear();
+      }
+
+      private clear(): void {
             if (!this._isActive) return;
             this._isActive = false;
             if (this.fighter) {
@@ -94,6 +109,7 @@ export class WallCrawlSkill {
             this.state = null;
             this.bounds = null;
             this.options = null;
+            this.fighter = null;
             this.elapsedMs = 0;
       }
 }

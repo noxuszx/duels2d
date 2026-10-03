@@ -1,3 +1,4 @@
+import { areEnemies } from "../gameplay/teams";
 import type { Fighter } from "../entities/fighter";
 import type { AbilityAction, AbilityConfig } from "./types";
 import type { CombatResult } from "../combat/combat-result";
@@ -21,7 +22,7 @@ export class ActionExecutor {
             target: Fighter,
             ability: AbilityConfig,
       ): CombatResult {
-            if (this.context.isGameOver?.()) return {
+            if (this.context.isGameOver?.() || source.isDead || target.isDead || !areEnemies(source, target)) return {
                   connected: false, damageApplied: 0, knockbackApplied: false, statusesApplied: [],
             };
             let damageApplied = 0;
@@ -64,7 +65,7 @@ export class ActionExecutor {
                         const result = target.applyStatus({
                               effect: action.effect,
                               durationMs: action.durationMs,
-                              sourceId: source.id,
+                              sourceId: source.runtimeId,
                         });
                         if (result.applied && !statusesApplied.includes(action.effect))
                               statusesApplied.push(action.effect);

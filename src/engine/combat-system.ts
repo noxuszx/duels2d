@@ -1,3 +1,4 @@
+import { areEnemies } from "../gameplay/teams";
 import { Body, Events, World, type Engine, type World as MatterWorld } from "matter-js";
 import type { AbilitySystem } from "../abilities/ability-system";
 import type { Fighter } from "../entities/fighter";
@@ -48,7 +49,7 @@ export class CombatSystem {
                               this.handleProjectileHit(projectile, fighter, now);
                               continue;
                         }
-                        if (this.host.isGameOver() || !first || !second || first === second) continue;
+                        if (this.host.isGameOver() || !first || !second || !areEnemies(first, second)) continue;
                         first.noteImpact(now);
                         second.noteImpact(now);
                         const firstWasDashing = this.abilities.isDashing(first);
@@ -105,7 +106,7 @@ export class CombatSystem {
             const knockback = projectile.flight.settings.knockback;
             if (knockback && !fighter.isDead)
                   executeKnockbackAction({ type: "knockback", ...knockback },
-                        { id: projectile.ownerId, body: projectile.body }, fighter,
+                        { id: projectile.ownerId, runtimeId: projectile.ownerRuntimeId, body: projectile.body }, fighter,
                         projectile.body.velocity, now);
             if ((result.applied || (knockback && !fighter.isDead)) && owner && projectile.hitSoundCue)
                   owner.audio.play(projectile.hitSoundCue);
@@ -272,9 +273,9 @@ export class CombatSystem {
             secondWasDashing: boolean,
       ): void {
             // Avoid slap-into-self-bounce damage from the fighter that launched them.
-            if (!firstWasDashing && !second.isKnockbackFrom(first.id, now))
+            if (!firstWasDashing && !second.isKnockbackFrom(first.runtimeId, now))
                   this.applyImpactDamage(first, speed, now);
-            if (!secondWasDashing && !first.isKnockbackFrom(second.id, now))
+            if (!secondWasDashing && !first.isKnockbackFrom(second.runtimeId, now))
                   this.applyImpactDamage(second, speed, now);
       }
 }

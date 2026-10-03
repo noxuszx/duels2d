@@ -247,7 +247,7 @@ describe("Muscle Man", () => {
             step(FULL_CHARGE_MS);
             const projectile = host.projectiles[0];
             if (reason === "death") { source.currentHealth = 0; step(1); }
-            if (reason === "reset") source.behavior!.reset();
+            if (reason === "reset") source.behavior!.handleReset();
             if (reason === "removed") source.destroy();
             combat.updateProjectiles(1);
             expect(projectile.dead).toBe(true);
@@ -341,7 +341,7 @@ describe("Muscle Man", () => {
             const { step, host, source, behavior, combat } = arena();
             step(FULL_CHARGE_MS);
             const projectile = host.projectiles[0];
-            source.behavior!.reset(); combat.updateProjectiles(0);
+            source.behavior!.handleReset(); combat.updateProjectiles(0);
             step(1000);
             expect(behavior.accumulatedDamage).toBe(30);
             projectile.remove("caught");

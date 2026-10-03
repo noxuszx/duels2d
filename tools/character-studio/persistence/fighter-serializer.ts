@@ -78,10 +78,13 @@ export function syncFighterDefinition(
       if (!definition)
             throw new Error(`Missing fighter definition for ${config.id}`);
 
+      if (config.selectable !== undefined) definition.selectable = config.selectable;
+      else delete definition.selectable;
+
       if (config.behavior) definition.behavior = structuredClone(config.behavior);
       else delete definition.behavior;
 
-      if (config.skills?.aim)
+      if (config.skills && Object.keys(config.skills).length)
             definition.skills = structuredClone(config.skills);
       else delete definition.skills;
 

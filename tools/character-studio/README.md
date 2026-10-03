@@ -4,6 +4,12 @@ The Studio edits fighter JSON and previews the same sprite geometry used by the 
 
 Default Facing describes the direction the original sprite image faces. Studio displays that image without mirroring; the game mirrors it when the fighter faces the opposite direction. Aim muzzle/pivot coordinates and forward angles belong to the original image. Attack hitbox X offsets are facing-relative: positive means forward, so a positive offset appears on the left for a native left-facing sprite.
 
+The Aim tab selects either the body sprite or an independently aimed held weapon.
+Weapon muzzle and aim pivot coordinates are relative to the fighter center in its
+native facing; weapon offset positions the gun image center. Weapon aim uses
+`skills.weaponAim`, with base/transformed form inheritance and no pose override.
+Weapon image, scale, and attachment offset remain in the Weapon controls.
+
 Skills are declared in fighter JSON. Top-level `skills` apply to the base form; `transformation.skills` override them after the transformation sequence finishes. Omitting that override inherits base skills, while `{}` disables them in the transformed form. Studio's existing form selector routes aim editing to the selected form.
 
 Typed top-level `behavior` definitions and projectile `flight` policies are

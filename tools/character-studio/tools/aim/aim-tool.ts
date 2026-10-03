@@ -31,6 +31,8 @@ type PointName = "muzzle" | "pivot";
 
 /** Edits the opt-in skill and sprite-local firing geometry without a target preview. */
 export class AimTool {
+      private target = requireElement<HTMLSelectElement>("aim-target");
+      private get weaponEditing(): boolean { return this.target.value === "weapon"; }
       private enabled = requireElement<HTMLInputElement>("aim-enabled");
       private override = requireElement<HTMLInputElement>("aim-pose-override");
       private settings = requireElement<HTMLFieldSetElement>("aim-settings");
@@ -47,14 +49,16 @@ export class AimTool {
             pose: string;
             form: string;
             configId: string;
+            attachment: string;
       } | null = null;
 
       constructor(private readonly studio: AimToolHost) {
+            this.target.addEventListener("change", () => { this.sync(); studio._draw(); });
             this.enabled.addEventListener("change", () => {
                   const config = studio._currentConfig();
                   const skills = ensureFormSkills(config, studio.activeForm);
                   if (this.enabled.checked) {
-                        skills.aim = {
+                        skills[this.weaponEditing ? "weaponAim" : "aim"] = {
                               muzzle: {
                                     x: config.defaultFacing === "left" ? -50 : 50,
                                     y: 0,
@@ -62,14 +66,14 @@ export class AimTool {
                               pivot: { x: 0, y: 0 },
                         };
                   } else {
-                        delete skills.aim;
+                        delete skills[this.weaponEditing ? "weaponAim" : "aim"];
                   }
                   studio._saveState();
                   studio._draw();
             });
             this.override.addEventListener("change", () => {
                   const options = this.options;
-                  if (!options) return;
+                  if (!options || this.weaponEditing) return;
                   if (this.override.checked)
                         this.poseRecord().aim = structuredClone(options);
                   else delete this.poseRecord().aim;
@@ -135,22 +139,25 @@ export class AimTool {
       }
 
       private get options(): AimSkillOptions | null {
-            const aim = formSkills(this.studio._currentConfig(), this.studio.activeForm)?.aim;
+            const skills = formSkills(this.studio._currentConfig(), this.studio.activeForm);
+            if (this.weaponEditing) return skills?.weaponAim ?? null;
+            const aim = skills?.aim;
             return aim ? (this.pose?.aim ?? aim) : null;
       }
 
       private setOptions(options: AimSkillOptions): void {
-            if (this.pose?.aim) this.poseRecord().aim = options;
+            if (this.weaponEditing) ensureFormSkills(this.studio._currentConfig(), this.studio.activeForm).weaponAim = options;
+            else if (this.pose?.aim) this.poseRecord().aim = options;
             else ensureFormSkills(this.studio._currentConfig(), this.studio.activeForm).aim = options;
       }
 
       sync(): void {
             const config = this.studio._currentConfig();
             const options = this.options;
-            this.enabled.checked = Boolean(formSkills(config, this.studio.activeForm)?.aim);
+            this.enabled.checked = Boolean(formSkills(config, this.studio.activeForm)?.[this.weaponEditing ? "weaponAim" : "aim"]);
             this.settings.disabled = !options;
-            this.override.checked = Boolean(this.pose?.aim);
-            this.override.disabled = this.studio.activePoseKey === "base";
+            this.override.checked = !this.weaponEditing && Boolean(this.pose?.aim);
+            this.override.disabled = this.weaponEditing || this.studio.activePoseKey === "base";
             const values = {
                   muzzleX: options?.muzzle.x ?? 0,
                   muzzleY: options?.muzzle.y ?? 0,
@@ -196,11 +203,11 @@ export class AimTool {
             return {
                   x:
                         this.studio.canvas.width / 2 +
-                        visual.imageOffset.x +
+                        (this.weaponEditing ? 0 : visual.imageOffset.x) +
                         point.x,
                   y:
                         this.studio.canvas.height / 2 +
-                        visual.imageOffset.y +
+                        (this.weaponEditing ? 0 : visual.imageOffset.y) +
                         point.y,
             };
       }
@@ -234,6 +241,7 @@ export class AimTool {
                         pose: this.studio.activePoseKey,
                         form: this.studio.activeForm,
                         configId: this.studio._currentConfig().id,
+                        attachment: this.target.value,
                   };
                   this.studio.canvas.setPointerCapture(event.pointerId);
                   event.preventDefault();
@@ -248,6 +256,7 @@ export class AimTool {
                   return false;
             if (
                   !this.options ||
+                  this.drag.attachment !== this.target.value ||
                   this.drag.pose !== this.studio.activePoseKey ||
                   this.drag.form !== this.studio.activeForm ||
                   this.drag.configId !== this.studio._currentConfig().id

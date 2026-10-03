@@ -1,3 +1,4 @@
+import { areEnemies } from "../gameplay/teams";
 import type { Fighter } from "../entities/fighter";
 import type { IndicatorSystem } from "../systems/indicator-system";
 import type { DamageResult } from "./combat-result";
@@ -8,6 +9,8 @@ export interface ApplyDamageOptions {
       amount: number;
       nowMs: number;
       cooldownMs: number;
+      /** Caller owns per-attack/per-target timing instead of the fighter collision cooldown. */
+      independentCooldown?: boolean;
       indicators: IndicatorSystem;
 }
 
@@ -18,10 +21,12 @@ export function applyDamage({
       amount,
       nowMs,
       cooldownMs,
+      independentCooldown = false,
       indicators,
 }: ApplyDamageOptions): DamageResult {
+      if (source && !areEnemies(source, target)) return { applied: false, actualDamage: 0, killed: false };
       const healthBefore = target.currentHealth;
-      const applied = target.takeDamage(amount, nowMs, cooldownMs);
+      const applied = target.takeDamage(amount, nowMs, cooldownMs, independentCooldown);
       if (!applied) return { applied: false, actualDamage: 0, killed: false };
 
       const healthAfter = target.currentHealth;

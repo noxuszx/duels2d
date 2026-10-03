@@ -4,6 +4,8 @@ import { FighterBehavior } from "./fighter-behavior";
 import { BabyManBehavior } from "./fighters/babyman.behavior";
 import { MuscleManBehavior } from "./fighters/muscleman.behavior";
 import { AngryManBehavior } from "./fighters/angryman.behavior";
+import { AlienManBehavior } from "./fighters/alienman.behavior";
+import { AlienBehavior } from "./fighters/alien.behavior";
 import type { FighterBehaviorContext } from "./types";
 
 export type FighterBehaviorConstructor = new (
@@ -15,6 +17,8 @@ const BEHAVIOR_REGISTRY = new Map<string, FighterBehaviorConstructor>([
       ["babyman", BabyManBehavior],
       ["angryman", AngryManBehavior],
       ["muscleman", MuscleManBehavior],
+      ["alienman", AlienManBehavior],
+      ["alien", AlienBehavior],
 ]);
 
 /**

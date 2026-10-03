@@ -13,6 +13,7 @@ import {
       getHitboxRect,
       getSafetyRect,
 } from "../tools/body-hitbox/body-hitbox-geometry";
+import { formSkills } from "../document/form-model";
 import { preparePreviewConfig } from "./preview-model";
 
 export interface PreviewHost {
@@ -20,6 +21,7 @@ export interface PreviewHost {
       ctx: CanvasRenderingContext2D;
       mode: "default" | "crop" | "hitbox";
       activePoseKey: string;
+      activeForm?: "base" | "transformed";
       cropDraft: ImageCrop | null;
       hitboxDraft: EditableHitbox | null;
       hitboxDraftOffset: Vector2 | null;
@@ -428,27 +430,29 @@ export function drawStudio(studio: PreviewHost): void {
                   studio.images.weaponIdle.naturalWidth * weaponScale;
             const weaponHeight =
                   studio.images.weaponIdle.naturalHeight * weaponScale;
+            const weaponAim = formSkills(config, studio.activeForm ?? "base")?.weaponAim;
+            const weaponPivot = weaponAim?.pivot ?? config.weaponPivot;
             const swing = studio
                   ._editingAbilities()
                   .flatMap((ability) => ability.actions)
                   .find((action) => action.type === "swing");
             const previewAngle =
-                  swing?.type === "swing"
+                  !weaponAim && swing?.type === "swing"
                         ? (swing.startDegrees * Math.PI) / 180
                         : 0;
             ctx.save();
             ctx.translate(
-                  centerX + config.weaponPivot.x,
-                  centerY + config.weaponPivot.y,
+                  centerX + weaponPivot.x,
+                  centerY + weaponPivot.y,
             );
             ctx.rotate(previewAngle);
             ctx.drawImage(
                   studio.images.weaponIdle,
                   config.weaponOffset.x -
-                        config.weaponPivot.x -
+                        weaponPivot.x -
                         weaponWidth / 2,
                   config.weaponOffset.y -
-                        config.weaponPivot.y -
+                        weaponPivot.y -
                         weaponHeight / 2,
                   weaponWidth,
                   weaponHeight,
@@ -457,8 +461,8 @@ export function drawStudio(studio: PreviewHost): void {
 
             ctx.save();
             ctx.translate(
-                  centerX + config.weaponPivot.x,
-                  centerY + config.weaponPivot.y,
+                  centerX + weaponPivot.x,
+                  centerY + weaponPivot.y,
             );
             ctx.strokeStyle = "#ff5a5f";
             ctx.lineWidth = 2;

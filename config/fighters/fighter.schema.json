@@ -9,9 +9,13 @@
             "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
             "name": { "type": "string", "minLength": 1 },
             "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+            "selectable": { "type": "boolean" },
             "skills": {
                   "type": "object",
-                  "properties": { "aim": { "$ref": "#/$defs/aimSkill" } },
+                  "properties": {
+                        "aim": { "$ref": "#/$defs/aimSkill" },
+                        "weaponAim": { "$ref": "#/$defs/aimSkill" }
+                  },
                   "additionalProperties": false
             },
             "behavior": { "$ref": "#/$defs/behavior" },
@@ -274,11 +278,72 @@
                   "additionalProperties": false
             },
             "behavior": {
+                  "oneOf": [
+                        { "$ref": "#/$defs/damageRampBehavior" },
+                        { "$ref": "#/$defs/alienLaserBehavior" },
+                        { "$ref": "#/$defs/saucerSupportBehavior" }
+                  ]
+            },
+            "damageRampBehavior": {
                   "type": "object",
                   "required": ["type", "settings"],
                   "properties": {
                         "type": { "const": "damage-ramp" },
                         "settings": { "$ref": "#/$defs/damageRampSettings" }
+                  },
+                  "additionalProperties": false
+            },
+            "alienLaserBehavior": {
+                  "type": "object", "required": ["type", "settings"],
+                  "properties": {
+                        "type": { "const": "alien-laser" },
+                        "settings": { "$ref": "#/$defs/alienLaserSettings" }
+                  },
+                  "additionalProperties": false
+            },
+            "saucerSupportBehavior": {
+                  "type": "object", "required": ["type", "settings"],
+                  "properties": {
+                        "type": { "const": "saucer-support" },
+                        "settings": { "$ref": "#/$defs/saucerSettings" }
+                  },
+                  "additionalProperties": false
+            },
+            "alienLaserSettings": {
+                  "type": "object",
+                  "required": ["damage", "intervalMs", "width", "range", "flashMs", "color"],
+                  "properties": {
+                        "damage": { "$ref": "#/$defs/nonNegativeNumber" },
+                        "intervalMs": { "$ref": "#/$defs/positiveNumber" },
+                        "width": { "$ref": "#/$defs/positiveNumber" },
+                        "range": { "$ref": "#/$defs/positiveNumber" },
+                        "flashMs": { "$ref": "#/$defs/nonNegativeNumber" },
+                        "color": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
+            },
+            "saucerSettings": {
+                  "type": "object",
+                  "required": ["image", "width", "height", "altitude", "speed", "beamWidth", "beamDamage",
+                        "beamDamageIntervalMs", "beamDurationMs", "beamIntervalMs", "beamColor", "summonConfigId",
+                        "firstSpawnDelayMs", "spawnIntervalMs", "maxSpawns"],
+                  "properties": {
+                        "image": { "type": ["string", "null"] },
+                        "imageCrop": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/crop" }] },
+                        "width": { "$ref": "#/$defs/positiveNumber" },
+                        "height": { "$ref": "#/$defs/positiveNumber" },
+                        "altitude": { "$ref": "#/$defs/nonNegativeNumber" },
+                        "speed": { "$ref": "#/$defs/positiveNumber" },
+                        "beamWidth": { "$ref": "#/$defs/positiveNumber" },
+                        "beamDamage": { "$ref": "#/$defs/nonNegativeNumber" },
+                        "beamDamageIntervalMs": { "$ref": "#/$defs/positiveNumber" },
+                        "beamDurationMs": { "$ref": "#/$defs/positiveNumber" },
+                        "beamIntervalMs": { "$ref": "#/$defs/positiveNumber" },
+                        "beamColor": { "type": "string", "minLength": 1 },
+                        "summonConfigId": { "type": "string", "minLength": 1 },
+                        "firstSpawnDelayMs": { "$ref": "#/$defs/nonNegativeNumber" },
+                        "spawnIntervalMs": { "$ref": "#/$defs/positiveNumber" },
+                        "maxSpawns": { "type": "integer", "minimum": 0 }
                   },
                   "additionalProperties": false
             },
@@ -498,7 +563,10 @@
                   "properties": {
                         "skills": {
                               "type": "object",
-                              "properties": { "aim": { "$ref": "#/$defs/aimSkill" } },
+                              "properties": {
+                                    "aim": { "$ref": "#/$defs/aimSkill" },
+                                    "weaponAim": { "$ref": "#/$defs/aimSkill" }
+                              },
                               "additionalProperties": false
                         },
                         "trigger": { "$ref": "#/$defs/transformationTrigger" },

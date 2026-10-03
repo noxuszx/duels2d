@@ -1,148 +1,84 @@
-import { DashSkill } from "../../skills/dash-skill";
-import { WallCrawlSkill } from "../../skills/wall-crawl-skill";
+import type { DashAction, WallCrawlAction, AbilityConfig } from "../../abilities/types";
 import type { Fighter } from "../../entities/fighter";
-import type {
-      DashAction,
-      WallCrawlAction,
-} from "../../abilities/types";
+import { AbilityRunner } from "../../gameplay/ability-runner";
+import { dashToward } from "../../gameplay/dash-move";
+import { hitWithAbility } from "../../combat/ability-hit";
+import { WallCrawlSkill } from "../../skills/wall-crawl-skill";
+import type { ArenaBounds, ArenaWall, FighterBehaviorContext, WallCollisionResponse } from "../types";
+import { DEFAULT_WALL_COLLISION_RESPONSE } from "../types";
 import { FighterBehavior } from "../fighter-behavior";
-import {
-      DEFAULT_WALL_COLLISION_RESPONSE,
-      type ArenaBounds,
-      type ArenaWall,
-      type FighterBehaviorContext,
-      type WallCollisionResponse,
-} from "../types";
 
-/**
- * Dedicated behavior script for Baby Man.
- * Orchestrates a reusable WallCrawlSkill into an explosive DashSkill
- * upon wall contact, then returns to idle.
- */
+/** Baby Man chooses a wall-crawl charge; the runner and phase operations own its timing. */
 export class BabyManBehavior extends FighterBehavior {
-      private readonly crawlSkill = new WallCrawlSkill();
-      private readonly dashSkill = new DashSkill();
+      private readonly moves: AbilityRunner;
+      private readonly crawl = new WallCrawlSkill();
 
       constructor(fighter: Fighter, context: FighterBehaviorContext) {
             super(fighter, context);
+            this.moves = this.runtime.use(new AbilityRunner(fighter, context));
       }
 
-      override onUpdate(deltaMs: number): void {
-            if (this.fighter.isDead) {
-                  this.reset();
-                  return;
-            }
-
-            if (this.crawlSkill.isActive) {
-                  this.crawlSkill.update(deltaMs);
-            } else if (this.dashSkill.isActive) {
-                  this.dashSkill.update(deltaMs);
-                  this.fighter.abilities.update(deltaMs);
-            } else {
-                  this.fighter.abilities.update(deltaMs);
-            }
-
-            if (this.fighter.abilities.state === "idle") {
-                  if (this.crawlSkill.isActive) this.crawlSkill.stop();
-                  if (this.dashSkill.isActive) this.dashSkill.stop();
-            }
-      }
-
-      override onWallCollision(wall: ArenaWall, bounds: ArenaBounds): WallCollisionResponse {
-            if (this.crawlSkill.isActive) {
+      override onWallCollision(
+            wall: ArenaWall,
+            bounds: ArenaBounds,
+            wasDashing = false,
+      ): WallCollisionResponse {
+            // Keep wall contact during the attached crawl from applying bounce or impact damage.
+            if (this.crawl.isActive) {
                   return { defaultBounce: false, allowImpactDamage: false };
             }
-
-            if (this.dashSkill.isActive) {
-                  this.dashSkill.handleWallCollision(wall);
-                  return DEFAULT_WALL_COLLISION_RESPONSE;
-            }
-
-            if (this.fighter.isDead || this.fighter.abilities.state !== "idle") {
-                  return DEFAULT_WALL_COLLISION_RESPONSE;
-            }
-
-            const now = this.context.now();
+            // This collision may have ended the dash inside runtime dispatch; don't start another move from it.
+            if (wasDashing) return DEFAULT_WALL_COLLISION_RESPONSE;
             const ability = this.fighter.activeAbilities.find(
-                  (a) => a.trigger.type === "wall-contact",
+                  candidate => candidate.trigger.type === "wall-contact",
             );
+            if (!ability || !this.moves.canStart(ability)) return DEFAULT_WALL_COLLISION_RESPONSE;
             const target = this.context.getNearestEnemy(this.fighter);
-            if (!ability || !target) return DEFAULT_WALL_COLLISION_RESPONSE;
-
+            if (!target || !this.moves.validTarget(target)) {
+                  return DEFAULT_WALL_COLLISION_RESPONSE;
+            }
             const crawlAction = ability.actions.find(
-                  (a): a is WallCrawlAction => a.type === "wall-crawl",
+                  (action): action is WallCrawlAction => action.type === "wall-crawl",
             );
             const dashAction = ability.actions.find(
-                  (a): a is DashAction => a.type === "dash",
+                  (action): action is DashAction => action.type === "dash",
             );
-            const result = this.fighter.abilities.tryStart(
-                  ability,
-                  this.fighter.facing,
-                  now,
-            );
-            if (!result.started) return DEFAULT_WALL_COLLISION_RESPONSE;
+            if (!crawlAction || !dashAction) return DEFAULT_WALL_COLLISION_RESPONSE;
 
-            this.crawlSkill.start(this.fighter, target, wall, bounds, {
-                  durationMs: crawlAction?.durationMs ?? 2000,
-                  speedMultiplier: crawlAction?.speedMultiplier ?? 1.5,
-                  onComplete: () => {
-                        this.fighter.abilities.beginActive();
-                        const currentTarget =
-                              this.context.getNearestEnemy(this.fighter) ?? target;
-                        const direction = {
-                              x: currentTarget.body.position.x - this.fighter.body.position.x,
-                              y: currentTarget.body.position.y - this.fighter.body.position.y,
-                        };
-                        if (direction.x !== 0) {
-                              this.fighter.facing = direction.x < 0 ? "left" : "right";
+            // Wall crawl is Baby Man's windup phase. Keep the configured ability ID so its
+            // existing cooldown remains authoritative while honoring crawl duration in JSON.
+            const move: AbilityConfig = {
+                  ...ability,
+                  timing: { ...ability.timing, windupMs: crawlAction.durationMs },
+            };
+            let crawlStarted = false;
+            const started = this.moves.start(move, target, {
+                  windup: scope => {
+                        if (scope.isClosed) return;
+                        scope.use(this.crawl);
+                        crawlStarted = this.crawl.start(this.fighter, target, wall, bounds, {
+                              durationMs: crawlAction.durationMs,
+                              speedMultiplier: crawlAction.speedMultiplier,
+                        });
+                        if (!crawlStarted) this.moves.cancel("interrupted");
+                  },
+                  active: scope => {
+                        const currentTarget = this.context.getNearestEnemy(this.fighter);
+                        if (!currentTarget || !this.moves.validTarget(currentTarget)) {
+                              this.moves.finishActive();
+                              return;
                         }
-
-                        this.dashSkill.start(this.fighter, direction, {
-                              speedMultiplier: dashAction?.speedMultiplier ?? 5,
-                              accelerationForce: dashAction?.accelerationForce ?? 0.018,
-                              stopOn: dashAction?.endOn ?? [
-                                    "fighter-collision",
-                                    "wall-collision",
-                              ],
-                              onHitEnemy: (enemy) => {
-                                    const result = this.context.executeTargetActions(
-                                          this.fighter,
-                                          enemy,
-                                          ability,
-                                    );
-                                    if (result.connected)
-                                          this.fighter.audio.playAbilityCue(ability, "hit");
-                              },
-                              onComplete: () => {
-                                    this.fighter.abilities.finishActive();
-                                    this.fighter.abilities.update(0);
-                              },
+                        dashToward(scope, this.moves, currentTarget, dashAction, enemy => {
+                              hitWithAbility(this.fighter, enemy, ability, this.context);
                         });
                   },
             });
+            if (!started.started || !crawlStarted) return DEFAULT_WALL_COLLISION_RESPONSE;
 
             return { defaultBounce: false, allowImpactDamage: false };
       }
 
-      override onFighterCollision(target: Fighter): void {
-            if (this.dashSkill.isActive) {
-                  this.dashSkill.handleFighterCollision(target);
-            }
-      }
+      override isWallCrawling(): boolean { return this.crawl.isActive; }
 
-      override isWallCrawling(): boolean {
-            return this.crawlSkill.isActive;
-      }
-
-      override isDashing(): boolean { return this.dashSkill.isActive; }
-
-      override getWallCrawlAngle(): number | null {
-            return this.crawlSkill.getAngle();
-      }
-
-      override reset(): void {
-            this.crawlSkill.stop();
-            this.dashSkill.stop();
-            this.fighter.abilities.reset();
-      }
+      override getWallCrawlAngle(): number | null { return this.crawl.getAngle(); }
 }

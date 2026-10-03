@@ -1,3 +1,5 @@
+import type { SaucerSettings } from "../gameplay/saucer-settings";
+
 /** Values consumed by a damage-ramp behavior; timing is simulation milliseconds. */
 export interface DamageRampSettings {
       amountPerIncrease: number;
@@ -8,10 +10,20 @@ export interface DamageRampSettings {
 }
 
 /** Extend this discriminated union for concrete behavior needs, not an arbitrary settings bag. */
+export interface AlienLaserSettings {
+      damage: number;
+      intervalMs: number;
+      width: number;
+      range: number;
+      flashMs: number;
+      color: string;
+}
+
 export type FighterBehaviorDefinition = {
       type: "damage-ramp";
       settings: DamageRampSettings;
-};
+} | { type: "alien-laser"; settings: AlienLaserSettings }
+  | { type: "saucer-support"; settings: SaucerSettings };
 
 /** Reject malformed authored tuning before it can create an unbounded ramp loop. */
 export function assertDamageRampSettings(settings: DamageRampSettings): void {

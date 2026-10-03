@@ -1,12 +1,16 @@
+import { areEnemies } from "../gameplay/teams";
 import * as Matter from "matter-js";
+import type { Vector2 } from "../types/fighter";
 import type { Fighter } from "../entities/fighter";
 import type { Projectile } from "../entities/projectile";
+import type { LaserShot } from "../gameplay/instant-laser";
+import type { SpawnedEntity } from "../gameplay/spawned-entity";
 import type { IndicatorSystem } from "../systems/indicator-system";
 import { ActionExecutor } from "./action-executor";
 import { DashSkill } from "../skills/dash-skill";
 import { attackHitboxOverlaps } from "./actions/attack-hitbox-action";
 import type { ArenaBounds, ArenaWall } from "../skills/types";
-import { enemyInRange, nearestEnemy, selectTarget } from "./targeting";
+import { enemyInRange, nearestEnemy, selectTarget } from "../gameplay/targeting";
 import type { AbilityAction, AbilityConfig } from "./types";
 import { createFighterBehavior } from "../behaviors/registry";
 import type { StandardAbilityHandler } from "../behaviors/default-behavior";
@@ -25,6 +29,11 @@ interface AbilitySystemGameManager {
       ARENA_BORDER: number;
       now(): number;
       isGameOver?(): boolean;
+      spawnSummon?(owner: Fighter, configId: string, position: Vector2): Fighter | null;
+      removeOwnedSummons?(owner: Fighter): void;
+      addEntity?(entity: SpawnedEntity): void;
+      getArenaBounds?(): ArenaBounds;
+      fireLaser?(source: Fighter, shot: LaserShot): void;
 }
 
 export class AbilitySystem implements StandardAbilityHandler {
@@ -50,6 +59,11 @@ export class AbilitySystem implements StandardAbilityHandler {
                   },
                   now: () => this.gm.now(),
                   isCombatActive: () => !this.gm.isGameOver?.(),
+                  spawnSummon: (owner, configId, position) => gm.spawnSummon?.(owner, configId, position) ?? null,
+                  removeOwnedSummons: owner => gm.removeOwnedSummons?.(owner),
+                  addEntity: gm.addEntity ? entity => gm.addEntity!(entity) : undefined,
+                  getArenaBounds: gm.getArenaBounds ? () => gm.getArenaBounds!() : undefined,
+                  fireLaser: gm.fireLaser ? (source, shot) => gm.fireLaser!(source, shot) : undefined,
                   getNearestEnemy: (source) =>
                         nearestEnemy(source, this.gm.characters),
                   executeTargetActions: (source, target, ability) =>
@@ -69,14 +83,15 @@ export class AbilitySystem implements StandardAbilityHandler {
       }
 
       update(deltaMs: number): void {
-            for (const fighter of this.gm.characters) {
+            for (const fighter of [...this.gm.characters]) {
+                  if (!this.gm.characters.includes(fighter)) continue;
+                  this.ensureBehavior(fighter);
                   if (fighter.isDead) fighter.statuses.clear();
                   else {
                         fighter.statuses.update(deltaMs);
                         fighter.updateTransformation(deltaMs);
                   }
-                  this.ensureBehavior(fighter);
-                  fighter.behavior?.onUpdate(deltaMs);
+                  fighter.behavior?.tick(deltaMs);
                   const aimTarget = this.targets.get(fighter);
                   fighter.updateAim?.(aimTarget && !aimTarget.isDead
                         ? aimTarget : nearestEnemy(fighter, this.gm.characters));
@@ -287,10 +302,11 @@ export class AbilitySystem implements StandardAbilityHandler {
       }
 
       handleCharacterCollision(first: Fighter, second: Fighter): void {
+            if (!areEnemies(first, second)) return;
             this.ensureBehavior(first);
             this.ensureBehavior(second);
-            first.behavior?.onFighterCollision(second);
-            second.behavior?.onFighterCollision(first);
+            first.behavior?.handleFighterCollision(second);
+            second.behavior?.handleFighterCollision(first);
       }
 
       isWallCrawling(fighter: Fighter): boolean {
@@ -312,7 +328,7 @@ export class AbilitySystem implements StandardAbilityHandler {
             wasDashing: boolean,
       ): WallCollisionResponse {
             this.ensureBehavior(fighter);
-            const response = fighter.behavior?.onWallCollision(wall, bounds);
+            const response = fighter.behavior?.handleWallCollision(wall, bounds);
             if (!response) {
                   return { defaultBounce: true, allowImpactDamage: !wasDashing };
             }
@@ -355,7 +371,7 @@ export class AbilitySystem implements StandardAbilityHandler {
             }
             for (const target of this.gm.characters) {
                   if (
-                        target === fighter ||
+                        !areEnemies(fighter, target) ||
                         target.isDead ||
                         hitTargets.has(target) ||
                         !attackHitboxOverlaps(fighter, target, action)
@@ -380,11 +396,18 @@ export class AbilitySystem implements StandardAbilityHandler {
             this.attackHitTargets.delete(fighter);
       }
 
+      removeFighter(fighter: Fighter): void {
+            this.clearRuntime(fighter);
+            for (const [source, target] of this.targets) {
+                  if (target === fighter) this.targets.delete(source);
+            }
+      }
+
       resetAll(): void {
             for (const fighter of this.gm.characters) {
                   fighter.statuses.clear();
                   fighter.resetTransformation();
-                  fighter.behavior?.reset();
+                  fighter.behavior?.handleReset();
                   fighter.abilities.reset();
                   fighter.aimSkill?.stop();
             }

@@ -287,7 +287,7 @@ describe("gameplay regression characterization", () => {
                   statuses: new StatusEffectController(),
                   transformation: new TransformationController(null),
                   abilities: runtime,
-                  behavior: { interrupt: behaviorReset },
+                  behavior: { handleInterrupt: behaviorReset },
             });
             const ability = makeAbility({ timing: {
                   cooldownMs: 1_000,
@@ -319,7 +319,7 @@ describe("gameplay regression characterization", () => {
                   statuses: new StatusEffectController(),
                   transformation: new TransformationController(null),
                   abilities: runtime,
-                  behavior: { reset: behaviorReset },
+                  behavior: { handleReset: behaviorReset },
             });
             const ability = makeAbility();
             runtime.tryStart(ability, "right", 0);
@@ -346,12 +346,12 @@ describe("gameplay regression characterization", () => {
                   get isDead() { return !alive; },
                   statuses,
                   behavior: {
-                        onUpdate: vi.fn(() => {
+                        tick: vi.fn(() => {
                               order.push("behavior");
                               if (alive)
                                     expect(statuses.getActiveEffects()[0]?.remainingMs).toBe(90);
                         }),
-                        reset: vi.fn(),
+                        handleReset: vi.fn(),
                   },
                   abilities: { reset: vi.fn() },
                   updateTransformation: vi.fn(() => false),
@@ -765,7 +765,7 @@ describe("gameplay regression characterization", () => {
 
       it("keeps wall bounce and impact-damage decisions independent", () => {
             const behavior = {
-                  onWallCollision: vi.fn(() => ({
+                  handleWallCollision: vi.fn(() => ({
                         defaultBounce: false,
                         allowImpactDamage: false,
                   })),
@@ -790,7 +790,7 @@ describe("gameplay regression characterization", () => {
                   defaultBounce: false,
                   allowImpactDamage: false,
             });
-            expect(behavior.onWallCollision).toHaveBeenCalledTimes(2);
+            expect(behavior.handleWallCollision).toHaveBeenCalledTimes(2);
       });
 
       it("ignores a projectile collision with its owner and consumes a hit on another fighter", () => {

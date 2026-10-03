@@ -98,6 +98,7 @@ export function composeFighter(
             id: merged.id,
             name: merged.name,
             color: merged.color,
+            ...(definition.selectable !== undefined ? { selectable: definition.selectable } : {}),
             ...(definition.skills ? { skills: structuredClone(definition.skills) } : {}),
             ...(definition.behavior ? { behavior: structuredClone(definition.behavior) } : {}),
             maxHealth: merged.combat.maxHealth,

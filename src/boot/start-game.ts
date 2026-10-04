@@ -1,5 +1,4 @@
 import {
-      installFighterConfigGlobals,
       loadFighterConfig,
 } from "../config/fighter-loader";
 
@@ -8,7 +7,7 @@ import {
       loadRuntimeConfig,
       validateFighterSoundCues,
 } from "../config/runtime-config";
-import { GameManager } from "../engine/game-manager";
+import { GameApp } from "../app/game-app";
 import { CommandLineController } from "../ui/command-console";
 import { TransportControls } from "../ui/transport-controls";
 import { RecordingController } from "../ui/recording-controller";
@@ -26,8 +25,7 @@ window.addEventListener("DOMContentLoaded", async () => {
                   fighterConfig.roster,
                   runtimeConfig.sounds,
             );
-            installFighterConfigGlobals(fighterConfig);
-            const game = new GameManager(fighterConfig.roster, runtimeConfig);
+            const game = new GameApp(fighterConfig.roster, runtimeConfig);
             const commandLine = new CommandLineController(game);
             new TransportControls(game);
             new RecordingController(game);

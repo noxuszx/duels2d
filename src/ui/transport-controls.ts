@@ -1,10 +1,10 @@
-import type { GameManager } from "../engine/game-manager";
+import type { GameApp } from "../app/game-app";
 
 export class TransportControls {
       private readonly playButton: HTMLButtonElement;
       private readonly pauseButton: HTMLButtonElement;
 
-      constructor(private readonly game: GameManager) {
+      constructor(private readonly game: GameApp) {
             this.playButton = this.getButton("transport-play");
             this.pauseButton = this.getButton("transport-pause");
             const restartButton = this.getButton("transport-restart");

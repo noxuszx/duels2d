@@ -1,5 +1,6 @@
 import type { FighterConfig } from "../types/fighter";
-import type { GameManager } from "../engine/game-manager";
+import type { GameApp } from "../app/game-app";
+import { isFighterBehaviorEnabled } from "../content/manifest";
 
 export class FighterSelectPanel {
       private readonly root: HTMLElement | null;
@@ -12,7 +13,7 @@ export class FighterSelectPanel {
       private query: string;
       private pendingSelectedIds: string[];
 
-      constructor(private readonly game: GameManager) {
+      constructor(private readonly game: GameApp) {
             this.root = document.getElementById("character-select-panel");
             this.searchInput = document.getElementById(
                   "character-select-search",
@@ -168,7 +169,7 @@ export class FighterSelectPanel {
 
             const id = document.createElement("div");
             id.className = "character-card-id";
-            id.textContent = config.id;
+            id.textContent = isFighterBehaviorEnabled(config.id) ? config.id : "Practice opponent";
 
             card.append(preview, name, id);
             card.addEventListener("click", () =>

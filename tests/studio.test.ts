@@ -6,7 +6,7 @@ import type { StudioConfig } from "../tools/character-studio/app/editor-types";
 import { EditorSession } from "../tools/character-studio/app/editor-session";
 import { CharacterStudio } from "../tools/character-studio/app/studio-app";
 import {
-      createTransformation,
+      createForm,
       poseBank,
 } from "../tools/character-studio/document/form-model";
 import { snapshotStudioState } from "../tools/character-studio/app/editor-history";
@@ -16,6 +16,7 @@ import {
       movedAttackOffset,
 } from "../tools/character-studio/tools/attack-hitbox/attack-hitbox-geometry";
 import { poseLabel } from "../tools/character-studio/document/pose-label";
+import { parseComponents, parseMoves } from "../tools/character-studio/panels/form-panel";
 
 const defaults: FighterDefaults = JSON.parse(
       readFileSync("config/fighters/defaults.json", "utf8"),
@@ -112,154 +113,122 @@ describe("Studio idle selection", () => {
       });
 });
 
-describe("Studio transformation editing", () => {
-      it("creates independent pose and ability banks when enabling a transformation", () => {
+describe("Studio form editing", () => {
+      it("creates independent component, move, and pose banks for a named form", () => {
             const { config } = granny();
-            config.transformation = createTransformation(config);
-            expect(config.transformation.abilities).toEqual(config.abilities);
-            expect(config.transformation.abilities).not.toBe(config.abilities);
-            expect(config.transformation.abilities[0].actions).not.toBe(
-                  config.abilities[0].actions,
-            );
-            expect(poseBank(config, "transformed").idle).not.toBe(
-                  poseBank(config, "base").idle,
-            );
+            config.forms.example = createForm(config);
+            expect(config.forms.example.components).toEqual(config.components);
+            expect(config.forms.example.components).not.toBe(config.components);
+            expect(config.forms.example.moves).not.toBe(config.moves);
+            expect(config.forms.example.poses).not.toBe(config.poses);
       });
 
-      it("routes sprite and attack editing to the selected form without changing base values", () => {
+      it("edits a selected form without changing base art or melee geometry", () => {
             const { config } = granny();
-            const studio = Object.assign(
-                  Object.create(CharacterStudio.prototype),
-                  {
-                        session: new EditorSession([config]),
-                        configs: [config],
-                        activeConfigIndex: 0,
-                        activeForm: "transformed",
-                  },
-            ) as CharacterStudio;
-            const baseSnapshot = structuredClone({
-                  poses: config.poses,
-                  abilities: config.abilities,
-                  image: config.image,
-            });
-            studio._setPoseVisual(config, "realization", {
-                  imageScale: 3.5,
-                  imageCrop: null,
-            });
-            studio._setPoseImagePath(
-                  config,
-                  "idle",
-                  "assets/fighters/granny/sprites/granny-recoil.png",
-            );
-            expect(
-                  studio._getPoseVisual(config, "realization").imageScale,
-            ).toBe(3.5);
-            expect(studio._getPoseImagePath(config, "idle")).toContain(
-                  "granny-recoil",
-            );
-            expect(studio._editingAbilities()[0].id).toBe("shotgun-blast");
-            expect({
-                  poses: config.poses,
-                  abilities: config.abilities,
-                  image: config.image,
-            }).toEqual(baseSnapshot);
-            studio.activeForm = "base";
-            expect(studio._editingAbilities()[0].id).toBe("rolling-pin-strike");
-            expect(studio._getPoseImagePath(config, "idle")).toContain(
-                  "granny-idle",
-            );
+            const studio = Object.assign(Object.create(CharacterStudio.prototype), {
+                  session: new EditorSession([config]), activeForm: "transformed",
+            }) as CharacterStudio;
+            const base = structuredClone({ poses: config.poses, components: config.components });
+            studio._setPoseVisual(config, "realization", { imageScale: 3.5, imageCrop: null });
+            studio._setPoseImagePath(config, "idle", "assets/fighters/granny/sprites/granny-recoil.png");
+            const hitbox = studio._attackHitboxAction();
+            if (hitbox) hitbox.offset = { x: -15, y: 42 };
+            expect(studio._getPoseVisual(config, "realization").imageScale).toBe(3.5);
+            expect(studio._getPoseImagePath(config, "idle")).toContain("granny-recoil");
+            expect({ poses: config.poses, components: config.components }).toEqual(base);
       });
 
-      it("preserves transformed-only aiming when saving and reloading Granny", () => {
+      it("round-trips form components, moves, sequence, visuals, and body offset", () => {
             const { config, definition } = granny();
-            const saved: FighterDefinition = JSON.parse(getSaveContent([definition], config, defaults));
-            expect(saved.skills?.aim).toBeUndefined();
-            expect(saved.transformation?.skills?.aim).toEqual(config.transformation?.skills?.aim);
-            const reloaded = composeFighter(defaults, saved);
-            expect(reloaded.skills?.aim).toBeUndefined();
-            expect(reloaded.transformation?.skills?.aim).toEqual(config.transformation?.skills?.aim);
-      });
-
-      it("round-trips sequence timing, custom sprite visuals, transformed projectiles and shared body offsets", () => {
-            const { config, definition } = granny();
-            config.transformation!.sequence![0].durationMs = 950;
-            config.transformation!.poses!.realization = {
+            config.forms.transformed.sequence![0].durationMs = 950;
+            config.forms.transformed.poses!.realization = {
                   image: "assets/fighters/granny/sprites/granny-pre-trans.png",
-                  imageScale: 3,
-                  imageOffset: { x: 12, y: -8 },
-                  imageCrop: null,
+                  imageScale: 3, imageOffset: { x: 12, y: -8 }, imageCrop: null,
             };
+            config.forms.transformed.components.projectile!.projectile.rotationSpeed = 2;
             config.hitboxOffset = { x: -20, y: 30 };
-            const action = config.transformation!.abilities[0].actions.find(
-                  (action) => action.type === "spawn-projectile",
-            );
-            if (action?.type === "spawn-projectile")
-                  action.projectile.rotationSpeed = 2;
-            const saved: FighterDefinition = JSON.parse(
-                  getSaveContent([definition], config, defaults),
-            );
+            const saved: FighterDefinition = JSON.parse(getSaveContent([definition], config, defaults));
             const reloaded = composeFighter(defaults, saved);
-            expect(reloaded.transformation).toEqual(config.transformation);
+            expect(reloaded.forms.transformed).toEqual(config.forms.transformed);
             expect(reloaded.hitboxOffset).toEqual({ x: -20, y: 30 });
-            expect(reloaded.abilities).toEqual(config.abilities);
+            expect(reloaded.components).toEqual(config.components);
+            expect(reloaded.moves).toEqual(config.moves);
       });
 
-      it("saves disabling transformation and captures isolated history for both forms", () => {
+      it("preserves explicit empty form maps and inherits omitted maps", () => {
             const { config, definition } = granny();
-            const originalDuration = config.transformation!.sequence![0].durationMs;
+            config.forms.transformed.components = {};
+            config.forms.transformed.moves = {};
+            config.forms.transformed.poses = {};
+            const saved: FighterDefinition = JSON.parse(getSaveContent([definition], config, defaults));
+            expect(saved.forms?.transformed).toMatchObject({ components: {}, moves: {}, poses: {} });
+            const disabled = composeFighter(defaults, saved).forms.transformed;
+            expect(disabled.components).toEqual({});
+            expect(disabled.moves).toEqual({});
+            expect(disabled.poses).toEqual({});
+
+            saved.forms!.transformed = {};
+            const inherited = composeFighter(defaults, saved).forms.transformed;
+            expect(inherited.components).toEqual(config.components);
+            expect(inherited.moves).toEqual(config.moves);
+            expect(inherited.poses).toEqual(composeFighter(defaults, saved).poses);
+      });
+
+      it("saves a radius-only edit when the source has no body object", () => {
+            const definition: FighterDefinition = { id: "radius-only", name: "Radius Only", color: "#336699" };
+            const config = composeFighter(defaults, definition) as StudioConfig;
+            config.radius += 7;
+            config.lines = { greeting: ["Hello"] };
+            const saved: FighterDefinition = JSON.parse(getSaveContent([definition], config, defaults));
+            expect(saved.body).toEqual({ radius: config.radius });
+            expect(saved.lines).toEqual(config.lines);
+            expect(composeFighter(defaults, saved).radius).toBe(config.radius);
+      });
+
+      it("preserves flat combat, radius, and weapon art across undo and save", () => {
+            const { config, definition } = granny();
+            const session = new EditorSession([config]);
+            session.resetHistory();
+            const original = { maxHealth: config.maxHealth, speed: config.speed, baseDamage: config.baseDamage,
+                  faceTarget: structuredClone(config.faceTarget), radius: config.radius, weaponAttack: config.weaponAttack };
+            config.maxHealth += 125;
+            config.speed += 2;
+            config.baseDamage += 11;
+            config.faceTarget = { mode: "never" };
+            config.radius += 3;
+            config.weaponAttack = "assets/fighters/granny/sprites/granny-recoil.png";
+            session.commit();
+            session.undo();
+            expect({ maxHealth: config.maxHealth, speed: config.speed, baseDamage: config.baseDamage,
+                  faceTarget: config.faceTarget, radius: config.radius, weaponAttack: config.weaponAttack }).toEqual(original);
+            session.redo();
+            const saved: FighterDefinition = JSON.parse(getSaveContent([definition], config, defaults));
+            const reloaded = composeFighter(defaults, saved);
+            expect(reloaded.maxHealth).toBe(config.maxHealth);
+            expect(reloaded.speed).toBe(config.speed);
+            expect(reloaded.baseDamage).toBe(config.baseDamage);
+            expect(reloaded.faceTarget).toEqual(config.faceTarget);
+            expect(reloaded.radius).toBe(config.radius);
+            expect(reloaded.weaponAttack).toBe(config.weaponAttack);
+      });
+
+      it("captures form edits in history and removes deleted forms from JSON", () => {
+            const { config, definition } = granny();
+            const originalDuration = config.forms.transformed.sequence![0].durationMs;
             const snapshot = snapshotStudioState(config, "rage", "transformed");
-            config.transformation!.sequence![0].durationMs = 100;
+            config.forms.transformed.sequence![0].durationMs = 100;
             const state = JSON.parse(snapshot);
             expect(state.activeForm).toBe("transformed");
-            expect(state.activePoseKey).toBe("rage");
-            expect(state.transformation.sequence[0].durationMs).toBe(originalDuration);
-            config.transformation = null;
-            expect(
-                  JSON.parse(getSaveContent([definition], config, defaults))
-                        .transformation,
-            ).toBeUndefined();
-      });
-
-      it("preserves an explicitly empty transformed pose bank instead of re-inheriting base sprites", () => {
-            const { config, definition } = granny();
-            config.transformation!.poses = {};
-            config.transformation!.sequence = [];
-            const saved = JSON.parse(
-                  getSaveContent([definition], config, defaults),
-            );
-            expect(saved.transformation.presentation.poses).toEqual({});
-            expect(
-                  composeFighter(defaults, saved).transformation!.poses,
-            ).toEqual({});
-      });
-
-      it("edits and saves the selected transformed attack hitbox without moving the base attack", () => {
-            const { config, definition } = granny();
-            config.transformation!.abilities = structuredClone(
-                  config.abilities,
-            );
-            const studio = Object.assign(
-                  Object.create(CharacterStudio.prototype),
-                  {
-                        session: new EditorSession([config]),
-                        configs: [config],
-                        activeConfigIndex: 0,
-                        activeForm: "transformed",
-                        attackHitboxAbilitySelect: {
-                              value: "rolling-pin-strike",
-                        },
-                  },
-            ) as CharacterStudio;
-            const originalBaseAbilities = structuredClone(config.abilities);
-            const hitbox = studio._attackHitboxAction()!;
-            hitbox.offset = { x: -15, y: 42 };
-            expect(config.abilities).toEqual(originalBaseAbilities);
-            const saved = JSON.parse(
-                  getSaveContent([definition], config, defaults),
-            );
-            expect(
-                  saved.transformation.combat.abilities[0].actions[0].offset,
-            ).toEqual({ x: -15, y: 42 });
+            expect(state.forms.transformed.sequence[0].durationMs).toBe(originalDuration);
+            const session = new EditorSession([config]);
+            session.resetHistory();
+            delete config.forms.transformed;
+            session.commit();
+            expect(JSON.parse(getSaveContent([definition], config, defaults)).forms).toBeUndefined();
+            session.undo();
+            expect(config.forms.transformed).toBeDefined();
+            session.redo();
+            expect(config.forms.transformed).toBeUndefined();
       });
 });
 
@@ -286,5 +255,24 @@ describe("Studio attack hitbox positioning", () => {
                   movedAttackOffset(action.offset, { x: 20, y: -30 }, "left"),
             ).toEqual({ x: 38, y: -20 });
             expect(action.offset).toEqual({ x: 58, y: 10 });
+      });
+});
+
+
+describe("Studio component and move JSON", () => {
+      it("rejects malformed or unknown component settings without changing a fighter", () => {
+            const { config } = granny();
+            const before = structuredClone(config.components);
+            expect(() => parseComponents("[1,2]")).toThrow("components: expected object");
+            expect(() => parseComponents('{"unknown":{}}')).toThrow("unknown");
+            expect(() => parseComponents('{"melee":null}')).toThrow("melee");
+            expect(() => parseComponents('{"wallCrawl":{"durationMs":-1,"speedMultiplier":1,"poses":["a","b"],"poseIntervalMs":100}}'))
+                  .toThrow("durationMs");
+            expect(config.components).toEqual(before);
+      });
+      it("accepts named move timing and rejects invalid cooldowns", () => {
+            expect(parseMoves('{"strike":{"cooldownMs":300,"windupMs":80}}'))
+                  .toEqual({ strike: { cooldownMs: 300, windupMs: 80 } });
+            expect(() => parseMoves('{"strike":{"cooldownMs":-1}}')).toThrow("cooldownMs");
       });
 });

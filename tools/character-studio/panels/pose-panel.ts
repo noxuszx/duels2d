@@ -83,13 +83,15 @@ export function _populatePoseSelect(
             opt.textContent = label;
             host.poseSelect.appendChild(opt);
       };
-      const poses = host._poseBank(config);
+      const poses = host.activeForm === "base"
+            ? host._poseBank(config)
+            : { ...config.poses, ...host._poseBank(config) };
       if (host.activeForm === "base" && !poses.idle)
             addOpt("base", poseLabel("base"));
       for (const key of SUPPORTED_POSE_KEYS) {
             if (
                   key in poses ||
-                  (host.activeForm === "transformed" && key === "idle")
+                  (host.activeForm !== "base" && key === "idle")
             )
                   addOpt(key, poseLabel(key));
       }

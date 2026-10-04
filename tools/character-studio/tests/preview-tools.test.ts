@@ -125,7 +125,7 @@ describe("Studio preview and tool boundaries", () => {
                         },
                         health: { minFontSize: 12, sizeMultiplier: 1 },
                   },
-                  _editingAbilities: () => [],
+                  _editingComponents: () => ({}),
                   _attackHitboxAction: () => null,
             }) as unknown as PreviewHost;
             drawStudio(preview);
@@ -239,8 +239,8 @@ describe("Studio preview and tool boundaries", () => {
             vi.stubGlobal("requestAnimationFrame", vi.fn((next) => { callback = next; return 7; }));
             vi.stubGlobal("cancelAnimationFrame", vi.fn());
             const host = { projectilePreviewTime: 0, projectilePreviewAngle: 0,
-                  _projectileAction: () => ({ type: "spawn-projectile" as const,
-                        projectile: { radius: 4, speed: 1, damage: 1, lifetimeMs: 200, image: "weapon.png", rotationSpeed: 0 } }),
+                  _projectileAction: () => ({
+                        projectile: { radius: 4, speed: 1, damage: 1, flight: { collision: { response: "sensor" as const, enemyContact: "consume" as const, ownerContact: "ignore" as const, walls: "ignore" as const }, lifetime: { type: "duration" as const, durationMs: 200 }, ownership: { onOwnerDeath: "remove" as const, onOwnerRemoval: "remove" as const, onMatchEnd: "remove" as const } }, image: "weapon.png", rotationSpeed: 0 } }),
                   _draw: vi.fn() };
             const dispose = installPreviewAnimation(host);
             callback(16);

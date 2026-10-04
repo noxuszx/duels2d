@@ -1,17 +1,16 @@
-import type { FighterConfig } from "../../../src/types/fighter";
-import type {
-      AttackHitboxAction,
-      SwingAction,
-} from "../../../src/abilities/types";
+import type { FighterComponents } from "../../../src/types/fighter";
+import type { MeleeSettings } from "../../../src/config/component-settings";
+type AttackHitbox = NonNullable<MeleeSettings["hitbox"]>;
+type Swing = NonNullable<MeleeSettings["swing"]>;
 import type { NumericInput } from "../app/editor-types";
 import { requireElement } from "../ui/dom";
 
 export interface WeaponPanelHost {
-      _editingAbilities(): FighterConfig["abilities"];
-      _swingAction(): SwingAction | null;
-      _attackHitboxAction(): AttackHitboxAction | null;
+      _editingComponents(): FighterComponents;
+      _swingAction(): Swing | null;
+      _attackHitboxAction(): AttackHitbox | null;
       _syncAttackHitboxControls(): void;
-      attackHitboxAbilitySelect: HTMLSelectElement;
+      meleeComponentSelect: HTMLSelectElement;
       controls: Record<
             | "weaponScale"
             | "weaponOffsetX"
@@ -28,55 +27,20 @@ export interface WeaponPanelHost {
       >;
 }
 
-export function _swingAction(host: WeaponPanelHost): SwingAction | null {
-      for (const ability of host._editingAbilities()) {
-            const action = ability.actions.find(
-                  (candidate) => candidate.type === "swing",
-            );
-            if (action?.type === "swing") return action;
-      }
-      return null;
+export function _swingAction(host: WeaponPanelHost): Swing | null {
+      return host._editingComponents().melee?.swing ?? null;
 }
 
-export function _attackHitboxAction(
-      host: WeaponPanelHost,
-): AttackHitboxAction | null {
-      const abilityId = host.attackHitboxAbilitySelect.value;
-      const ability = host
-            ._editingAbilities()
-            .find((candidate) => candidate.id === abilityId);
-      return (
-            ability?.actions.find(
-                  (candidate): candidate is AttackHitboxAction =>
-                        candidate.type === "attack-hitbox",
-            ) ?? null
-      );
+export function _attackHitboxAction(host: WeaponPanelHost): AttackHitbox | null {
+      return host._editingComponents().melee?.hitbox ?? null;
 }
 
 export function _populateAttackHitboxSelect(host: WeaponPanelHost): void {
-      const previous = host.attackHitboxAbilitySelect.value;
-      const abilities = host
-            ._editingAbilities()
-            .filter((ability) =>
-                  ability.actions.some(
-                        (action) => action.type === "attack-hitbox",
-                  ),
-            );
-      host.attackHitboxAbilitySelect.replaceChildren();
-      for (const ability of abilities) {
-            const option = document.createElement("option");
-            option.value = ability.id;
-            option.textContent = ability.id;
-            host.attackHitboxAbilitySelect.appendChild(option);
-      }
-      if (abilities.some((ability) => ability.id === previous)) {
-            host.attackHitboxAbilitySelect.value = previous;
-      }
-      const hasAttackHitbox = abilities.length > 0;
-      requireElement<HTMLElement>("attack-hitbox-controls").hidden =
-            !hasAttackHitbox;
-      requireElement<HTMLElement>("no-attack-hitbox-message").hidden =
-            hasAttackHitbox;
+      const hasAttackHitbox = Boolean(host._attackHitboxAction());
+      host.meleeComponentSelect.replaceChildren();
+      if (hasAttackHitbox) host.meleeComponentSelect.add(new Option("Melee", "melee"));
+      requireElement<HTMLElement>("attack-hitbox-controls").hidden = !hasAttackHitbox;
+      requireElement<HTMLElement>("no-attack-hitbox-message").hidden = hasAttackHitbox;
       host._syncAttackHitboxControls();
 }
 

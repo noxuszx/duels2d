@@ -1,5 +1,5 @@
-import type { FighterBehaviorDefinition } from "../behaviors/settings";
-import type { AbilityConfig } from "../abilities/types";
+import type { FighterComponents, MoveConfig } from "../config/component-settings";
+export type { FighterComponents, MoveConfig } from "../config/component-settings";
 
 export interface Vector2 {
       x: number;
@@ -34,12 +34,6 @@ export interface AimSkillOptions {
       forwardDegrees?: number;
 }
 
-export interface FighterSkills {
-      aim?: AimSkillOptions;
-      /** Aims an attached weapon independently of the body sprite. */
-      weaponAim?: AimSkillOptions;
-}
-
 export interface PoseOverrides {
       image: string;
       imageCrop?: ImageCrop | null;
@@ -50,40 +44,13 @@ export interface PoseOverrides {
 export type PoseConfig = string | PoseOverrides;
 export type FighterPoses = Record<string, PoseConfig> | null;
 
-export interface HealthThresholdTransformationTrigger {
-      type: "health-threshold";
-      /** Transform when current health divided by max health reaches this ratio. */
-      healthRatio: number;
-}
-
-export type TransformationTrigger = HealthThresholdTransformationTrigger;
-
-export interface TransformationSequenceStep {
-      pose: string;
-      durationMs: number;
-}
-
-/** Optional overrides authored in a fighter JSON file. */
-export interface FighterTransformationDefinition {
-      trigger: TransformationTrigger;
-      /** Overrides base skills after the sequence finishes; an empty object disables them. */
-      skills?: FighterSkills;
-      sequence?: TransformationSequenceStep[];
-      combat?: {
-            abilities?: AbilityConfig[];
-      };
-      presentation?: {
-            poses?: FighterPoses;
-      };
-}
-
-/** Fully-composed transformation data used by the runtime. */
-export interface FighterTransformationConfig {
-      trigger: TransformationTrigger;
-      skills?: FighterSkills;
-      sequence?: TransformationSequenceStep[];
-      abilities: AbilityConfig[];
+/** Form settings are data; a behavior decides when and how to apply them. */
+export interface FighterForm {
+      components: FighterComponents;
+      moves: Record<string, MoveConfig>;
       poses: FighterPoses;
+      healthRatio?: number;
+      sequence?: Array<{ pose: string; durationMs: number }>;
 }
 
 /** Values accepted by the fighter JSON schema's `lines` object. */
@@ -97,7 +64,6 @@ export interface FighterCombatOverrides {
       maxHealth?: number;
       speed?: number;
       baseDamage?: number;
-      abilities?: AbilityConfig[];
       faceTarget?: FaceTargetConfig;
 }
 export interface FighterBodyOverrides {
@@ -128,16 +94,18 @@ export interface FighterDefinition {
       color: string;
       /** Summon definitions remain editable in Studio but can be hidden from match selection. */
       selectable?: boolean;
-      skills?: FighterSkills;
-      behavior?: FighterBehaviorDefinition;
+      components?: FighterComponents;
+      moves?: Record<string, MoveConfig>;
+      forms?: Record<string, Partial<FighterForm>>;
       combat?: FighterCombatOverrides;
       body?: FighterBodyOverrides;
       presentation?: FighterPresentationOverrides;
-      transformation?: FighterTransformationDefinition;
       lines?: FighterLines;
 }
 
 export interface FighterDefaults {
+      components: FighterComponents;
+      moves: Record<string, MoveConfig>;
       combat: Required<FighterCombatOverrides>;
       body: Required<FighterBodyOverrides>;
       presentation: Required<FighterPresentationOverrides>;
@@ -150,12 +118,11 @@ export interface FighterConfig {
       name: string;
       color: string;
       selectable?: boolean;
-      skills?: FighterSkills;
-      behavior?: FighterBehaviorDefinition;
+      components: FighterComponents;
+      moves: Record<string, MoveConfig>;
       maxHealth: number;
       speed: number;
       baseDamage: number;
-      abilities: AbilityConfig[];
       faceTarget: FaceTargetConfig;
       radius: number;
       hitbox: Hitbox;
@@ -171,7 +138,7 @@ export interface FighterConfig {
       weaponIdle?: string | null;
       weaponAttack?: string | null;
       poses: FighterPoses;
-      transformation: FighterTransformationConfig | null;
+      forms: Record<string, FighterForm>;
       defaultFacing: Facing;
       lines: FighterLines;
 }

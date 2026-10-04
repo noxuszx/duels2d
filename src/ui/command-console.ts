@@ -1,11 +1,11 @@
-import type { GameManager } from "../engine/game-manager";
+import type { GameApp } from "../app/game-app";
 
 export class CommandLineController {
       private readonly container: HTMLElement;
       private readonly input: HTMLInputElement;
       private readonly status: HTMLElement;
 
-      constructor(private readonly game: GameManager) {
+      constructor(private readonly game: GameApp) {
             const container = document.getElementById("command-line");
             const input = document.getElementById("command-input");
             const status = document.getElementById("command-status");

@@ -4,32 +4,9 @@
   "name": "Baby Man",
   "color": "#8ed8ee",
   "combat": {
-    "faceTarget": { "mode": "always" },
-    "abilities": [
-      {
-        "id": "wall-crawl-charge",
-        "trigger": { "type": "wall-contact" },
-        "audio": {
-          "windup": "attackWindup",
-          "active": "attackActive"
-        },
-        "timing": { "cooldownMs": 6000, "windupMs": 0, "activeMs": 292, "recoveryMs": 0 },
-        "actions": [
-          { "type": "wall-crawl", "durationMs": 2000, "speedMultiplier": 1.5 },
-          {
-            "type": "dash",
-            "speedMultiplier": 5,
-            "accelerationForce": 0.018,
-            "endOn": [
-              "fighter-collision",
-              "wall-collision"
-            ]
-          },
-          { "type": "damage", "amount": 75 },
-          { "type": "knockback", "forceMagnitude": 0.45 }
-        ]
-      }
-    ]
+    "faceTarget": {
+      "mode": "always"
+    }
   },
   "presentation": {
     "image": "assets/fighters/babyman/sprites/babyman-idle.png",
@@ -37,34 +14,116 @@
     "poses": {
       "idle": {
         "image": "assets/fighters/babyman/sprites/babyman-idle.png",
-        "imageCrop": { "x": 0, "y": 0, "width": 540, "height": 360 },
+        "imageCrop": {
+          "x": 0,
+          "y": 0,
+          "width": 540,
+          "height": 360
+        },
         "imageScale": 2.3,
-        "imageOffset": { "x": 0, "y": -29 }
+        "imageOffset": {
+          "x": 0,
+          "y": -29
+        }
       },
       "crawl1": {
         "image": "assets/fighters/babyman/sprites/babyman-crawl1.png",
-        "imageCrop": { "x": 0, "y": 0, "width": 1536, "height": 1024 },
+        "imageCrop": {
+          "x": 0,
+          "y": 0,
+          "width": 1536,
+          "height": 1024
+        },
         "imageScale": 2.7,
-        "imageOffset": { "x": 0, "y": -32 }
+        "imageOffset": {
+          "x": 0,
+          "y": -32
+        }
       },
       "crawl2": {
         "image": "assets/fighters/babyman/sprites/babyman-crawl2.png",
-        "imageCrop": { "x": 0, "y": 0, "width": 1536, "height": 1024 },
+        "imageCrop": {
+          "x": 0,
+          "y": 0,
+          "width": 1536,
+          "height": 1024
+        },
         "imageScale": 2.7,
-        "imageOffset": { "x": 0, "y": -32 }
+        "imageOffset": {
+          "x": 0,
+          "y": -32
+        }
       },
       "attackActive": {
         "image": "assets/fighters/babyman/sprites/babyman-dash.png",
-        "imageCrop": { "x": 0, "y": 0, "width": 1536, "height": 1024 },
+        "imageCrop": {
+          "x": 0,
+          "y": 0,
+          "width": 1536,
+          "height": 1024
+        },
         "imageScale": 2.6,
-        "imageOffset": { "x": 0, "y": -25 }
+        "imageOffset": {
+          "x": 0,
+          "y": -25
+        }
       }
     },
-    "imageOffset": { "x": 0, "y": -12 },
-    "imageCrop": { "x": 0, "y": 0, "width": 540, "height": 360 }
+    "imageOffset": {
+      "x": 0,
+      "y": -12
+    },
+    "imageCrop": {
+      "x": 0,
+      "y": 0,
+      "width": 540,
+      "height": 360
+    }
   },
   "body": {
-    "hitbox": { "type": "box", "width": 59, "height": 63 },
-    "hitboxOffset": { "x": 1, "y": -36 }
+    "hitbox": {
+      "type": "box",
+      "width": 59,
+      "height": 63
+    },
+    "hitboxOffset": {
+      "x": 1,
+      "y": -36
+    }
+  },
+  "components": {
+    "wallCrawl": {
+      "durationMs": 2000,
+      "speedMultiplier": 1.5,
+      "poses": [
+        "crawl1",
+        "crawl2"
+      ],
+      "poseIntervalMs": 150,
+      "sound": "attackWindup"
+    },
+    "dash": {
+      "speedMultiplier": 5,
+      "accelerationForce": 0.018,
+      "endOn": [
+        "fighter-collision",
+        "wall-collision"
+      ],
+      "maxDurationMs": 5000,
+      "pose": "attackActive",
+      "hit": {
+        "damage": 75,
+        "knockback": 0.45
+      },
+      "sound": "attackActive"
+    }
+  },
+  "moves": {
+    "wall-crawl-charge": {
+      "cooldownMs": 6000,
+      "windupMs": 0,
+      "attackDurationMs": 292,
+      "recoveryMs": 0
+    }
   }
 }

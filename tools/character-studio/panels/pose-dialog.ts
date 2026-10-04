@@ -13,7 +13,7 @@ export interface PoseDialogHost extends PosePanelHost {
       poseDialogImageSelect: HTMLSelectElement;
       poseDialogImage: HTMLInputElement;
       poseDialogError: HTMLElement;
-      transformationTool: { sync(): void };
+      formTool: { sync(): void };
       _populatePoseSelect(config: StudioConfig): void;
       _onPoseChanged(): void;
 }
@@ -29,14 +29,12 @@ export function _openPoseDialog(
                   !(key in poses) ||
                   (mode === "rename" && key === host.activePoseKey),
       );
-      if (availableKeys.length === 0 && host.activeForm === "base") return;
 
       host.poseDialogMode = mode;
       host.poseDialogTitle.textContent =
             mode === "add" ? "Add Sprite" : "Rename Sprite";
       host.poseDialogKey.replaceChildren();
-      requireElement<HTMLInputElement>("pose-dialog-custom-key").hidden =
-            host.activeForm !== "transformed";
+      requireElement<HTMLInputElement>("pose-dialog-custom-key").hidden = false;
       requireElement<HTMLInputElement>("pose-dialog-custom-key").value = "";
       availableKeys.forEach((key) => {
             const option = document.createElement("option");
@@ -58,7 +56,6 @@ export function _openPoseDialog(
       if (mode === "rename") {
             host.poseDialogKey.value = host.activePoseKey;
             if (
-                  host.activeForm === "transformed" &&
                   !SUPPORTED_POSE_KEYS.includes(
                         host.activePoseKey as (typeof SUPPORTED_POSE_KEYS)[number],
                   )
@@ -85,19 +82,15 @@ export function _commitPoseDialog(host: PoseDialogHost): void {
             "pose-dialog-custom-key",
       ).value.trim();
       const nextKey =
-            host.activeForm === "transformed" && customKey
+            customKey
                   ? customKey
                   : host.poseDialogKey.value;
       const imagePath = host.poseDialogImage.value.trim();
       if (
             !/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(nextKey) ||
-            ["base", "constructor", "prototype"].includes(nextKey) ||
-            (host.activeForm === "base" &&
-                  !SUPPORTED_POSE_KEYS.includes(
-                        nextKey as (typeof SUPPORTED_POSE_KEYS)[number],
-                  ))
+            ["base", "constructor", "prototype"].includes(nextKey)
       ) {
-            host.poseDialogError.textContent = "Choose a supported game pose.";
+            host.poseDialogError.textContent = "Enter a pose name starting with a letter.";
             return;
       }
       if (!imagePath) {
@@ -132,8 +125,8 @@ export function _commitPoseDialog(host: PoseDialogHost): void {
                   typeof existing === "string"
                         ? imagePath
                         : { ...existing, image: imagePath };
-            if (host.activeForm === "transformed") {
-                  config.transformation?.sequence?.forEach((step) => {
+            if (host.activeForm !== "base") {
+                  config.forms[host.activeForm]?.sequence?.forEach((step) => {
                         if (step.pose === oldKey) step.pose = nextKey;
                   });
             }
@@ -144,7 +137,7 @@ export function _commitPoseDialog(host: PoseDialogHost): void {
       host._onPoseChanged();
       host._saveState();
       host.poseDialog.close();
-      host.transformationTool.sync();
+      host.formTool.sync();
 }
 
 export function _removeCurrentPose(host: PoseDialogHost): void {
@@ -161,9 +154,9 @@ export function _removeCurrentPose(host: PoseDialogHost): void {
       const poses = ensurePoseBank(config, host.activeForm);
       if (!poses[host.activePoseKey]) return;
       delete poses[host.activePoseKey];
-      if (host.activeForm === "transformed" && config.transformation) {
-            config.transformation.sequence =
-                  config.transformation.sequence?.filter(
+      if (host.activeForm !== "base" && config.forms[host.activeForm]) {
+            config.forms[host.activeForm].sequence =
+                  config.forms[host.activeForm].sequence?.filter(
                         (step) => step.pose !== host.activePoseKey,
                   );
       }
@@ -171,7 +164,7 @@ export function _removeCurrentPose(host: PoseDialogHost): void {
       host._populatePoseSelect(config);
       host._onPoseChanged();
       host._saveState();
-      host.transformationTool.sync();
+      host.formTool.sync();
 }
 
 export function _resetCurrentPose(host: PoseDialogHost) {

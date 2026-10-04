@@ -1,64 +1,104 @@
 # Status effects
 
-Each `Fighter` owns a `StatusEffectController` (`fighter.statuses`). The
-controller stores active effects and exposes combined capabilities; gameplay
-systems ask what actions are currently allowed instead of scattering checks
-for named effects.
+Each `Entity` owns a `StatusController` at `entity.statuses`. Effect modules live
+under `src/gameplay/statuses/`; registry keys derive the `StatusId` type. Shared
+code asks combined capabilities instead of checking effect names in fighters.
 
 ```ts
-fighter.statuses.canStartAbilities
-fighter.statuses.canContinueAbility
-fighter.statuses.canUseMovement
+entity.statuses.canStartCast
+entity.statuses.canContinueCast
+entity.statuses.canMove
+entity.statuses.capabilities
+entity.statuses.list()
 ```
 
-## Current effects and rules
+## Current effects and lifecycle
 
-- `stun` blocks new abilities, interrupts the active ability and behavior, and
-  disables voluntary movement. Its physics body remains active: pending force,
-  knockback, collisions, and wall bounce still work.
-- `ability-lock` blocks new ability starts only. It does not interrupt an
-  active ability or prevent movement.
-- Restrictions from simultaneous effects combine: a capability is allowed
-  only when every active effect allows it.
-- Effects run on deterministic simulation time via `update(deltaMs)`. A
-  duration expires at its boundary; timers do not depend on render rate.
-- Reapplying an effect keeps the longer of its current remaining duration and
-  the new duration. The most recent application replaces `sourceId`, even when
-  it does not extend the timer. Different effect IDs coexist.
-- Statuses are cleared when a fighter dies and on match reset. Interrupting an
-  ability preserves its cooldown history.
+| Effect | Rules |
+| --- | --- |
+| `stun` | Blocks new tasks, cancels the current task, and prevents voluntary movement |
+| `ability-lock` | Blocks new tasks while permitting an existing task and movement |
+| `burn` | Deals 2 damage per stack every 500 simulation milliseconds, up to 3 stacks |
 
-Abilities use the `apply-status` action:
+Restrictions combine: a capability is allowed only when every active effect
+allows it. The behavior runtime enforces task permissions; common movement
+checks movement permission. New control mechanics must honor these capabilities.
+Stun leaves the Matter body active, permitting drift, external forces, knockback,
+and collisions. Cancelled tasks do not resume when a restriction expires.
 
-```json
-{ "type": "apply-status", "effect": "stun", "durationMs": 700 }
+Effects update before active tasks/components using simulation time. The last
+tick consumes only remaining duration, with tolerance for exact fixed-tick
+boundaries. Periodic damage routes through shared combat and bypasses the usual
+contact-damage cooldown. Death/removal/reset clear effects; ordinary task
+interruption retains move cooldown history.
+
+Reapplication normally keeps the larger remaining duration; a module can choose
+`refresh: "replace"`. Stacks increase up to `maxStacks`, and refresh does not
+restart periodic phase. A provided source ID replaces the earlier source;
+omitting it retains the source on refresh. `onApply` runs for a new instance,
+and `onExpire` runs on expiry or clearing.
+
+## Apply an effect
+
+Inside a reusable combat mechanic, apply an attack's statuses through shared hits:
+
+```ts
+const result = simulation.hit(source, target, {
+  damage: 10,
+  statuses: [{ id: "stun", durationMs: 700 }],
+});
 ```
 
-`ActionExecutor.executeTargetActions()` applies status actions after damage or
-knockback connects. When an ability has no damage or knockback action, applying
-a status is itself the connection, even if the ability also contains a swing
-or dash action. `sourceId` is set to the attacking fighter's ID. No live
-fighter currently has `apply-status` configured; the runtime and configuration
-support are ready for a future move to use it.
+The source/target must be live registered enemies. Statuses apply after damage
+or knockback connects; a status-only hit can itself establish connection:
 
-## Extending the system
+```ts
+simulation.hit(source, target, {
+  statuses: [{ id: "ability-lock", durationMs: 700 }],
+});
+```
 
-1. Add the ID and capability definition in `src/status-effects/types.ts` and
-   `src/status-effects/definitions.ts`.
-2. Choose the effect's capability restrictions. Add stacking or stat-modifier
-   data only with an explicit policy; do not overload unrelated capabilities.
-3. Add lifecycle handling if needed. Keep effect durations in simulation
-   milliseconds, define refresh/stack and source-attribution behavior, and
-   clear state on death and match reset.
-4. If fighters can receive the effect from JSON abilities, update
-   `ApplyStatusAction` in `src/abilities/types.ts`, the `apply-status` branch
-   in `config/fighters/fighter.schema.json`, runtime checks in
-   `tools/validate-config.js`, and docs/examples together.
-5. Enforce restrictions at the shared ownership boundary (ability start,
-   ability continuation, or voluntary movement). Preserve physics and external
-   forces unless the effect explicitly requires a separate physics rule.
+A mechanic can also apply directly through the controller:
 
-The controller combines capabilities; `Fighter`, `FighterAbilities`,
-`AbilitySystem`, and `CombatSystem` enforce them at their respective shared
-boundaries. Avoid adding `if (status === "stun")` checks to individual fighter
-implementations.
+```ts
+const applied = target.statuses.apply({
+  id: "burn",
+  durationMs: 1500,
+  sourceId: source.runtimeId,
+});
+```
+
+`apply` reports application/refresh or rejects an unknown ID, invalid duration,
+or inactive owner. Direct application does not establish attack connection or
+emit a shared combat status event. Current JSON component hit settings expose
+damage/knockback; statuses are supplied through the TypeScript combat API.
+
+## Add an effect
+
+1. Add a module implementing `StatusDefinition` under `src/gameplay/statuses/`.
+2. Choose restrictions and explicit refresh/stack policy. Use supplied instance
+   state and `deltaMs` for periodic work.
+3. Register the module in `registry.ts`; ID types derive from this manifest.
+4. Apply through reusable mechanics and shared combat/controller APIs.
+5. Verify expiry, refresh/stack limits, attribution, task permission changes,
+   and death/removal/reset cleanup.
+
+A restriction-only module follows the existing ability-lock pattern:
+
+```ts
+import type { StatusDefinition } from "./types";
+
+export const silence = {
+  id: "silence",
+  restrictions: { canStartCast: false },
+} as const satisfies StatusDefinition;
+```
+
+This is an authoring example, not a registered effect. For periodic hooks and
+rounding tolerance, inspect [burn](../src/gameplay/statuses/burn.ts).
+`StatusContext.damage` uses shared combat; hooks should not alter health directly
+or introduce browser timers. Inspect the [contracts](../src/gameplay/statuses/types.ts)
+and [controller](../src/gameplay/statuses/controller.ts) before extending them.
+
+See [architecture](fighter-architecture.md) for lifecycle ownership and
+[authoring](fighter-authoring.md) for composing mechanics into fighters.

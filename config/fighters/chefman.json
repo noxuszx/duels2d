@@ -4,41 +4,73 @@
   "name": "Chef Man",
   "color": "#ff4d6d",
   "combat": {
-    "faceTarget": { "mode": "always" },
-    "abilities": [{
-      "id": "throw-kitchen-tool",
-      "trigger": { "type": "nearest-enemy" },
-      "audio": { "windup": "weaponFire" },
-      "timing": { "cooldownMs": 800, "windupMs": 33, "activeMs": 33, "recoveryMs": 67 },
-      "actions": [{
-        "type": "spawn-projectile",
-        "projectile": {
-          "radius": 24,
-          "speed": 2,
-          "damage": 25,
-          "knockback": false,
-          "lifetimeMs": 3000,
-          "rotationSpeed": 0.1,
-          "image": [
-            "assets/fighters/chefman/weapons/knife-weapon.png",
-            "assets/fighters/chefman/weapons/pan-weapon.png",
-            "assets/fighters/chefman/weapons/rolling-pin-weapon.png"
-          ],
-          "imageScales": {
-            "assets/fighters/chefman/weapons/pan-weapon.png": 2.2,
-            "assets/fighters/chefman/weapons/knife-weapon.png": 1.45,
-            "assets/fighters/chefman/weapons/rolling-pin-weapon.png": 1.85
-          }
-        }
-      }]
-    }]
+    "faceTarget": {
+      "mode": "always"
+    }
   },
   "presentation": {
     "image": "assets/fighters/chefman/sprites/chefman.out.png",
     "imageScale": 2.4,
-    "imageOffset": { "x": 0, "y": -21 },
-    "imageCrop": { "x": 199, "y": 0, "width": 633, "height": 960 },
-    "healthBarOffset": { "x": 0, "y": -75 },
+    "imageOffset": {
+      "x": 0,
+      "y": -21
+    },
+    "imageCrop": {
+      "x": 199,
+      "y": 0,
+      "width": 633,
+      "height": 960
+    },
+    "healthBarOffset": {
+      "x": 0,
+      "y": -75
+    },
     "weaponScale": 2.4
+  },
+  "components": {
+    "projectile": {
+      "projectile": {
+        "radius": 24,
+        "speed": 2,
+        "damage": 25,
+        "rotationSpeed": 0.1,
+        "image": [
+          "assets/fighters/chefman/weapons/knife-weapon.png",
+          "assets/fighters/chefman/weapons/pan-weapon.png",
+          "assets/fighters/chefman/weapons/rolling-pin-weapon.png"
+        ],
+        "imageScales": {
+          "assets/fighters/chefman/weapons/pan-weapon.png": 2.2,
+          "assets/fighters/chefman/weapons/knife-weapon.png": 1.45,
+          "assets/fighters/chefman/weapons/rolling-pin-weapon.png": 1.85
+        },
+        "flight": {
+          "collision": {
+            "response": "sensor",
+            "enemyContact": "consume",
+            "ownerContact": "ignore",
+            "walls": "ignore"
+          },
+          "lifetime": {
+            "type": "duration",
+            "durationMs": 3000
+          },
+          "ownership": {
+            "onOwnerDeath": "persist",
+            "onOwnerRemoval": "persist",
+            "onMatchEnd": "remove"
+          }
+        }
+      },
+      "sound": "weaponFire"
+    }
+  },
+  "moves": {
+    "throw-kitchen-tool": {
+      "cooldownMs": 800,
+      "windupMs": 33,
+      "attackDurationMs": 33,
+      "recoveryMs": 67
+    }
   }
 }

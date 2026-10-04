@@ -1,79 +1,100 @@
 {
-      "$schema": "./fighter.schema.json",
-      "id": "happyman",
-      "name": "Happy Man",
-      "color": "#ffd84d",
-      "combat": {
-            "faceTarget": { "mode": "range" },
-            "abilities": [{
-                  "id": "slap",
-                  "trigger": { "type": "enemy-in-range", "rangePadding": 22 },
-                  "audio": { "hit": "weaponSlap" },
-                  "timing": {
-                        "cooldownMs": 1000,
-                        "windupMs": 83,
-                        "activeMs": 217,
-                        "recoveryMs": 117
-                  },
-                  "actions": [
-                        { "type": "damage", "amount": 100 },
-                        { "type": "knockback", "forceMagnitude": 0.12 }
-                  ]
-            }]
+  "$schema": "./fighter.schema.json",
+  "id": "happyman",
+  "name": "Happy Man",
+  "color": "#ffd84d",
+  "combat": {
+    "faceTarget": {
+      "mode": "range"
+    }
+  },
+  "presentation": {
+    "image": "assets/fighters/happyman/sprites/happyman.out.png",
+    "imageScale": 2.3,
+    "imageOffset": {
+      "x": 0,
+      "y": -14
+    },
+    "imageCrop": {
+      "x": 0,
+      "y": 0,
+      "width": 2500,
+      "height": 2165
+    },
+    "poses": {
+      "idle": {
+        "image": "assets/fighters/happyman/sprites/happyman.out.png",
+        "imageCrop": {
+          "x": 0,
+          "y": 0,
+          "width": 2500,
+          "height": 2165
+        },
+        "imageScale": 2.3,
+        "imageOffset": {
+          "x": 0,
+          "y": -14
+        }
       },
-      "presentation": {
-            "image": "assets/fighters/happyman/sprites/happyman.out.png",
-            "imageScale": 2.3,
-            "imageOffset": { "x": 0, "y": -14 },
-            "imageCrop": { "x": 0, "y": 0, "width": 2500, "height": 2165 },
-            "poses": {
-                  "idle": {
-                        "image": "assets/fighters/happyman/sprites/happyman.out.png",
-                        "imageCrop": {
-                              "x": 0,
-                              "y": 0,
-                              "width": 2500,
-                              "height": 2165
-                        },
-                        "imageScale": 2.3,
-                        "imageOffset": { "x": 0, "y": -14 }
-                  },
-                  "attackWindup": {
-                        "image": "assets/fighters/happyman/sprites/happyman-windup.png",
-                        "imageCrop": {
-                              "x": 0,
-                              "y": 0,
-                              "width": 1288,
-                              "height": 1201
-                        },
-                        "imageScale": 2,
-                        "imageOffset": { "x": 0, "y": -18 }
-                  },
-                  "attackActive": {
-                        "image": "assets/fighters/happyman/sprites/happyman-slap.png",
-                        "imageCrop": {
-                              "x": 0,
-                              "y": 0,
-                              "width": 1254,
-                              "height": 1254
-                        },
-                        "imageScale": 2,
-                        "imageOffset": { "x": -3, "y": -20 }
-                  }
-            }
+      "attackWindup": {
+        "image": "assets/fighters/happyman/sprites/happyman-windup.png",
+        "imageCrop": {
+          "x": 0,
+          "y": 0,
+          "width": 1288,
+          "height": 1201
+        },
+        "imageScale": 2,
+        "imageOffset": {
+          "x": 0,
+          "y": -18
+        }
       },
-      "lines": {
-            "weaponHit": [
-                  "Could be worse!",
-                  "Why the long face?!",
-                  "How are ya?"
-            ],
-            "ambient": [
-                  "Anybody want a hug?",
-                  "What a great day!",
-                  "Come here!"
-            ],
-            "ambientIntervalMs": 4500,
-            "ambientChance": 0.35
+      "attackActive": {
+        "image": "assets/fighters/happyman/sprites/happyman-slap.png",
+        "imageCrop": {
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
+        },
+        "imageScale": 2,
+        "imageOffset": {
+          "x": -3,
+          "y": -20
+        }
       }
+    }
+  },
+  "lines": {
+    "weaponHit": [
+      "Could be worse!",
+      "Why the long face?!",
+      "How are ya?"
+    ],
+    "ambient": [
+      "Anybody want a hug?",
+      "What a great day!",
+      "Come here!"
+    ],
+    "ambientIntervalMs": 4500,
+    "ambientChance": 0.35
+  },
+  "components": {
+    "melee": {
+      "damage": 100,
+      "knockback": 0.12,
+      "pose": "attackActive",
+      "hitSound": "weaponSlap"
+    }
+  },
+  "moves": {
+    "slap": {
+      "cooldownMs": 1000,
+      "windupMs": 83,
+      "attackDurationMs": 217,
+      "recoveryMs": 117,
+      "rangePadding": 22
+    }
+  }
 }

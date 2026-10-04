@@ -1,6 +1,6 @@
 import type { AimTool } from "./aim/aim-tool";
 import type { Vector2 } from "../../../src/types/fighter";
-import type { AttackHitboxAction } from "../../../src/abilities/types";
+import type { MeleeSettings } from "../../../src/config/component-settings";
 import {
       attackHitboxRect,
       movedAttackOffset,
@@ -28,7 +28,7 @@ export type CanvasToolHost = CropToolHost &
       HitboxToolHost & {
             aimTool?: AimTool;
             dragState: DragState | null;
-            _attackHitboxAction(): AttackHitboxAction | null;
+            _attackHitboxAction(): NonNullable<MeleeSettings["hitbox"]> | null;
             _syncAttackHitboxControls(): void;
       };
 

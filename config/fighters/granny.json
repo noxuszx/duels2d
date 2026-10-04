@@ -6,129 +6,248 @@
   "combat": {
     "maxHealth": 1000,
     "speed": 7,
-    "faceTarget": { "mode": "always" },
-    "abilities": [
-      {
-        "id": "rolling-pin-strike",
-        "trigger": { "type": "enemy-in-range", "rangePadding": 42 },
-        "timing": { "cooldownMs": 1100, "windupMs": 250, "activeMs": 150, "recoveryMs": 250 },
-        "actions": [
-          {
-            "type": "attack-hitbox",
-            "width": 109,
-            "height": 165,
-            "offset": { "x": 88, "y": -12 }
-          },
-          { "type": "damage", "amount": 45 },
-          { "type": "knockback", "forceMagnitude": 0.1 }
-        ]
-      }
-    ]
+    "faceTarget": {
+      "mode": "always"
+    }
   },
   "body": {
-    "hitbox": { "type": "box", "width": 60, "height": 112 },
-    "hitboxOffset": { "x": 1, "y": -14 }
+    "hitbox": {
+      "type": "box",
+      "width": 60,
+      "height": 112
+    },
+    "hitboxOffset": {
+      "x": 1,
+      "y": -14
+    }
   },
   "presentation": {
     "image": "assets/fighters/granny/sprites/granny-idle.png",
     "imageScale": 2.7,
-    "imageOffset": { "x": 16, "y": -18 },
+    "imageOffset": {
+      "x": 16,
+      "y": -18
+    },
     "defaultFacing": "left",
     "poses": {
       "idle": {
         "image": "assets/fighters/granny/sprites/granny-idle.png",
-        "imageCrop": { "x": 0, "y": 0, "width": 985, "height": 1301 },
+        "imageCrop": {
+          "x": 0,
+          "y": 0,
+          "width": 985,
+          "height": 1301
+        },
         "imageScale": 2.6,
-        "imageOffset": { "x": -12, "y": -23 }
+        "imageOffset": {
+          "x": -12,
+          "y": -23
+        }
       },
       "attackWindup": {
         "image": "assets/fighters/granny/sprites/granny-windup.png",
-        "imageCrop": { "x": 0, "y": 0, "width": 1145, "height": 1290 },
+        "imageCrop": {
+          "x": 0,
+          "y": 0,
+          "width": 1145,
+          "height": 1290
+        },
         "imageScale": 2.6,
-        "imageOffset": { "x": -12, "y": -18 }
+        "imageOffset": {
+          "x": -12,
+          "y": -18
+        }
       },
       "attackActive": {
         "image": "assets/fighters/granny/sprites/granny-attack.png",
-        "imageCrop": { "x": 0, "y": 0, "width": 1145, "height": 1297 },
+        "imageCrop": {
+          "x": 0,
+          "y": 0,
+          "width": 1145,
+          "height": 1297
+        },
         "imageScale": 2.6,
-        "imageOffset": { "x": -17, "y": -12 }
-      }
-    },
-    "imageCrop": { "x": 0, "y": 0, "width": 1147, "height": 1203 }
-  },
-  "transformation": {
-    "skills": {
-      "aim": {
-        "muzzle": { "x": -58.4, "y": -17.3 },
-        "pivot": { "x": 10.7, "y": 0 },
-        "forwardDegrees": -163.7
-      }
-    },
-    "trigger": { "type": "health-threshold", "healthRatio": 0.4 },
-    "sequence": [
-      { "pose": "realization", "durationMs": 1000 },
-      { "pose": "rage", "durationMs": 1000 }
-    ],
-    "combat": {
-      "abilities": [
-        {
-          "id": "shotgun-blast",
-          "trigger": { "type": "nearest-enemy" },
-          "timing": { "cooldownMs": 1400, "windupMs": 200, "activeMs": 100, "recoveryMs": 450 },
-          "actions": [
-            {
-              "type": "spawn-projectile",
-              "projectile": {
-                "radius": 6,
-                "speed": 12,
-                "damage": 90,
-                "lifetimeMs": 1500,
-                "knockback": false,
-                "image": "assets/fighters/granny/projectiles/shot.svg"
-              }
-            },
-            { "type": "recoil", "forceMagnitude": 0.12 }
-          ]
+        "imageOffset": {
+          "x": -17,
+          "y": -12
         }
-      ]
+      }
     },
-    "presentation": {
+    "imageCrop": {
+      "x": 0,
+      "y": 0,
+      "width": 1147,
+      "height": 1203
+    }
+  },
+  "components": {
+    "melee": {
+      "damage": 45,
+      "knockback": 0.1,
+      "pose": "attackActive",
+      "hitbox": {
+        "width": 109,
+        "height": 165,
+        "offset": {
+          "x": 88,
+          "y": -12
+        }
+      }
+    }
+  },
+  "moves": {
+    "rolling-pin-strike": {
+      "cooldownMs": 1100,
+      "windupMs": 250,
+      "attackDurationMs": 150,
+      "recoveryMs": 250,
+      "rangePadding": 42
+    }
+  },
+  "forms": {
+    "transformed": {
+      "healthRatio": 0.4,
+      "sequence": [
+        {
+          "pose": "realization",
+          "durationMs": 1000
+        },
+        {
+          "pose": "rage",
+          "durationMs": 1000
+        }
+      ],
       "poses": {
         "realization": {
           "image": "assets/fighters/granny/sprites/granny-pre-trans.png",
           "imageScale": 2.6,
-          "imageOffset": { "x": -21, "y": -18 },
-          "imageCrop": { "x": 0, "y": 0, "width": 1145, "height": 1203 }
+          "imageOffset": {
+            "x": -21,
+            "y": -18
+          },
+          "imageCrop": {
+            "x": 0,
+            "y": 0,
+            "width": 1145,
+            "height": 1203
+          }
         },
         "rage": {
           "image": "assets/fighters/granny/sprites/granny-trans.png",
           "imageScale": 2.6,
-          "imageOffset": { "x": -19, "y": -14 },
-          "imageCrop": { "x": 0, "y": 0, "width": 1145, "height": 1131 }
+          "imageOffset": {
+            "x": -19,
+            "y": -14
+          },
+          "imageCrop": {
+            "x": 0,
+            "y": 0,
+            "width": 1145,
+            "height": 1131
+          }
         },
         "idle": {
           "image": "assets/fighters/granny/sprites/granny-shotgun.png",
           "imageScale": 2.5,
-          "imageOffset": { "x": -15, "y": -8 },
-          "imageCrop": { "x": 0, "y": 0, "width": 1046, "height": 1193 }
+          "imageOffset": {
+            "x": -15,
+            "y": -8
+          },
+          "imageCrop": {
+            "x": 0,
+            "y": 0,
+            "width": 1046,
+            "height": 1193
+          }
         },
         "attackWindup": {
           "image": "assets/fighters/granny/sprites/granny-shotgun.png",
           "imageScale": 2.5,
-          "imageOffset": { "x": -15, "y": -8 },
-          "imageCrop": { "x": 0, "y": 0, "width": 1046, "height": 1193 }
+          "imageOffset": {
+            "x": -15,
+            "y": -8
+          },
+          "imageCrop": {
+            "x": 0,
+            "y": 0,
+            "width": 1046,
+            "height": 1193
+          }
         },
         "attackActive": {
           "image": "assets/fighters/granny/sprites/granny-shotgun.png",
           "imageScale": 2.5,
-          "imageOffset": { "x": -15, "y": -8 },
-          "imageCrop": { "x": 0, "y": 0, "width": 1046, "height": 1193 }
+          "imageOffset": {
+            "x": -15,
+            "y": -8
+          },
+          "imageCrop": {
+            "x": 0,
+            "y": 0,
+            "width": 1046,
+            "height": 1193
+          }
         },
         "recovery": {
           "image": "assets/fighters/granny/sprites/granny-recoil.png",
           "imageScale": 2.5,
-          "imageOffset": { "x": -13, "y": -8 },
-          "imageCrop": { "x": 0, "y": 0, "width": 1174, "height": 1123 }
+          "imageOffset": {
+            "x": -13,
+            "y": -8
+          },
+          "imageCrop": {
+            "x": 0,
+            "y": 0,
+            "width": 1174,
+            "height": 1123
+          }
+        }
+      },
+      "components": {
+        "projectile": {
+          "projectile": {
+            "radius": 6,
+            "speed": 12,
+            "damage": 90,
+            "image": "assets/fighters/granny/projectiles/shot.svg",
+            "flight": {
+              "collision": {
+                "response": "sensor",
+                "enemyContact": "consume",
+                "ownerContact": "ignore",
+                "walls": "ignore"
+              },
+              "lifetime": {
+                "type": "duration",
+                "durationMs": 1500
+              },
+              "ownership": {
+                "onOwnerDeath": "persist",
+                "onOwnerRemoval": "persist",
+                "onMatchEnd": "remove"
+              }
+            }
+          },
+          "recoil": 0.12
+        },
+        "aim": {
+          "muzzle": {
+            "x": -58.4,
+            "y": -17.3
+          },
+          "pivot": {
+            "x": 10.7,
+            "y": 0
+          },
+          "forwardDegrees": -163.7
+        }
+      },
+      "moves": {
+        "shotgun-blast": {
+          "cooldownMs": 1400,
+          "windupMs": 200,
+          "attackDurationMs": 100,
+          "recoveryMs": 450
         }
       }
     }

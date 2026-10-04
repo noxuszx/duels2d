@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { composeFighter } from "../../../src/config/fighter-config";
 import type { StudioConfig } from "../app/editor-types";
-import { createTransformation, poseBank } from "../document/form-model";
+import { createForm, poseBank } from "../document/form-model";
 import {
       _getPoseConfig,
       _getPoseImagePath,
@@ -25,8 +25,8 @@ describe("pose model", () => {
       it("reading missing poses preserves null banks in both forms", () => {
             const config = fixture();
             config.poses = null;
-            config.transformation = createTransformation(config);
-            config.transformation.poses = null;
+            config.forms.transformed = createForm(config);
+            config.forms.transformed.poses = null;
             for (const activeForm of ["base", "transformed"] as const) {
                   const host: PoseModelHost = {
                         activeForm,
@@ -44,13 +44,13 @@ describe("pose model", () => {
                   );
             }
             expect(config.poses).toBeNull();
-            expect(config.transformation.poses).toBeNull();
+            expect(config.forms.transformed.poses).toBeNull();
       });
       it("explicit pose edits initialize only the selected form's bank", () => {
             const config = fixture();
             config.poses = null;
-            config.transformation = createTransformation(config);
-            config.transformation.poses = null;
+            config.forms.transformed = createForm(config);
+            config.forms.transformed.poses = null;
             const host: PoseModelHost = {
                   activeForm: "transformed",
                   _poseBank: (document = config) =>
@@ -60,8 +60,26 @@ describe("pose model", () => {
             };
             _setPoseVisual(host, config, "idle", { imageScale: 2 });
             expect(config.poses).toBeNull();
-            expect(config.transformation.poses).toEqual({
+            expect(config.forms.transformed.poses).toEqual({
                   idle: { image: config.image, imageScale: 2 },
             });
+      });
+      it("inherits a base pose's image and visual settings until a form overrides it", () => {
+            const config = fixture();
+            config.forms.example = createForm(config);
+            config.forms.example.poses = {};
+            const host: PoseModelHost = {
+                  activeForm: "example",
+                  _poseBank: (document = config) => poseBank(document, "example"),
+                  _getPoseImagePath: (document, key) => _getPoseImagePath(host, document, key),
+            };
+            const base = config.poses!.idle;
+            expect(_getPoseImagePath(host, config, "idle")).toBe(
+                  typeof base === "string" ? base : base.image,
+            );
+            const visual = _getPoseVisual(host, config, "idle");
+            _setPoseVisual(host, config, "idle", { imageScale: visual.imageScale + 1 });
+            expect(config.poses!.idle).toEqual(base);
+            expect(_getPoseVisual(host, config, "idle").imageScale).toBe(visual.imageScale + 1);
       });
 });

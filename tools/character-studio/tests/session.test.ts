@@ -60,18 +60,18 @@ describe("EditorSession", () => {
       });
       it("undo clears optional fields absent from the baseline snapshot", () => {
             const { config } = fixture();
-            delete config.skills;
+            delete config.components.aim;
             delete config.weaponIdle;
             const session = new EditorSession([config]);
             session.resetHistory();
-            config.skills = { aim: { muzzle: { x: 10, y: 20 } } };
+            config.components.aim = { muzzle: { x: 10, y: 20 } };
             config.weaponIdle = "weapon.png";
             session.commit();
             session.undo();
-            expect(config.skills).toBeUndefined();
+            expect(config.components.aim).toBeUndefined();
             expect(config.weaponIdle).toBeUndefined();
             session.redo();
-            expect(config.skills?.aim?.muzzle).toEqual({ x: 10, y: 20 });
+            expect(config.components?.aim?.muzzle).toEqual({ x: 10, y: 20 });
             expect(config.weaponIdle).toBe("weapon.png");
       });
       it("does not record selection-only changes or remove the redo branch", () => {
@@ -96,7 +96,7 @@ describe("EditorSession", () => {
             const restored = restoreStudioState(config, session.history[0]);
             expect(config.imageScale).toBe(10);
             expect(restored.config.imageScale).not.toBe(10);
-            expect(restored.config.abilities).not.toBe(config.abilities);
+            expect(restored.config.components).not.toBe(config.components);
       });
       it("serializes without changing source fighter definitions", () => {
             const { config, definition, defaults } = fixture();

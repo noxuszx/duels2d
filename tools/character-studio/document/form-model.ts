@@ -1,52 +1,34 @@
-import type {
-      FighterTransformationConfig,
-      FighterSkills,
-      PoseConfig,
-} from "../../../src/types/fighter";
+import type { FighterComponents, FighterForm, PoseConfig } from "../../../src/types/fighter";
 import type { StudioConfig } from "../app/editor-types";
 
-export type StudioForm = "base" | "transformed";
+export type StudioForm = string;
 
-export function formSkills(config: StudioConfig, form: StudioForm): FighterSkills | undefined {
-      return form === "transformed" && config.transformation
-            ? config.transformation.skills ?? config.skills
-            : config.skills;
+export function formComponents(config: StudioConfig, form: StudioForm): FighterComponents {
+      return form === "base" ? config.components : (config.forms[form]?.components ?? config.components);
 }
 
-/** Copy inherited skills only when editing the transformed form. */
-export function ensureFormSkills(config: StudioConfig, form: StudioForm): FighterSkills {
-      if (form === "transformed" && config.transformation)
-            return config.transformation.skills ??= structuredClone(config.skills ?? {});
-      return config.skills ??= {};
+/** Editing a form never mutates inherited base component settings. */
+export function ensureFormComponents(config: StudioConfig, form: StudioForm): FighterComponents {
+      if (form === "base") return config.components;
+      const selected = config.forms[form];
+      if (!selected) return config.components;
+      return (selected.components ??= structuredClone(config.components));
 }
 
-export function poseBank(
-      config: StudioConfig,
-      form: StudioForm,
-): Record<string, PoseConfig> {
-      if (form === "transformed" && config.transformation) {
-            return config.transformation.poses ?? {};
-      }
-      return config.poses ?? {};
+export function poseBank(config: StudioConfig, form: StudioForm): Record<string, PoseConfig> {
+      return (form === "base" ? config.poses : config.forms[form]?.poses) ?? {};
 }
 
-/** Create a pose bank only when an explicit authoring operation needs it. */
-export function ensurePoseBank(
-      config: StudioConfig,
-      form: StudioForm,
-): Record<string, PoseConfig> {
-      if (form === "transformed" && config.transformation)
-            return (config.transformation.poses ??= {});
+export function ensurePoseBank(config: StudioConfig, form: StudioForm): Record<string, PoseConfig> {
+      if (form !== "base" && config.forms[form]) return (config.forms[form].poses ??= {});
       return (config.poses ??= {});
 }
 
-export function createTransformation(
-      config: StudioConfig,
-): FighterTransformationConfig {
+export function createForm(config: StudioConfig): FighterForm {
       return {
-            trigger: { type: "health-threshold", healthRatio: 0.4 },
-            sequence: [],
-            abilities: structuredClone(config.abilities),
             poses: structuredClone(config.poses),
+            components: structuredClone(config.components),
+            moves: structuredClone(config.moves),
+            sequence: [],
       };
 }

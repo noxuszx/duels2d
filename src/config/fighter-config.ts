@@ -99,12 +99,11 @@ export function composeFighter(
             name: merged.name,
             color: merged.color,
             ...(definition.selectable !== undefined ? { selectable: definition.selectable } : {}),
-            ...(definition.skills ? { skills: structuredClone(definition.skills) } : {}),
-            ...(definition.behavior ? { behavior: structuredClone(definition.behavior) } : {}),
+            components: structuredClone(merged.components ?? {}),
+            moves: structuredClone(merged.moves ?? {}),
             maxHealth: merged.combat.maxHealth,
             speed: merged.combat.speed,
             baseDamage: merged.combat.baseDamage,
-            abilities: merged.combat.abilities,
             faceTarget: merged.combat.faceTarget,
             radius: merged.body.radius,
             hitbox: merged.body.hitbox,
@@ -120,23 +119,12 @@ export function composeFighter(
             weaponIdle: merged.presentation.weaponIdle,
             weaponAttack: merged.presentation.weaponAttack,
             poses: materializePoses(merged.presentation),
-            transformation: merged.transformation
-                  ? {
-                          trigger: merged.transformation.trigger,
-                          ...(merged.transformation.skills !== undefined
-                                ? { skills: structuredClone(merged.transformation.skills) }
-                                : {}),
-                          sequence: merged.transformation.sequence,
-                          abilities:
-                                merged.transformation.combat?.abilities ??
-                                merged.combat.abilities,
-                          poses: materializePoses(
-                                merged.presentation,
-                                merged.transformation.presentation?.poses ??
-                                      merged.presentation.poses,
-                          ),
-                    }
-                  : null,
+            forms: Object.fromEntries(Object.entries(definition.forms ?? {}).map(([name, form]) => [name, {
+                  ...structuredClone(form),
+                  components: structuredClone(form.components ?? merged.components ?? {}),
+                  moves: structuredClone(form.moves ?? merged.moves ?? {}),
+                  poses: materializePoses(merged.presentation, form.poses ?? merged.presentation.poses),
+            }])),
             defaultFacing: merged.presentation.defaultFacing,
             lines: merged.lines,
       };

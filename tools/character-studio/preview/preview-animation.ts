@@ -1,9 +1,9 @@
-import type { SpawnProjectileAction } from "../../../src/abilities/types";
+import type { ProjectileEmitterSettings } from "../../../src/config/component-settings";
 
 export interface PreviewAnimationHost {
       projectilePreviewTime: number;
       projectilePreviewAngle: number;
-      _projectileAction(): SpawnProjectileAction | null;
+      _projectileAction(): ProjectileEmitterSettings | null;
       _draw(): void;
 }
 

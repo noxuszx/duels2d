@@ -1,6 +1,6 @@
 import { Howler } from "howler";
-import type { GameManager, RecordingView } from "../engine/game-manager";
-import type { SoundPlayback } from "../entities/fighter-audio";
+import type { GameApp, RecordingView } from "../app/game-app";
+import type { SoundPlayback } from "../presentation/audio";
 
 const OUTPUT_WIDTH = 1440;
 const OUTPUT_HEIGHT = 2560;
@@ -48,7 +48,7 @@ export class RecordingController {
       private stopTimer: number | null = null;
       private victoryCleanup: (() => void) | null = null;
 
-      constructor(private readonly game: GameManager) {
+      constructor(private readonly game: GameApp) {
             this.button = this.requireButton("transport-record");
             const container = document.getElementById("game-container");
             if (!(container instanceof HTMLElement))

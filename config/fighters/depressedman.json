@@ -1,56 +1,80 @@
 {
-      "$schema": "./fighter.schema.json",
-      "id": "depressedman",
-      "name": "Sad Man",
-      "color": "#5f7ea8",
-      "combat": {
-            "faceTarget": { "mode": "always" },
-            "abilities": [{
-                  "id": "throw-tear",
-                  "trigger": { "type": "nearest-enemy" },
-                  "timing": {
-                        "cooldownMs": 900,
-                        "windupMs": 33,
-                        "activeMs": 33,
-                        "recoveryMs": 67
-                  },
-                  "actions": [{
-                        "type": "spawn-projectile",
-                        "projectile": {
-                              "radius": 30,
-                              "speed": 2.4,
-                              "damage": 25,
-                              "knockback": false,
-                              "lifetimeMs": 2500,
-                              "image": "assets/fighters/depressedman/projectiles/tear.png"
-                        }
-                  }]
-            }]
+  "$schema": "./fighter.schema.json",
+  "id": "depressedman",
+  "name": "Sad Man",
+  "color": "#5f7ea8",
+  "combat": {
+    "faceTarget": {
+      "mode": "always"
+    }
+  },
+  "presentation": {
+    "image": "assets/fighters/depressedman/sprites/depressedman.out.png",
+    "imageScale": 2.8,
+    "imageOffset": {
+      "x": 8,
+      "y": -11
+    },
+    "imageCrop": {
+      "x": 242,
+      "y": 124,
+      "width": 744,
+      "height": 901
+    },
+    "poses": {
+      "idle": {
+        "image": "assets/fighters/depressedman/sprites/depressedman.out.png",
+        "imageCrop": {
+          "x": 242,
+          "y": 124,
+          "width": 744,
+          "height": 901
+        }
       },
-      "presentation": {
-            "image": "assets/fighters/depressedman/sprites/depressedman.out.png",
-            "imageScale": 2.8,
-            "imageOffset": { "x": 8, "y": -11 },
-            "imageCrop": { "x": 242, "y": 124, "width": 744, "height": 901 },
-            "poses": {
-                  "idle": {
-                        "image": "assets/fighters/depressedman/sprites/depressedman.out.png",
-                        "imageCrop": {
-                              "x": 242,
-                              "y": 124,
-                              "width": 744,
-                              "height": 901
-                        }
-                  },
-                  "attackActive": {
-                        "image": "assets/fighters/depressedman/sprites/depressedman.out.png",
-                        "imageCrop": {
-                              "x": 242,
-                              "y": 124,
-                              "width": 744,
-                              "height": 901
-                        }
-                  }
-            }
+      "attackActive": {
+        "image": "assets/fighters/depressedman/sprites/depressedman.out.png",
+        "imageCrop": {
+          "x": 242,
+          "y": 124,
+          "width": 744,
+          "height": 901
+        }
       }
+    }
+  },
+  "components": {
+    "projectile": {
+      "projectile": {
+        "radius": 30,
+        "speed": 2.4,
+        "damage": 25,
+        "image": "assets/fighters/depressedman/projectiles/tear.png",
+        "flight": {
+          "collision": {
+            "response": "sensor",
+            "enemyContact": "consume",
+            "ownerContact": "ignore",
+            "walls": "ignore"
+          },
+          "lifetime": {
+            "type": "duration",
+            "durationMs": 2500
+          },
+          "ownership": {
+            "onOwnerDeath": "persist",
+            "onOwnerRemoval": "persist",
+            "onMatchEnd": "remove"
+          }
+        }
+      }
+    }
+  },
+  "moves": {
+    "throw-tear": {
+      "cooldownMs": 900,
+      "windupMs": 33,
+      "attackDurationMs": 33,
+      "recoveryMs": 67
+    }
+  }
 }

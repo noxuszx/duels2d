@@ -1,27 +1,49 @@
 {
-      "combat": {
-            "maxHealth": 1000,
-            "speed": 11,
-            "baseDamage": 50,
-            "abilities": [],
-            "faceTarget": { "mode": "never" }
-      },
-      "body": {
-            "radius": 30,
-            "hitbox": { "type": "box", "width": 78, "height": 112 },
-            "hitboxOffset": { "x": 0, "y": -15 }
-      },
-      "presentation": {
-            "image": null,
-            "imageScale": 1,
-            "imageOffset": { "x": 0, "y": 0 },
-            "imageCrop": null,
-            "healthBarOffset": { "x": 0, "y": -76 },
-            "weaponScale": 1,
-            "weaponOffset": { "x": 0, "y": 0 },
-            "weaponPivot": { "x": 0, "y": 0 },
-            "defaultFacing": "right",
-            "poses": null
-      },
-      "lines": {}
+  "combat": {
+    "maxHealth": 1000,
+    "speed": 11,
+    "baseDamage": 50,
+    "faceTarget": {
+      "mode": "never"
+    }
+  },
+  "body": {
+    "radius": 30,
+    "hitbox": {
+      "type": "box",
+      "width": 78,
+      "height": 112
+    },
+    "hitboxOffset": {
+      "x": 0,
+      "y": -15
+    }
+  },
+  "presentation": {
+    "image": null,
+    "imageScale": 1,
+    "imageOffset": {
+      "x": 0,
+      "y": 0
+    },
+    "imageCrop": null,
+    "healthBarOffset": {
+      "x": 0,
+      "y": -76
+    },
+    "weaponScale": 1,
+    "weaponOffset": {
+      "x": 0,
+      "y": 0
+    },
+    "weaponPivot": {
+      "x": 0,
+      "y": 0
+    },
+    "defaultFacing": "right",
+    "poses": null
+  },
+  "lines": {},
+  "components": {},
+  "moves": {}
 }

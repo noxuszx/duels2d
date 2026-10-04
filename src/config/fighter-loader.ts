@@ -1,3 +1,4 @@
+import { assertFighterDefinition, assertFighterDefaults } from "./validation";
 import { buildFighterRoster } from "./fighter-config";
 import type {
       FighterConfigLoadResult,
@@ -16,7 +17,7 @@ async function loadJson<T>(path: string): Promise<T> {
 }
 
 function validateManifest(manifest: FighterManifest, basePath: string): void {
-      if (!Array.isArray(manifest.fighters))
+      if (!Array.isArray(manifest.fighters) || manifest.fighters.length === 0)
             throw new Error(
                   `${basePath}/index.json must contain a fighters array`,
             );
@@ -48,6 +49,7 @@ function validateDefinitions(
 ): void {
       const ids = new Set<string>();
       for (const [index, definition] of definitions.entries()) {
+            assertFighterDefinition(definition);
             const file = files[index];
             const expectedId = file.slice(0, -".json".length);
             if (definition.id !== expectedId)
@@ -69,6 +71,7 @@ export async function loadFighterConfig(
             loadJson<FighterDefaults>(`${basePath}/defaults.json`),
             loadJson<FighterManifest>(`${basePath}/index.json`),
       ]);
+      assertFighterDefaults(defaults);
       validateManifest(manifest, basePath);
       const definitions = await Promise.all(
             manifest.fighters.map((file) =>
@@ -81,22 +84,4 @@ export async function loadFighterConfig(
             definitions,
             roster: buildFighterRoster(defaults, definitions),
       };
-}
-
-/** Temporary bridge for remaining legacy scripts that still read configuration from `window`. */
-export function installFighterConfigGlobals(
-      result: FighterConfigLoadResult,
-): void {
-      window.FighterDefaults = result.defaults;
-      window.FighterDefinitions = result.definitions;
-      window.FighterRoster = result.roster;
-      window.CharacterConfigs = result.roster;
-}
-
-export async function loadAndInstallFighterConfig(
-      fightersPath: string,
-): Promise<FighterConfigLoadResult> {
-      const result = await loadFighterConfig(fightersPath);
-      installFighterConfigGlobals(result);
-      return result;
 }

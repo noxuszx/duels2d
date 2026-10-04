@@ -27,7 +27,7 @@
         </div>
         <div class="control-group top-select">
           <label for="form-select">Form</label>
-          <select id="form-select"><option value="base">Base</option><option value="transformed">Transformed</option></select>
+          <select id="form-select"><option value="base">Base</option></select>
         </div>
         <div class="control-group top-select" id="top-pose-select-group">
           <label for="pose-select">Sprite</label>
@@ -51,7 +51,7 @@
         <button class="tool-btn" data-tool-tab="healthbar" title="Health bar properties" aria-label="Health bar properties"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-8-4.5-8-10.5A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 8 3.5C20 15.5 12 20 12 20Z"/><path d="M8 11h8"/></svg></button>
         <button class="tool-btn" data-tool-tab="weapon" title="Weapon properties" aria-label="Weapon properties"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 4 6-1-1 6L9 19l-4 1 1-4L16 6"/><path d="m6 16 2 2M13 7l4 4"/></svg></button>
         <button class="tool-btn" data-tool-tab="aim" title="Aim properties" aria-label="Aim properties"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
-        <button class="tool-btn" data-tool-tab="transformation" title="Transformation" aria-label="Transformation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7z"/></svg></button>
+        <button class="tool-btn" data-tool-tab="forms" title="Forms and config" aria-label="Forms and config"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7z"/></svg></button>
         <span class="tool-rail-spacer"></span><div class="tool-rail-label">TOOLS</div>
       </nav>
       <!-- Left panel: Canvas Preview -->
@@ -106,7 +106,7 @@
             Weapon
           </button>
           <button class="tab-btn" data-tab="aim" role="tab" aria-selected="false">Aim</button>
-          <button class="tab-btn" data-tab="transformation" role="tab" aria-selected="false">Transform</button>
+          <button class="tab-btn" data-tab="forms" role="tab" aria-selected="false">Forms</button>
         </div>
 
         <div id="tab-aim" class="tab-content" role="tabpanel">
@@ -178,28 +178,36 @@
           </fieldset>
         </div>
 
-        <div id="tab-transformation" class="tab-content" role="tabpanel">
+        <div id="tab-forms" class="tab-content" role="tabpanel">
           <div class="control-group">
-            <label><input type="checkbox" id="transformation-enabled" /> Enable transformation</label>
+            <label for="form-name">New form</label>
+            <input type="text" id="form-name" placeholder="e.g. enraged" />
+            <button type="button" class="action-btn" id="add-form">Add form</button>
+            <button type="button" class="action-btn" id="remove-form">Remove selected form</button>
           </div>
-          <fieldset id="transformation-settings">
-            <div class="control-group">
-              <label for="transformation-threshold">Health threshold (%)</label>
-              <input type="number" id="transformation-threshold" min="0.01" max="100" step="0.01" />
-            </div>
-            <div class="section-divider"><span>Sequence · durations in ms</span></div>
-            <div id="transformation-steps"></div>
-            <div class="control-actions">
-              <button type="button" class="action-btn" id="add-transformation-step">Add step</button>
-              <button type="button" class="action-btn" id="preview-transformation">Preview</button>
-            </div>
-            <p class="control-hint">Choose Transformed above to edit its sprites, attack hitboxes, and projectile visuals. Add named sprites in the Image panel, then arrange them here. An empty sequence transforms immediately. Body hitbox settings are shared by both forms.</p>
-          </fieldset>
+          <div class="control-group">
+            <label for="form-health-ratio">Health ratio hint (optional)</label>
+            <input type="number" id="form-health-ratio" min="0.01" max="1" step="0.01" placeholder="0.4" />
+          </div>
+          <p class="control-hint">A behavior script decides when to use a form. The ratio is data for that script.</p>
+          <div class="section-divider"><span>Components</span></div>
+          <textarea id="components-json" rows="12" spellcheck="false" aria-label="Component settings JSON"></textarea>
+          <div class="section-divider"><span>Moves</span></div>
+          <textarea id="moves-json" rows="8" spellcheck="false" aria-label="Move settings JSON"></textarea>
+          <div class="control-actions"><button type="button" class="action-btn primary-btn" id="apply-config-json">Apply components and moves</button></div>
+          <p id="config-json-error" class="control-hint" role="alert"></p>
+          <div class="section-divider"><span>Form preview sequence · durations in ms</span></div>
+          <div id="form-steps"></div>
+          <div class="control-actions">
+            <button type="button" class="action-btn" id="add-form-step">Add step</button>
+            <button type="button" class="action-btn" id="preview-form">Preview</button>
+          </div>
+          <p class="control-hint">Edit form sprites in the Image panel. Body hitbox settings are shared by all forms.</p>
         </div>
 
         <!-- Tab: Hitbox -->
         <div id="tab-hitbox" class="tab-content active" role="tabpanel">
-          <p class="control-hint">Body hitbox: shared by both forms. Click Edit Hitbox to drag or resize it, then Apply.</p>
+          <p class="control-hint">Body hitbox: shared by all forms. Click Edit Hitbox to drag or resize it, then Apply.</p>
           <div class="control-group">
             <label for="hitboxType">Type</label>
             <select id="hitboxType">
@@ -375,8 +383,8 @@
 
           <div id="attack-hitbox-controls">
             <div class="control-group">
-              <label for="attackHitboxAbility">Ability</label>
-              <select id="attackHitboxAbility"></select>
+              <label for="meleeComponent">Component</label>
+              <select id="meleeComponent"></select>
             </div>
 
             <div class="control-group">
@@ -424,7 +432,7 @@
             </div>
 
             <p class="control-hint">
-              The red rectangle is active only during the selected ability's active phase.
+              The red rectangle previews the melee hitbox used by moves.
               Forward offset automatically mirrors with facing. Drag the red rectangle to reposition it.
             </p>
           </div>
@@ -922,9 +930,9 @@
           <div class="control-group">
             <label for="pose-dialog-key">Game Pose</label>
             <select id="pose-dialog-key"></select>
-            <input type="text" id="pose-dialog-custom-key" placeholder="Or enter a sequence pose name (e.g. realization)" aria-label="Custom transformation pose name" hidden />
+            <input type="text" id="pose-dialog-custom-key" placeholder="Or enter a pose name (e.g. realization)" aria-label="Custom pose name" hidden />
             <p class="control-hint">
-              The game chooses this sprite during the matching animation phase.
+              This pose is available to moves and form previews.
             </p>
           </div>
           <div class="control-group">

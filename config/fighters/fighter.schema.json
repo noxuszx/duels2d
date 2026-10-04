@@ -1,643 +1,1120 @@
 {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "fighter.schema.json",
-      "title": "Duels2D Fighter",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fighter.schema.json",
+  "title": "Duels2D Fighter",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "color"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "color": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$"
+    },
+    "selectable": {
+      "type": "boolean"
+    },
+    "combat": {
+      "$ref": "#/$defs/combat"
+    },
+    "body": {
+      "$ref": "#/$defs/body"
+    },
+    "presentation": {
+      "$ref": "#/$defs/presentation"
+    },
+    "lines": {
+      "$ref": "#/$defs/lines"
+    },
+    "components": {
+      "$ref": "#/$defs/components"
+    },
+    "moves": {
+      "$ref": "#/$defs/moves"
+    },
+    "forms": {
       "type": "object",
-      "required": ["id", "name", "color"],
+      "additionalProperties": {
+        "$ref": "#/$defs/form"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "positiveNumber": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "nonNegativeNumber": {
+      "type": "number",
+      "minimum": 0
+    },
+    "vector": {
+      "type": "object",
+      "required": [
+        "x",
+        "y"
+      ],
       "properties": {
-            "$schema": { "type": "string" },
-            "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
-            "name": { "type": "string", "minLength": 1 },
-            "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
-            "selectable": { "type": "boolean" },
-            "skills": {
-                  "type": "object",
-                  "properties": {
-                        "aim": { "$ref": "#/$defs/aimSkill" },
-                        "weaponAim": { "$ref": "#/$defs/aimSkill" }
-                  },
-                  "additionalProperties": false
-            },
-            "behavior": { "$ref": "#/$defs/behavior" },
-            "combat": { "$ref": "#/$defs/combat" },
-            "body": { "$ref": "#/$defs/body" },
-            "presentation": { "$ref": "#/$defs/presentation" },
-            "transformation": { "$ref": "#/$defs/transformation" },
-            "lines": { "$ref": "#/$defs/lines" }
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
       },
-      "additionalProperties": false,
-      "$defs": {
-            "positiveNumber": { "type": "number", "exclusiveMinimum": 0 },
-            "nonNegativeNumber": { "type": "number", "minimum": 0 },
-            "vector": {
-                  "type": "object",
-                  "required": ["x", "y"],
-                  "properties": {
-                        "x": { "type": "number" },
-                        "y": { "type": "number" }
-                  },
-                  "additionalProperties": false
+      "additionalProperties": false
+    },
+    "crop": {
+      "type": "object",
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "properties": {
+        "x": {
+          "type": "number",
+          "minimum": 0
+        },
+        "y": {
+          "type": "number",
+          "minimum": 0
+        },
+        "width": {
+          "$ref": "#/$defs/positiveNumber"
+        },
+        "height": {
+          "$ref": "#/$defs/positiveNumber"
+        }
+      },
+      "additionalProperties": false
+    },
+    "faceTarget": {
+      "type": "object",
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "never",
+            "always",
+            "range"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "saucerSettings": {
+      "type": "object",
+      "required": [
+        "image",
+        "width",
+        "height",
+        "altitude",
+        "speed",
+        "beamWidth",
+        "beamDamage",
+        "beamDamageIntervalMs",
+        "beamDurationMs",
+        "beamIntervalMs",
+        "beamColor",
+        "summonConfigId",
+        "firstSpawnDelayMs",
+        "spawnIntervalMs",
+        "maxSpawns"
+      ],
+      "properties": {
+        "image": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "imageCrop": {
+          "oneOf": [
+            {
+              "type": "null"
             },
-            "crop": {
-                  "type": "object",
-                  "required": ["x", "y", "width", "height"],
-                  "properties": {
-                        "x": { "type": "number", "minimum": 0 },
-                        "y": { "type": "number", "minimum": 0 },
-                        "width": { "$ref": "#/$defs/positiveNumber" },
-                        "height": { "$ref": "#/$defs/positiveNumber" }
-                  },
-                  "additionalProperties": false
+            {
+              "$ref": "#/$defs/crop"
+            }
+          ]
+        },
+        "width": {
+          "$ref": "#/$defs/positiveNumber"
+        },
+        "height": {
+          "$ref": "#/$defs/positiveNumber"
+        },
+        "altitude": {
+          "$ref": "#/$defs/nonNegativeNumber"
+        },
+        "speed": {
+          "$ref": "#/$defs/positiveNumber"
+        },
+        "beamWidth": {
+          "$ref": "#/$defs/positiveNumber"
+        },
+        "beamDamage": {
+          "$ref": "#/$defs/nonNegativeNumber"
+        },
+        "beamDamageIntervalMs": {
+          "$ref": "#/$defs/positiveNumber"
+        },
+        "beamDurationMs": {
+          "$ref": "#/$defs/positiveNumber"
+        },
+        "beamIntervalMs": {
+          "$ref": "#/$defs/positiveNumber"
+        },
+        "beamColor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summonConfigId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "firstSpawnDelayMs": {
+          "$ref": "#/$defs/nonNegativeNumber"
+        },
+        "spawnIntervalMs": {
+          "$ref": "#/$defs/positiveNumber"
+        },
+        "maxSpawns": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "combat": {
+      "type": "object",
+      "properties": {
+        "maxHealth": {
+          "$ref": "#/$defs/positiveNumber"
+        },
+        "speed": {
+          "$ref": "#/$defs/positiveNumber"
+        },
+        "baseDamage": {
+          "$ref": "#/$defs/nonNegativeNumber"
+        },
+        "faceTarget": {
+          "$ref": "#/$defs/faceTarget"
+        }
+      },
+      "additionalProperties": false
+    },
+    "hitbox": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "width",
+            "height"
+          ],
+          "properties": {
+            "type": {
+              "const": "box"
             },
-            "faceTarget": {
-                  "type": "object",
-                  "required": ["mode"],
-                  "properties": {
-                        "mode": { "enum": ["never", "always", "range"] }
-                  },
-                  "additionalProperties": false
+            "width": {
+              "$ref": "#/$defs/positiveNumber"
             },
-            "abilityTiming": {
-                  "type": "object",
-                  "required": [
-                        "cooldownMs",
-                        "windupMs",
-                        "activeMs",
-                        "recoveryMs"
-                  ],
-                  "properties": {
-                        "cooldownMs": { "$ref": "#/$defs/positiveNumber" },
-                        "windupMs": { "type": "number", "minimum": 0 },
-                        "activeMs": { "type": "number", "minimum": 0 },
-                        "recoveryMs": { "type": "number", "minimum": 0 }
-                  },
-                  "additionalProperties": false
+            "height": {
+              "$ref": "#/$defs/positiveNumber"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "radius"
+          ],
+          "properties": {
+            "type": {
+              "const": "circle"
             },
-            "knockback": {
-                  "oneOf": [
-                        { "type": "boolean" },
-                        { "$ref": "#/$defs/knockbackConfig" }
-                  ]
+            "radius": {
+              "$ref": "#/$defs/positiveNumber"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "body": {
+      "type": "object",
+      "properties": {
+        "radius": {
+          "$ref": "#/$defs/positiveNumber"
+        },
+        "hitbox": {
+          "$ref": "#/$defs/hitbox"
+        },
+        "hitboxOffset": {
+          "$ref": "#/$defs/vector"
+        }
+      },
+      "additionalProperties": false
+    },
+    "aimSkill": {
+      "type": "object",
+      "required": [
+        "muzzle"
+      ],
+      "properties": {
+        "muzzle": {
+          "$ref": "#/$defs/vector"
+        },
+        "pivot": {
+          "$ref": "#/$defs/vector"
+        },
+        "forwardDegrees": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "pose": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "object",
+          "required": [
+            "image"
+          ],
+          "properties": {
+            "image": {
+              "type": "string",
+              "minLength": 1
             },
-            "knockbackConfig": {
-                  "type": "object",
-                  "required": ["forceMagnitude"],
-                  "properties": {
-                        "forceMagnitude": {
-                              "$ref": "#/$defs/positiveNumber"
-                        }
-                  },
-                  "additionalProperties": false
+            "imageCrop": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/$defs/crop"
+                }
+              ]
             },
-            "projectile": {
-                  "type": "object",
-                  "required": [
-                        "radius",
-                        "speed",
-                        "damage",
-                        "lifetimeMs",
-                        "image"
-                  ],
-                  "properties": {
-                        "radius": { "$ref": "#/$defs/positiveNumber" },
-                        "speed": { "$ref": "#/$defs/positiveNumber" },
-                        "damage": { "$ref": "#/$defs/nonNegativeNumber" },
-                        "knockback": { "$ref": "#/$defs/knockback" },
-                        "flight": { "$ref": "#/$defs/projectileFlight" },
-                        "lifetimeMs": { "$ref": "#/$defs/positiveNumber" },
-                        "rotationSpeed": { "type": "number" },
-                        "imageScales": {
-                              "type": "object",
-                              "additionalProperties": {
-                                    "$ref": "#/$defs/positiveNumber"
-                              }
-                        },
-                        "image": {
-                              "oneOf": [
-                                    { "type": "string", "minLength": 1 },
-                                    {
-                                          "type": "array",
-                                          "items": { "type": "string", "minLength": 1 },
-                                          "minItems": 1
-                                    }
-                              ]
-                        }
-                  },
-                  "additionalProperties": false
+            "imageScale": {
+              "$ref": "#/$defs/positiveNumber"
             },
-            "abilityTrigger": {
-                  "oneOf": [
-                        {
-                              "type": "object",
-                              "required": ["type"],
-                              "properties": {
-                                    "type": { "const": "nearest-enemy" }
-                              },
-                              "additionalProperties": false
-                        },
-                        {
-                              "type": "object",
-                              "required": ["type", "rangePadding"],
-                              "properties": {
-                                    "type": { "const": "enemy-in-range" },
-                                    "rangePadding": {
-                                          "$ref": "#/$defs/nonNegativeNumber"
-                                    }
-                              },
-                              "additionalProperties": false
-                        },
-                        {
-                              "type": "object",
-                              "required": ["type"],
-                              "properties": {
-                                    "type": { "const": "wall-contact" }
-                              },
-                              "additionalProperties": false
-                        }
-                  ]
+            "imageOffset": {
+              "$ref": "#/$defs/vector"
             },
-            "abilityAudio": {
-                  "type": "object",
-                  "properties": {
-                        "windup": { "type": "string", "minLength": 1 },
-                        "active": { "type": "string", "minLength": 1 },
-                        "hit": { "type": "string", "minLength": 1 }
-                  },
-                  "additionalProperties": false
+            "aim": {
+              "$ref": "#/$defs/aimSkill"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "presentation": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "imageScale": {
+          "$ref": "#/$defs/positiveNumber"
+        },
+        "imageOffset": {
+          "$ref": "#/$defs/vector"
+        },
+        "imageCrop": {
+          "oneOf": [
+            {
+              "type": "null"
             },
-            "abilityAction": {
-                  "oneOf": [
-                        {
-                              "type": "object",
-                              "required": ["type", "amount"],
-                              "properties": {
-                                    "type": { "const": "damage" },
-                                    "amount": { "$ref": "#/$defs/nonNegativeNumber" }
-                              },
-                              "additionalProperties": false
-                        },
-                        {
-                              "type": "object",
-                              "required": ["type", "forceMagnitude"],
-                              "properties": {
-                                    "type": { "const": "knockback" },
-                                    "forceMagnitude": { "$ref": "#/$defs/positiveNumber" }
-                              },
-                              "additionalProperties": false
-                        },
-                        {
-                              "type": "object",
-                              "required": ["type", "speedMultiplier", "accelerationForce", "endOn"],
-                              "properties": {
-                                    "type": { "const": "dash" },
-                                    "speedMultiplier": { "$ref": "#/$defs/positiveNumber" },
-                                    "accelerationForce": { "$ref": "#/$defs/positiveNumber" },
-                                    "endOn": {
-                                          "type": "array",
-                                          "items": { "enum": ["fighter-collision", "wall-collision"] },
-                                          "uniqueItems": true
-                                    }
-                              },
-                              "additionalProperties": false
-                        },
-                        {
-                              "type": "object",
-                              "required": ["type", "durationMs", "speedMultiplier"],
-                              "properties": {
-                                    "type": { "const": "wall-crawl" },
-                                    "durationMs": { "$ref": "#/$defs/positiveNumber" },
-                                    "speedMultiplier": { "$ref": "#/$defs/positiveNumber" }
-                              },
-                              "additionalProperties": false
-                        },
-                        {
-                              "type": "object",
-                              "required": ["type", "startDegrees", "endDegrees"],
-                              "properties": {
-                                    "type": { "const": "swing" },
-                                    "startDegrees": { "type": "number" },
-                                    "endDegrees": { "type": "number" }
-                              },
-                              "additionalProperties": false
-                        },
-                        {
-                              "type": "object",
-                              "required": ["type", "projectile"],
-                              "properties": {
-                                    "type": { "const": "spawn-projectile" },
-                                    "projectile": { "$ref": "#/$defs/projectile" }
-                              },
-                              "additionalProperties": false
-                        },
-                        {
-                              "type": "object",
-                              "required": ["type", "effect", "durationMs"],
-                              "properties": {
-                                    "type": { "const": "apply-status" },
-                                    "effect": { "enum": ["stun", "ability-lock"] },
-                                    "durationMs": { "$ref": "#/$defs/positiveNumber" }
-                              },
-                              "additionalProperties": false
-                        },
-                        {
-                              "type": "object",
-                              "required": ["type", "width", "height", "offset"],
-                              "properties": {
-                                    "type": { "const": "attack-hitbox" },
-                                    "width": { "$ref": "#/$defs/positiveNumber" },
-                                    "height": { "$ref": "#/$defs/positiveNumber" },
-                                    "offset": { "$ref": "#/$defs/vector" }
-                              },
-                              "additionalProperties": false
-                        },
-                        {
-                              "type": "object",
-                              "required": ["type", "forceMagnitude"],
-                              "properties": {
-                                    "type": { "const": "recoil" },
-                                    "forceMagnitude": { "$ref": "#/$defs/positiveNumber" }
-                              },
-                              "additionalProperties": false
-                        }
-                  ]
+            {
+              "$ref": "#/$defs/crop"
+            }
+          ]
+        },
+        "healthBarOffset": {
+          "$ref": "#/$defs/vector"
+        },
+        "weaponScale": {
+          "$ref": "#/$defs/positiveNumber"
+        },
+        "weaponOffset": {
+          "$ref": "#/$defs/vector"
+        },
+        "weaponPivot": {
+          "$ref": "#/$defs/vector"
+        },
+        "weaponIdle": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "weaponAttack": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "defaultFacing": {
+          "enum": [
+            "left",
+            "right"
+          ]
+        },
+        "poses": {
+          "oneOf": [
+            {
+              "type": "null"
             },
-            "ability": {
-                  "type": "object",
-                  "required": ["id", "trigger", "timing", "actions"],
-                  "properties": {
-                        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
-                        "trigger": { "$ref": "#/$defs/abilityTrigger" },
-                        "audio": { "$ref": "#/$defs/abilityAudio" },
-                        "timing": { "$ref": "#/$defs/abilityTiming" },
-                        "actions": {
-                              "type": "array",
-                              "items": { "$ref": "#/$defs/abilityAction" },
-                              "minItems": 1
-                        }
-                  },
-                  "additionalProperties": false
+            {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/pose"
+              }
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "lines": {
+      "type": "object",
+      "properties": {
+        "ambientIntervalMs": {
+          "$ref": "#/$defs/positiveNumber"
+        },
+        "ambientChance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "components": {
+      "type": "object",
+      "properties": {
+        "wallCrawl": {
+          "type": "object",
+          "properties": {
+            "durationMs": {
+              "type": "number",
+              "exclusiveMinimum": 0
             },
-            "behavior": {
-                  "oneOf": [
-                        { "$ref": "#/$defs/damageRampBehavior" },
-                        { "$ref": "#/$defs/alienLaserBehavior" },
-                        { "$ref": "#/$defs/saucerSupportBehavior" }
-                  ]
+            "speedMultiplier": {
+              "type": "number",
+              "exclusiveMinimum": 0
             },
-            "damageRampBehavior": {
-                  "type": "object",
-                  "required": ["type", "settings"],
-                  "properties": {
-                        "type": { "const": "damage-ramp" },
-                        "settings": { "$ref": "#/$defs/damageRampSettings" }
-                  },
-                  "additionalProperties": false
+            "poses": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 2,
+              "maxItems": 2
             },
-            "alienLaserBehavior": {
-                  "type": "object", "required": ["type", "settings"],
-                  "properties": {
-                        "type": { "const": "alien-laser" },
-                        "settings": { "$ref": "#/$defs/alienLaserSettings" }
-                  },
-                  "additionalProperties": false
+            "poseIntervalMs": {
+              "type": "number",
+              "exclusiveMinimum": 0
             },
-            "saucerSupportBehavior": {
-                  "type": "object", "required": ["type", "settings"],
-                  "properties": {
-                        "type": { "const": "saucer-support" },
-                        "settings": { "$ref": "#/$defs/saucerSettings" }
-                  },
-                  "additionalProperties": false
+            "sound": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "durationMs",
+            "speedMultiplier",
+            "poses",
+            "poseIntervalMs"
+          ],
+          "additionalProperties": false
+        },
+        "dash": {
+          "type": "object",
+          "properties": {
+            "speedMultiplier": {
+              "type": "number",
+              "exclusiveMinimum": 0
             },
-            "alienLaserSettings": {
-                  "type": "object",
-                  "required": ["damage", "intervalMs", "width", "range", "flashMs", "color"],
-                  "properties": {
-                        "damage": { "$ref": "#/$defs/nonNegativeNumber" },
-                        "intervalMs": { "$ref": "#/$defs/positiveNumber" },
-                        "width": { "$ref": "#/$defs/positiveNumber" },
-                        "range": { "$ref": "#/$defs/positiveNumber" },
-                        "flashMs": { "$ref": "#/$defs/nonNegativeNumber" },
-                        "color": { "type": "string", "minLength": 1 }
-                  },
-                  "additionalProperties": false
+            "accelerationForce": {
+              "type": "number",
+              "minimum": 0
             },
-            "saucerSettings": {
-                  "type": "object",
-                  "required": ["image", "width", "height", "altitude", "speed", "beamWidth", "beamDamage",
-                        "beamDamageIntervalMs", "beamDurationMs", "beamIntervalMs", "beamColor", "summonConfigId",
-                        "firstSpawnDelayMs", "spawnIntervalMs", "maxSpawns"],
-                  "properties": {
-                        "image": { "type": ["string", "null"] },
-                        "imageCrop": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/crop" }] },
-                        "width": { "$ref": "#/$defs/positiveNumber" },
-                        "height": { "$ref": "#/$defs/positiveNumber" },
-                        "altitude": { "$ref": "#/$defs/nonNegativeNumber" },
-                        "speed": { "$ref": "#/$defs/positiveNumber" },
-                        "beamWidth": { "$ref": "#/$defs/positiveNumber" },
-                        "beamDamage": { "$ref": "#/$defs/nonNegativeNumber" },
-                        "beamDamageIntervalMs": { "$ref": "#/$defs/positiveNumber" },
-                        "beamDurationMs": { "$ref": "#/$defs/positiveNumber" },
-                        "beamIntervalMs": { "$ref": "#/$defs/positiveNumber" },
-                        "beamColor": { "type": "string", "minLength": 1 },
-                        "summonConfigId": { "type": "string", "minLength": 1 },
-                        "firstSpawnDelayMs": { "$ref": "#/$defs/nonNegativeNumber" },
-                        "spawnIntervalMs": { "$ref": "#/$defs/positiveNumber" },
-                        "maxSpawns": { "type": "integer", "minimum": 0 }
-                  },
-                  "additionalProperties": false
+            "endOn": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "fighter-collision",
+                  "wall-collision"
+                ]
+              },
+              "minItems": 0
             },
-            "projectileFlight": {
-                  "type": "object",
-                  "required": ["collision", "lifetime", "ownership"],
-                  "properties": {
-                        "collision": {
-                              "type": "object",
-                              "required": ["response", "enemyContact", "ownerContact", "walls"],
-                              "properties": {
-                                    "response": { "enum": ["physical", "sensor"] },
-                                    "enemyContact": { "enum": ["consume", "pierce"] },
-                                    "ownerContact": { "enum": ["ignore", "catch"] },
-                                    "walls": { "enum": ["ignore", "bounce"] }
-                              },
-                              "additionalProperties": false
-                        },
-                        "lifetime": {
-                              "oneOf": [
-                                    {
-                                          "type": "object", "required": ["type", "durationMs"],
-                                          "properties": { "type": { "const": "duration" }, "durationMs": { "$ref": "#/$defs/positiveNumber" } },
-                                          "additionalProperties": false
-                                    },
-                                    {
-                                          "type": "object", "required": ["type"],
-                                          "properties": { "type": { "const": "persistent" } },
-                                          "additionalProperties": false
-                                    }
-                              ]
-                        },
-                        "ownership": {
-                              "type": "object",
-                              "required": ["onOwnerDeath", "onOwnerRemoval", "onMatchEnd"],
-                              "properties": {
-                                    "onOwnerDeath": { "enum": ["persist", "remove"] },
-                                    "onOwnerRemoval": { "enum": ["persist", "remove"] },
-                                    "onMatchEnd": { "enum": ["persist", "remove"] }
-                              },
-                              "additionalProperties": false
-                        },
-                        "knockback": { "$ref": "#/$defs/knockbackConfig" }
-                  },
-                  "additionalProperties": false
-            },
-            "damageRampSettings": {
-                  "type": "object",
-                  "required": [
-                        "amountPerIncrease",
-                        "maxDamage",
-                        "ratesPerSecond",
-                        "increasePoseMs"
-                  ],
-                  "properties": {
-                        "amountPerIncrease": {
-                              "$ref": "#/$defs/positiveNumber"
-                        },
-                        "maxDamage": {
-                              "$ref": "#/$defs/positiveNumber"
-                        },
-                        "hurtThrowThreshold": {
-                              "$ref": "#/$defs/nonNegativeNumber"
-                        },
-                        "increasePoseMs": {
-                              "$ref": "#/$defs/nonNegativeNumber"
-                        },
-                        "ratesPerSecond": {
-                              "type": "array",
-                              "minItems": 1,
-                              "items": {
-                                    "type": "integer",
-                                    "minimum": 1
-                              }
-                        }
-                  },
-                  "additionalProperties": false
-            },
-            "combat": {
-                  "type": "object",
-                  "properties": {
-                        "maxHealth": { "$ref": "#/$defs/positiveNumber" },
-                        "speed": { "$ref": "#/$defs/positiveNumber" },
-                        "baseDamage": { "$ref": "#/$defs/nonNegativeNumber" },
-                        "faceTarget": { "$ref": "#/$defs/faceTarget" },
-                        "abilities": {
-                              "type": "array",
-                              "items": { "$ref": "#/$defs/ability" }
-                        }
-                  },
-                  "additionalProperties": false
-            },
-            "hitbox": {
-                  "oneOf": [
-                        {
-                              "type": "object",
-                              "required": ["type", "width", "height"],
-                              "properties": {
-                                    "type": { "const": "box" },
-                                    "width": {
-                                          "$ref": "#/$defs/positiveNumber"
-                                    },
-                                    "height": {
-                                          "$ref": "#/$defs/positiveNumber"
-                                    }
-                              },
-                              "additionalProperties": false
-                        },
-                        {
-                              "type": "object",
-                              "required": ["type", "radius"],
-                              "properties": {
-                                    "type": { "const": "circle" },
-                                    "radius": {
-                                          "$ref": "#/$defs/positiveNumber"
-                                    }
-                              },
-                              "additionalProperties": false
-                        }
-                  ]
-            },
-            "body": {
-                  "type": "object",
-                  "properties": {
-                        "radius": { "$ref": "#/$defs/positiveNumber" },
-                        "hitbox": { "$ref": "#/$defs/hitbox" },
-                        "hitboxOffset": { "$ref": "#/$defs/vector" }
-                  },
-                  "additionalProperties": false
-            },
-            "aimSkill": {
-                  "type": "object",
-                  "required": ["muzzle"],
-                  "properties": {
-                        "muzzle": { "$ref": "#/$defs/vector" },
-                        "pivot": { "$ref": "#/$defs/vector" },
-                        "forwardDegrees": { "type": "number" }
-                  },
-                  "additionalProperties": false
+            "maxDurationMs": {
+              "type": "number",
+              "exclusiveMinimum": 0
             },
             "pose": {
-                  "oneOf": [
-                        { "type": "string", "minLength": 1 },
-                        {
-                              "type": "object",
-                              "required": ["image"],
-                              "properties": {
-                                    "image": {
-                                          "type": "string",
-                                          "minLength": 1
-                                    },
-                                    "imageCrop": {
-                                          "oneOf": [
-                                                { "type": "null" },
-                                                { "$ref": "#/$defs/crop" }
-                                          ]
-                                    },
-                                    "imageScale": {
-                                          "$ref": "#/$defs/positiveNumber"
-                                    },
-                                    "imageOffset": { "$ref": "#/$defs/vector" },
-                                    "aim": { "$ref": "#/$defs/aimSkill" }
-                              },
-                              "additionalProperties": false
-                        }
-                  ]
+              "type": "string",
+              "minLength": 1
             },
-            "presentation": {
-                  "type": "object",
-                  "properties": {
-                        "image": { "type": ["string", "null"] },
-                        "imageScale": { "$ref": "#/$defs/positiveNumber" },
-                        "imageOffset": { "$ref": "#/$defs/vector" },
-                        "imageCrop": {
-                              "oneOf": [
-                                    { "type": "null" },
-                                    { "$ref": "#/$defs/crop" }
-                              ]
-                        },
-                        "healthBarOffset": { "$ref": "#/$defs/vector" },
-                        "weaponScale": { "$ref": "#/$defs/positiveNumber" },
-                        "weaponOffset": { "$ref": "#/$defs/vector" },
-                        "weaponPivot": { "$ref": "#/$defs/vector" },
-                        "weaponIdle": { "type": ["string", "null"] },
-                        "weaponAttack": { "type": ["string", "null"] },
-                        "defaultFacing": { "enum": ["left", "right"] },
-                        "poses": {
-                              "oneOf": [
-                                    { "type": "null" },
-                                    {
-                                          "type": "object",
-                                          "additionalProperties": {
-                                                "$ref": "#/$defs/pose"
-                                          }
-                                    }
-                              ]
-                        }
-                  },
-                  "additionalProperties": false
+            "sound": {
+              "type": "string",
+              "minLength": 1
             },
-            "transformationTrigger": {
-                  "type": "object",
-                  "required": ["type", "healthRatio"],
-                  "properties": {
-                        "type": { "const": "health-threshold" },
-                        "healthRatio": {
-                              "type": "number",
-                              "exclusiveMinimum": 0,
-                              "maximum": 1
-                        }
-                  },
-                  "additionalProperties": false
+            "hitSound": {
+              "type": "string",
+              "minLength": 1
             },
-            "transformation": {
-                  "type": "object",
-                  "required": ["trigger"],
-                  "properties": {
-                        "skills": {
-                              "type": "object",
-                              "properties": {
-                                    "aim": { "$ref": "#/$defs/aimSkill" },
-                                    "weaponAim": { "$ref": "#/$defs/aimSkill" }
-                              },
-                              "additionalProperties": false
-                        },
-                        "trigger": { "$ref": "#/$defs/transformationTrigger" },
-                        "sequence": {
-                              "type": "array",
-                              "items": {
-                                    "type": "object",
-                                    "required": ["pose", "durationMs"],
-                                    "properties": {
-                                          "aimSkill": {
-                  "type": "object",
-                  "required": ["muzzle"],
-                  "properties": {
-                        "muzzle": { "$ref": "#/$defs/vector" },
-                        "pivot": { "$ref": "#/$defs/vector" },
-                        "forwardDegrees": { "type": "number" }
-                  },
-                  "additionalProperties": false
-            },
-            "pose": { "type": "string", "minLength": 1 },
-                                          "durationMs": { "$ref": "#/$defs/positiveNumber" }
-                                    },
-                                    "additionalProperties": false
-                              }
-                        },
-                        "combat": {
-                              "type": "object",
-                              "properties": {
-                                    "abilities": {
-                                          "type": "array",
-                                          "items": { "$ref": "#/$defs/ability" }
-                                    }
-                              },
-                              "additionalProperties": false
-                        },
-                        "presentation": {
-                              "type": "object",
-                              "properties": {
-                                    "poses": {
-                                          "oneOf": [
-                                                { "type": "null" },
-                                                {
-                                                      "type": "object",
-                                                      "additionalProperties": {
-                                                            "$ref": "#/$defs/pose"
-                                                      }
-                                                }
-                                          ]
-                                    }
-                              },
-                              "additionalProperties": false
-                        }
-                  },
-                  "additionalProperties": false
-            },
-            "lines": {
-                  "type": "object",
-                  "properties": {
-                        "ambientIntervalMs": {
-                              "$ref": "#/$defs/positiveNumber"
-                        },
-                        "ambientChance": {
-                              "type": "number",
-                              "minimum": 0,
-                              "maximum": 1
-                        }
-                  },
-                  "additionalProperties": {
-                        "type": "array",
-                        "items": { "type": "string", "minLength": 1 }
-                  }
+            "hit": {
+              "type": "object",
+              "properties": {
+                "damage": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "knockback": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "required": [],
+              "additionalProperties": false
             }
+          },
+          "required": [
+            "speedMultiplier",
+            "accelerationForce",
+            "endOn",
+            "maxDurationMs",
+            "hit"
+          ],
+          "additionalProperties": false
+        },
+        "melee": {
+          "type": "object",
+          "properties": {
+            "damage": {
+              "type": "number",
+              "minimum": 0
+            },
+            "knockback": {
+              "type": "number",
+              "minimum": 0
+            },
+            "hitbox": {
+              "type": "object",
+              "properties": {
+                "width": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "height": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "offset": {
+                  "$ref": "#/$defs/vector"
+                }
+              },
+              "required": [
+                "width",
+                "height",
+                "offset"
+              ],
+              "additionalProperties": false
+            },
+            "swing": {
+              "type": "object",
+              "properties": {
+                "startDegrees": {
+                  "type": "number"
+                },
+                "endDegrees": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "startDegrees",
+                "endDegrees"
+              ],
+              "additionalProperties": false
+            },
+            "pose": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sound": {
+              "type": "string",
+              "minLength": 1
+            },
+            "hitSound": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "projectile": {
+          "type": "object",
+          "properties": {
+            "projectile": {
+              "type": "object",
+              "properties": {
+                "radius": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "speed": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "damage": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "flight": {
+                  "type": "object",
+                  "properties": {
+                    "collision": {
+                      "type": "object",
+                      "properties": {
+                        "response": {
+                          "enum": [
+                            "physical",
+                            "sensor"
+                          ]
+                        },
+                        "enemyContact": {
+                          "enum": [
+                            "consume",
+                            "pierce"
+                          ]
+                        },
+                        "ownerContact": {
+                          "enum": [
+                            "ignore",
+                            "catch"
+                          ]
+                        },
+                        "walls": {
+                          "enum": [
+                            "ignore",
+                            "bounce"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "response",
+                        "enemyContact",
+                        "ownerContact",
+                        "walls"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "lifetime": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "const": "duration"
+                            },
+                            "durationMs": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "required": [
+                            "type",
+                            "durationMs"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "const": "persistent"
+                            }
+                          },
+                          "required": [
+                            "type"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "ownership": {
+                      "type": "object",
+                      "properties": {
+                        "onOwnerDeath": {
+                          "enum": [
+                            "remove",
+                            "persist"
+                          ]
+                        },
+                        "onOwnerRemoval": {
+                          "enum": [
+                            "remove",
+                            "persist"
+                          ]
+                        },
+                        "onMatchEnd": {
+                          "enum": [
+                            "remove",
+                            "persist"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "onOwnerDeath",
+                        "onOwnerRemoval",
+                        "onMatchEnd"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "knockback": {
+                      "type": "object",
+                      "properties": {
+                        "forceMagnitude": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "forceMagnitude"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "collision",
+                    "lifetime",
+                    "ownership"
+                  ],
+                  "additionalProperties": false
+                },
+                "rotationSpeed": {
+                  "type": "number"
+                },
+                "image": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "minItems": 1
+                    }
+                  ]
+                },
+                "imageScales": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                }
+              },
+              "required": [
+                "radius",
+                "speed",
+                "damage",
+                "flight",
+                "image"
+              ],
+              "additionalProperties": false
+            },
+            "recoil": {
+              "type": "number",
+              "minimum": 0
+            },
+            "sound": {
+              "type": "string",
+              "minLength": 1
+            },
+            "hitSound": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "projectile"
+          ],
+          "additionalProperties": false
+        },
+        "aim": {
+          "$ref": "#/$defs/aimSkill"
+        },
+        "weaponAim": {
+          "$ref": "#/$defs/aimSkill"
+        },
+        "damageRamp": {
+          "type": "object",
+          "properties": {
+            "amountPerIncrease": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "maxDamage": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "hurtThrowThreshold": {
+              "type": "number",
+              "minimum": 0
+            },
+            "ratesPerSecond": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "minItems": 1
+            },
+            "increasePoseMs": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "amountPerIncrease",
+            "maxDamage",
+            "ratesPerSecond",
+            "increasePoseMs"
+          ],
+          "additionalProperties": false
+        },
+        "instantLaser": {
+          "type": "object",
+          "properties": {
+            "damage": {
+              "type": "number",
+              "minimum": 0
+            },
+            "intervalMs": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "width": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "range": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "flashMs": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "color": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "damage",
+            "intervalMs",
+            "width",
+            "range",
+            "flashMs",
+            "color"
+          ],
+          "additionalProperties": false
+        },
+        "saucer": {
+          "$ref": "#/$defs/saucerSettings"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "move": {
+      "type": "object",
+      "properties": {
+        "cooldownMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "windupMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "attackDurationMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "recoveryMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "rangePadding": {
+          "type": "number",
+          "minimum": 0
+        },
+        "windupSound": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "cooldownMs"
+      ],
+      "additionalProperties": false
+    },
+    "moves": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/move"
       }
+    },
+    "form": {
+      "type": "object",
+      "properties": {
+        "components": {
+          "$ref": "#/$defs/components"
+        },
+        "moves": {
+          "$ref": "#/$defs/moves"
+        },
+        "poses": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/pose"
+              }
+            }
+          ]
+        },
+        "healthRatio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "sequence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pose": {
+                "type": "string",
+                "minLength": 1
+              },
+              "durationMs": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "pose",
+              "durationMs"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "defaults": {
+      "type": "object",
+      "required": [
+        "combat",
+        "body",
+        "presentation",
+        "lines",
+        "components",
+        "moves"
+      ],
+      "properties": {
+        "combat": {
+          "type": "object",
+          "properties": {
+            "maxHealth": {
+              "$ref": "#/$defs/positiveNumber"
+            },
+            "speed": {
+              "$ref": "#/$defs/positiveNumber"
+            },
+            "baseDamage": {
+              "$ref": "#/$defs/nonNegativeNumber"
+            },
+            "faceTarget": {
+              "$ref": "#/$defs/faceTarget"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "maxHealth",
+            "speed",
+            "baseDamage",
+            "faceTarget"
+          ]
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "radius": {
+              "$ref": "#/$defs/positiveNumber"
+            },
+            "hitbox": {
+              "$ref": "#/$defs/hitbox"
+            },
+            "hitboxOffset": {
+              "$ref": "#/$defs/vector"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "radius",
+            "hitbox",
+            "hitboxOffset"
+          ]
+        },
+        "presentation": {
+          "type": "object",
+          "properties": {
+            "image": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "imageScale": {
+              "$ref": "#/$defs/positiveNumber"
+            },
+            "imageOffset": {
+              "$ref": "#/$defs/vector"
+            },
+            "imageCrop": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/$defs/crop"
+                }
+              ]
+            },
+            "healthBarOffset": {
+              "$ref": "#/$defs/vector"
+            },
+            "weaponScale": {
+              "$ref": "#/$defs/positiveNumber"
+            },
+            "weaponOffset": {
+              "$ref": "#/$defs/vector"
+            },
+            "weaponPivot": {
+              "$ref": "#/$defs/vector"
+            },
+            "weaponIdle": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "weaponAttack": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "defaultFacing": {
+              "enum": [
+                "left",
+                "right"
+              ]
+            },
+            "poses": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "#/$defs/pose"
+                  }
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "image",
+            "imageScale",
+            "imageOffset",
+            "imageCrop",
+            "healthBarOffset",
+            "weaponScale",
+            "weaponOffset",
+            "weaponPivot",
+            "defaultFacing",
+            "poses"
+          ]
+        },
+        "lines": {
+          "$ref": "#/$defs/lines"
+        },
+        "components": {
+          "$ref": "#/$defs/components"
+        },
+        "moves": {
+          "$ref": "#/$defs/moves"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
 }

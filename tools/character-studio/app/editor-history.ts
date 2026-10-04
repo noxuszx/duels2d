@@ -14,6 +14,11 @@ export function snapshotStudioState(
                   typeof pose === "string" ? pose : structuredClone(pose);
       }
       return JSON.stringify({
+            maxHealth: config.maxHealth,
+            speed: config.speed,
+            baseDamage: config.baseDamage,
+            faceTarget: structuredClone(config.faceTarget),
+            radius: config.radius,
             hitbox: structuredClone(config.hitbox),
             hitboxOffset: structuredClone(
                   config.hitboxOffset ?? { x: 0, y: 0 },
@@ -30,10 +35,11 @@ export function snapshotStudioState(
             weaponOffset: structuredClone(config.weaponOffset),
             weaponPivot: structuredClone(config.weaponPivot),
             weaponIdle: config.weaponIdle,
-            skills: structuredClone(config.skills),
-            behavior: structuredClone(config.behavior),
-            abilities: structuredClone(config.abilities),
-            transformation: structuredClone(config.transformation),
+            weaponAttack: config.weaponAttack,
+            components: structuredClone(config.components),
+            moves: structuredClone(config.moves),
+            forms: structuredClone(config.forms),
+            lines: structuredClone(config.lines),
             activeForm,
             poses: config.poses === null ? null : posesSnapshot,
             activePoseKey,

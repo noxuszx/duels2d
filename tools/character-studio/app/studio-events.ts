@@ -20,7 +20,7 @@ export function installStudioEvents(studio: CharacterStudio): void {
       });
 
       studio.poseSelect.addEventListener("change", () => {
-            studio.transformationTool.stopPreview();
+            studio.formTool.stopPreview();
             studio.activePoseKey = studio.poseSelect.value;
             studio._onPoseChanged();
       });
@@ -135,7 +135,7 @@ export function installStudioEvents(studio: CharacterStudio): void {
             studio._saveState();
       });
 
-      studio.attackHitboxAbilitySelect.addEventListener("change", () => {
+      studio.meleeComponentSelect.addEventListener("change", () => {
             studio._syncAttackHitboxControls();
             studio._draw();
       });

@@ -1,10 +1,10 @@
-import type { AttackHitboxAction } from "../../../../src/abilities/types";
+import type { MeleeSettings } from "../../../../src/config/component-settings";
 import type { Facing, Vector2 } from "../../../../src/types/fighter";
 import type { Rect } from "../../app/editor-types";
 
 export function attackHitboxRect(
       center: Vector2,
-      action: AttackHitboxAction,
+      action: NonNullable<MeleeSettings["hitbox"]>,
       facing: Facing,
 ): Rect {
       return {

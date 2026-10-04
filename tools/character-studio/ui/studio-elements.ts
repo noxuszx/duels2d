@@ -32,7 +32,7 @@ export class StudioElements {
       cancelCropBtn: HTMLButtonElement;
       saveBtn: HTMLButtonElement;
       hitboxOutput: HTMLInputElement;
-      attackHitboxAbilitySelect: HTMLSelectElement;
+      meleeComponentSelect: HTMLSelectElement;
       projectileImageSelect: HTMLSelectElement;
       projectileImageScale: HTMLInputElement;
       projectileRotationSpeed: HTMLInputElement;
@@ -99,8 +99,8 @@ export class StudioElements {
             this.saveBtn = requireElement<HTMLButtonElement>("save-config-btn");
             this.hitboxOutput =
                   requireElement<HTMLInputElement>("hitbox-output");
-            this.attackHitboxAbilitySelect = requireElement<HTMLSelectElement>(
-                  "attackHitboxAbility",
+            this.meleeComponentSelect = requireElement<HTMLSelectElement>(
+                  "meleeComponent",
             );
             this.projectileImageSelect = requireElement<HTMLSelectElement>(
                   "projectile-image-select",

@@ -18,4 +18,3 @@ __pycache__/
 # Local agent guidance and temporary files
 /AGENTS.md
 /temp/
-/docs/

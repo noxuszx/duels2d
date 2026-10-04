@@ -47,7 +47,7 @@ import { StudioElements } from "../ui/studio-elements";
 import { EditorSession } from "./editor-session";
 import { installStudioEvents } from "./studio-events";
 import type { IndicatorConfig } from "../../../src/types/game";
-import type { AttackHitboxAction } from "../../../src/abilities/types";
+import type { MeleeSettings } from "../../../src/config/component-settings";
 import type {
       FighterConfig,
       FighterDefaults,
@@ -65,7 +65,7 @@ import {
       _applyCrop,
       _cancelCrop,
 } from "../tools/crop/crop-tool";
-import { TransformationTool } from "../panels/transformation-panel";
+import { FormTool } from "../panels/form-panel";
 import { poseBank, type StudioForm } from "../document/form-model";
 import {
       applyHitbox,
@@ -103,18 +103,18 @@ declare global {
 export interface CharacterStudio extends StudioElements {}
 
 export class CharacterStudio {
-      transformationTool!: TransformationTool;
+      formTool!: FormTool;
       aimTool!: AimTool;
 
       _poseBank(config = this._currentConfig()): Record<string, PoseConfig> {
             return poseBank(config, this.activeForm);
       }
 
-      _editingAbilities() {
+      _editingComponents() {
             const config = this._currentConfig();
-            return this.activeForm === "transformed" && config.transformation
-                  ? config.transformation.abilities
-                  : config.abilities;
+            return this.activeForm === "base"
+                  ? config.components
+                  : (config.forms[this.activeForm]?.components ?? config.components);
       }
 
       _refreshForm(): void {
@@ -124,7 +124,7 @@ export class CharacterStudio {
             this.hitboxDraft = null;
             this.hitboxDraftOffset = null;
             this.activePoseKey =
-                  this.activeForm === "transformed" ? "idle" : "base";
+                  this.activeForm === "base" ? "base" : "idle";
             this._populatePoseSelect(this._currentConfig());
             this._populateAttackHitboxSelect();
             this._populateProjectileSelect();
@@ -132,7 +132,7 @@ export class CharacterStudio {
             this._syncHitboxControls(this._currentConfig());
             this._updateHitboxButtons();
             _updateCropButtons(this);
-            this.transformationTool.sync();
+            this.formTool.sync();
             this._onPoseChanged();
             this._draw();
       }
@@ -223,7 +223,7 @@ export class CharacterStudio {
             this.fileHandles = new Map();
             this.pendingBodyImageRequest = 0;
             this.autosave.subscribe(updateSaveStatus);
-            this.transformationTool = new TransformationTool(this);
+            this.formTool = new FormTool(this);
             this.aimTool = new AimTool(this);
             installStudioEvents(this);
             this._loadCurrentConfig();
@@ -241,7 +241,7 @@ export class CharacterStudio {
             return _swingAction(this);
       }
 
-      _attackHitboxAction(): AttackHitboxAction | null {
+      _attackHitboxAction(): NonNullable<MeleeSettings["hitbox"]> | null {
             return _attackHitboxAction(this);
       }
 
@@ -388,7 +388,7 @@ export class CharacterStudio {
       }
 
       _loadCurrentConfig(): void {
-            this.transformationTool.stopPreview();
+            this.formTool.stopPreview();
             this.activeForm = "base";
             this.activePoseKey = "base";
             this.session.clearDrafts();
@@ -398,12 +398,12 @@ export class CharacterStudio {
       }
 
       _refreshEditor(): void {
-            this.transformationTool.stopPreview();
+            this.formTool.stopPreview();
             const config = this._currentConfig();
             this._updateSaveButton();
 
             this._populatePoseSelect(config);
-            this.transformationTool.sync();
+            this.formTool.sync();
 
             this.hitboxType.value = config.hitbox.type;
             this.controls.hitboxWidth.value =

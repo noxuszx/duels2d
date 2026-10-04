@@ -5,13 +5,15 @@ import type {
       PoseOverrides,
 } from "../../../src/types/fighter";
 import type { JSONValue, StudioConfig } from "../app/editor-types";
+import { assertFighterDefinition } from "../../../src/config/validation";
 
 export const DEFAULT_FIGHTER_DEFAULTS: FighterDefaults = {
+      components: {},
+      moves: {},
       combat: {
             maxHealth: 1000,
             speed: 10,
             baseDamage: 50,
-            abilities: [],
             faceTarget: { mode: "never" },
       },
       body: {
@@ -81,40 +83,18 @@ export function syncFighterDefinition(
       if (config.selectable !== undefined) definition.selectable = config.selectable;
       else delete definition.selectable;
 
-      if (config.behavior) definition.behavior = structuredClone(config.behavior);
-      else delete definition.behavior;
-
-      if (config.skills && Object.keys(config.skills).length)
-            definition.skills = structuredClone(config.skills);
-      else delete definition.skills;
-
-      if (config.transformation) {
-            definition.transformation = {
-                  trigger: structuredClone(config.transformation.trigger),
-                  ...(config.transformation.skills !== undefined
-                        ? { skills: structuredClone(config.transformation.skills) }
-                        : {}),
-                  sequence: structuredClone(
-                        config.transformation.sequence ?? [],
-                  ),
-                  combat: {
-                        abilities: structuredClone(
-                              config.transformation.abilities,
-                        ),
-                  },
-                  presentation: {
-                        poses: structuredClone(config.transformation.poses),
-                  },
-            };
-      } else {
-            delete definition.transformation;
-      }
+      definition.components = structuredClone(config.components);
+      definition.moves = structuredClone(config.moves);
+      if (Object.keys(config.forms ?? {}).length) definition.forms = structuredClone(config.forms);
+      else delete definition.forms;
+      definition.lines = structuredClone(config.lines);
 
       // Body: strip hitbox and hitboxOffset if equal to defaults
       if (
             definition.body ||
             !isEqual(config.hitbox, defaults.body.hitbox) ||
-            !isEqual(config.hitboxOffset, defaults.body.hitboxOffset)
+            !isEqual(config.hitboxOffset, defaults.body.hitboxOffset) ||
+            !isEqual(config.radius, defaults.body.radius)
       ) {
             definition.body = definition.body || {};
             if (!isEqual(config.hitbox, defaults.body.hitbox)) {
@@ -129,24 +109,23 @@ export function syncFighterDefinition(
             } else {
                   delete definition.body.hitboxOffset;
             }
-            if (
-                  definition.body.radius !== undefined &&
-                  isEqual(definition.body.radius, defaults.body.radius)
-            ) {
-                  delete definition.body.radius;
-            }
+            if (!isEqual(config.radius, defaults.body.radius))
+                  definition.body.radius = cleanNumber(config.radius);
+            else delete definition.body.radius;
             if (Object.keys(definition.body).length === 0) {
                   delete definition.body;
             }
       }
 
       definition.combat = definition.combat || {};
-      if (!isEqual(config.abilities, defaults.combat.abilities)) {
-            definition.combat.abilities = structuredClone(config.abilities);
-      } else {
-            delete definition.combat.abilities;
+      for (const field of ["maxHealth", "speed", "baseDamage"] as const) {
+            if (!isEqual(config[field], defaults.combat[field]))
+                  definition.combat[field] = cleanNumber(config[field]);
+            else delete definition.combat[field];
       }
-
+      if (!isEqual(config.faceTarget, defaults.combat.faceTarget))
+            definition.combat.faceTarget = structuredClone(config.faceTarget);
+      else delete definition.combat.faceTarget;
       // Presentation: strip fields equal to defaults
       definition.presentation = definition.presentation || {};
 
@@ -248,6 +227,10 @@ export function syncFighterDefinition(
             delete definition.presentation.weaponIdle;
       }
 
+      if (config.weaponAttack && !isEqual(config.weaponAttack, defaults.presentation.weaponAttack))
+            definition.presentation.weaponAttack = config.weaponAttack;
+      else delete definition.presentation.weaponAttack;
+
       if (
             config.defaultFacing &&
             !isEqual(config.defaultFacing, defaults.presentation.defaultFacing)
@@ -336,7 +319,7 @@ export function cleanForSave(value: JSONValue): JSONValue {
                         cleanedItem !== null &&
                         typeof cleanedItem === "object" &&
                         !Array.isArray(cleanedItem) &&
-                        key !== "poses" &&
+                        !["poses", "components", "moves"].includes(key) &&
                         Object.keys(cleanedItem).length === 0
                   ) {
                         continue;
@@ -374,6 +357,7 @@ export function getSaveContent(
             config,
             defaults,
       );
+      assertFighterDefinition(synced);
       const cleaned = cleanForSave(synced as unknown as JSONValue);
       const rawJson = JSON.stringify(cleaned, null, 2);
       return `${formatFighterJson(rawJson)}\n`;

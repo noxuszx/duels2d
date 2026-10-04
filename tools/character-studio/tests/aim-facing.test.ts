@@ -1,31 +1,31 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AimSkill } from "../../../src/skills/aim-skill";
+import { AimGeometry } from "../../../src/gameplay/components/aim-geometry";
 import { AimTool, type AimToolHost } from "../tools/aim/aim-tool";
 import type { StudioConfig } from "../app/editor-types";
-import { ensureFormSkills, formSkills } from "../document/form-model";
+import { ensureFormComponents, formComponents } from "../document/form-model";
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Original sprite facing", () => {
-      it("edits transformed skills independently and can disable inherited aiming", () => {
+      it("edits a form’s aim component independently and can disable inherited aiming", () => {
             const config = {
-                  skills: { aim: { muzzle: { x: -50, y: 0 } } },
-                  transformation: { trigger: { type: "health-threshold", healthRatio: 0.4 }, abilities: [], poses: null },
-            } as unknown as StudioConfig;
-            expect(formSkills(config, "transformed")?.aim).toEqual(config.skills?.aim);
-            const transformed = ensureFormSkills(config, "transformed");
+                  components: { aim: { muzzle: { x: -50, y: 0 } } },
+                  forms: { transformed: { moves: {}, poses: null } },
+            } as unknown as unknown as StudioConfig;
+            expect(formComponents(config, "transformed")?.aim).toEqual(config.components.aim);
+            const transformed = ensureFormComponents(config, "transformed");
             transformed.aim!.muzzle.x = -80;
-            expect(config.skills?.aim?.muzzle.x).toBe(-50);
+            expect(config.components?.aim?.muzzle.x).toBe(-50);
             delete transformed.aim;
-            expect(formSkills(config, "transformed")?.aim).toBeUndefined();
-            expect(formSkills(config, "base")?.aim).toBeDefined();
+            expect(formComponents(config, "transformed")?.aim).toBeUndefined();
+            expect(formComponents(config, "base")?.aim).toBeDefined();
       });
       it.each(["left", "right"] as const)("keeps %s-facing aim markers and dragging in original image coordinates", (facing) => {
             const direction = facing === "left" ? -1 : 1;
             const config = {
                   id: "test", defaultFacing: facing,
-                  skills: { aim: { muzzle: { x: 50 * direction, y: 0 }, pivot: { x: 0, y: 0 } } },
-            } as StudioConfig;
+                  components: { aim: { muzzle: { x: 50 * direction, y: 0 }, pivot: { x: 0, y: 0 } } },
+            } as unknown as StudioConfig;
             vi.stubGlobal("document", {
                   getElementById: () => ({ addEventListener: vi.fn(), classList: { contains: () => true } }),
             });
@@ -49,12 +49,12 @@ describe("Original sprite facing", () => {
             expect(tool.onPointerDown(pointer(muzzleX))).toBe(true);
             tool.onPointerMove(pointer(muzzleX + 20));
             tool.onPointerUp(pointer(muzzleX + 20));
-            expect(config.skills!.aim!.muzzle).toEqual({ x: direction * 50 + 20, y: 0 });
+            expect(config.components!.aim!.muzzle).toEqual({ x: direction * 50 + 20, y: 0 });
             expect(host._saveState).toHaveBeenCalledOnce();
       });
 
       it.each(["left", "right"] as const)("aims a native %s-facing sprite toward enemies on either side", (defaultFacing) => {
-            const skill = new AimSkill();
+            const skill = new AimGeometry();
             for (const facing of ["left", "right"] as const) {
                   const direction = facing === "left" ? -1 : 1;
                   skill.update({ center: { x: 0, y: 0 }, facing, defaultFacing },

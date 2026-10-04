@@ -11,7 +11,7 @@ export interface AimToolHost {
       ctx: CanvasRenderingContext2D;
       mode: "default" | "crop" | "hitbox";
       activePoseKey: string;
-      activeForm: "base" | "transformed";
+      activeForm: string;
       isRestoring: boolean;
       _currentConfig(): StudioConfig;
       _poseBank(): Record<string, PoseConfig>;
@@ -25,7 +25,7 @@ export interface AimToolHost {
       _draw(): void;
 }
 import { requireElement } from "../../ui/dom";
-import { ensureFormSkills, formSkills } from "../../document/form-model";
+import { ensureFormComponents, formComponents } from "../../document/form-model";
 
 type PointName = "muzzle" | "pivot";
 
@@ -56,9 +56,9 @@ export class AimTool {
             this.target.addEventListener("change", () => { this.sync(); studio._draw(); });
             this.enabled.addEventListener("change", () => {
                   const config = studio._currentConfig();
-                  const skills = ensureFormSkills(config, studio.activeForm);
+                  const components = ensureFormComponents(config, studio.activeForm);
                   if (this.enabled.checked) {
-                        skills[this.weaponEditing ? "weaponAim" : "aim"] = {
+                        components[this.weaponEditing ? "weaponAim" : "aim"] = {
                               muzzle: {
                                     x: config.defaultFacing === "left" ? -50 : 50,
                                     y: 0,
@@ -66,7 +66,7 @@ export class AimTool {
                               pivot: { x: 0, y: 0 },
                         };
                   } else {
-                        delete skills[this.weaponEditing ? "weaponAim" : "aim"];
+                        delete components[this.weaponEditing ? "weaponAim" : "aim"];
                   }
                   studio._saveState();
                   studio._draw();
@@ -139,22 +139,22 @@ export class AimTool {
       }
 
       private get options(): AimSkillOptions | null {
-            const skills = formSkills(this.studio._currentConfig(), this.studio.activeForm);
-            if (this.weaponEditing) return skills?.weaponAim ?? null;
-            const aim = skills?.aim;
+            const components = formComponents(this.studio._currentConfig(), this.studio.activeForm);
+            if (this.weaponEditing) return components?.weaponAim ?? null;
+            const aim = components?.aim;
             return aim ? (this.pose?.aim ?? aim) : null;
       }
 
       private setOptions(options: AimSkillOptions): void {
-            if (this.weaponEditing) ensureFormSkills(this.studio._currentConfig(), this.studio.activeForm).weaponAim = options;
+            if (this.weaponEditing) ensureFormComponents(this.studio._currentConfig(), this.studio.activeForm).weaponAim = options;
             else if (this.pose?.aim) this.poseRecord().aim = options;
-            else ensureFormSkills(this.studio._currentConfig(), this.studio.activeForm).aim = options;
+            else ensureFormComponents(this.studio._currentConfig(), this.studio.activeForm).aim = options;
       }
 
       sync(): void {
             const config = this.studio._currentConfig();
             const options = this.options;
-            this.enabled.checked = Boolean(formSkills(config, this.studio.activeForm)?.[this.weaponEditing ? "weaponAim" : "aim"]);
+            this.enabled.checked = Boolean(formComponents(config, this.studio.activeForm)?.[this.weaponEditing ? "weaponAim" : "aim"]);
             this.settings.disabled = !options;
             this.override.checked = !this.weaponEditing && Boolean(this.pose?.aim);
             this.override.disabled = this.weaponEditing || this.studio.activePoseKey === "base";

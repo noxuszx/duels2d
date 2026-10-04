@@ -6,6 +6,9 @@ export function normalizeFighterDocument(
       config: StudioConfig,
       defaults?: FighterDefaults,
 ): void {
+      config.components ??= structuredClone(defaults?.components ?? {});
+      config.moves ??= structuredClone(defaults?.moves ?? {});
+      config.forms ??= {};
       config.imageScale ??= defaults?.presentation.imageScale ?? 1;
       config.imageOffset ??= structuredClone(
             defaults?.presentation.imageOffset ?? { x: 0, y: 0 },

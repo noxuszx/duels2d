@@ -1,0 +1,217 @@
+import { Engine } from "matter-js";
+import type { ArenaBounds, ContactEvent, ContactPolicy, RuntimeTrace, Vector2 } from "./contracts";
+import type { Entity, EntityRemovalReason } from "./entity";
+import { EntityRegistry, type EntityRegistration } from "./entity-registry";
+import { SeededRandom } from "./random";
+import { MatterContactCollector, type EntityContactSnapshot } from "./physics/contacts";
+import { bounceFromWall, containEntity, type WallContactSnapshot } from "./physics/arena";
+import { CombatResolver, type CombatEvent, type HitEffects, type HitResult, type HitOptions } from "../gameplay/combat/effects";
+import { MatchRules, type ImpactSettings, type MatchOutcome } from "../gameplay/match-rules";
+
+export const SIMULATION_STEP_MS = 1000 / 120;
+
+export interface SimulationOptions {
+      arena: ArenaBounds;
+      seed: number;
+      impact?: ImpactSettings;
+      collisionCooldownMs?: number;
+      globalSpeedMultiplier?: number;
+}
+
+export type SimulationEvent = CombatEvent | { kind: "match-ended"; outcome: MatchOutcome };
+
+/** Headless, fixed-step lifetime and contact owner. The browser only drives step/render. */
+export class Simulation {
+      readonly engine = Engine.create({ gravity: { x: 0, y: 0 }, enableSleeping: false });
+      readonly entities = new EntityRegistry(this.engine.world);
+      readonly arena: Readonly<ArenaBounds>;
+      rng: SeededRandom;
+      readonly trace: RuntimeTrace[] = [];
+      readonly events: SimulationEvent[] = [];
+      readonly rules: MatchRules;
+      readonly combat: CombatResolver;
+      private readonly contacts = new MatterContactCollector(this.engine, this.entities);
+      private readonly baseSpeeds = new Map<string, number>();
+      private readonly speedMultiplier: number;
+      private seed: number;
+      private nextEntitySerial = 0;
+      state: "running" | "ended" = "running";
+      nowMs = 0;
+      tick = 0;
+
+      constructor(options: SimulationOptions) {
+            if (![options.arena.minX, options.arena.maxX, options.arena.minY, options.arena.maxY]
+                  .every(Number.isFinite) || options.arena.minX >= options.arena.maxX ||
+                  options.arena.minY >= options.arena.maxY) throw new RangeError("Invalid simulation arena");
+            this.arena = Object.freeze({ ...options.arena });
+            this.seed = options.seed;
+            this.rng = new SeededRandom(options.seed);
+            this.rules = new MatchRules(options.impact);
+            this.speedMultiplier = options.globalSpeedMultiplier ?? 1;
+            this.combat = new CombatResolver(this.entities, () => this.nowMs,
+                  event => this.events.push(event), options.collisionCooldownMs ?? 100);
+            this.contacts.attach();
+      }
+
+      get isCombatActive(): boolean { return this.state === "running"; }
+
+      recordTrace(event: RuntimeTrace): void {
+            this.trace.push(event);
+            if (this.trace.length > 500) this.trace.shift();
+      }
+
+      /** Shared allocation lets several equipped emitters spawn without identity collisions. */
+      nextRuntimeId(prefix = "entity"): string {
+            let id: string;
+            do { id = `${prefix}:${++this.nextEntitySerial}`; }
+            while (this.entities.hasRuntimeId(id));
+            return id;
+      }
+
+      add(entity: Entity, registration: EntityRegistration = {}): void {
+            if (this.state !== "running") throw new Error("Cannot spawn after match end");
+            this.entities.add(entity, registration);
+            this.rules.observeSpawn(entity);
+            const initialSpeed = Math.hypot(entity.body.velocity.x, entity.body.velocity.y);
+            this.baseSpeeds.set(entity.runtimeId, initialSpeed > 0
+                  ? initialSpeed : entity.config.speed * this.speedMultiplier);
+            entity.setPeriodicDamageHandler((target, amount, sourceId) => {
+                  this.combat.damage(target, amount, { sourceId, independentCooldown: true });
+            });
+      }
+
+      remove(runtimeId: string, reason: EntityRemovalReason = "removed"): boolean {
+            try { return this.entities.remove(runtimeId, reason); }
+            finally {
+                  if (!this.entities.get(runtimeId)) {
+                        this.combat.forget(runtimeId);
+                        this.baseSpeeds.delete(runtimeId);
+                  }
+            }
+      }
+
+      hit(source: Entity, target: Entity, effects: HitEffects, options?: HitOptions): HitResult {
+            return this.isCombatActive ? this.combat.hit(source, target, effects, options) : {
+                  connected: false, actualDamage: 0, knockbackApplied: false,
+                  statusesApplied: [], killed: false,
+            };
+      }
+
+      /** Advances exactly one 120 Hz simulation tick. Callers own real-time accumulation. */
+      step(): void {
+            if (this.state !== "running") return;
+            this.entities.beginMutationBoundary();
+            try {
+                  this.nowMs += SIMULATION_STEP_MS;
+                  this.tick++;
+                  for (const entity of this.entities.all()) if (entity.isAlive) entity.beforeStep(SIMULATION_STEP_MS);
+                  this.entities.retireDeadOwners();
+                  this.entities.commitRemovals();
+                  Engine.update(this.engine, SIMULATION_STEP_MS);
+                  const wallContacts: WallContactSnapshot[] = [];
+                  for (const entity of this.entities.all()) {
+                        if (entity.isAlive && entity.containWithinArena) wallContacts.push(...containEntity(entity, this.arena));
+                  }
+                  // Wall decisions can acquire a movement policy before default response.
+                  for (const contact of wallContacts) this.resolveWall(contact);
+                  for (const contact of this.contacts.drain()) this.resolveEntity(contact);
+                  for (const entity of this.entities.all()) if (entity.isAlive) entity.afterStep(SIMULATION_STEP_MS);
+                  this.entities.retireDeadOwners();
+                  const outcome = this.rules.evaluate(this.entities.all());
+                  if (outcome) {
+                        this.state = "ended";
+                        this.events.push({ kind: "match-ended", outcome });
+                        let failure: unknown;
+                        let failed = false;
+                        const cleanup = (action: () => void) => {
+                              try { action(); }
+                              catch (error) { if (!failed) failure = error; failed = true; }
+                        };
+                        cleanup(() => this.entities.retireMatchEnd());
+                        for (const entity of this.entities.all()) cleanup(() => entity.cancel("match-ended"));
+                        if (failed) throw failure;
+                  }
+            } finally {
+                  this.entities.endMutationBoundary();
+            }
+      }
+
+      reset(seed = this.seed): void {
+            this.entities.clear("reset");
+            this.contacts.clear();
+            Engine.clear(this.engine);
+            this.engine.timing.timestamp = 0;
+            this.baseSpeeds.clear();
+            this.combat.reset();
+            this.events.length = 0;
+            this.trace.length = 0;
+            this.rules.reset();
+            this.nowMs = 0;
+            this.tick = 0;
+            this.nextEntitySerial = 0;
+            this.seed = seed;
+            this.rng = new SeededRandom(seed);
+            this.state = "running";
+      }
+
+      dispose(): void {
+            this.state = "ended";
+            this.contacts.dispose();
+            this.entities.clear("removed");
+      }
+
+      private resolveWall(contact: WallContactSnapshot): void {
+            const entity = this.entities.get(contact.id);
+            if (!entity || entity.isDead) return;
+            const event: ContactEvent = {
+                  kind: "wall", self: entity, wall: contact.wall,
+                  normal: { ...contact.normal }, incomingSpeed: contact.incomingSpeed,
+                  policy: { ...contact.policy }, hadForegroundTask: contact.hadForegroundTask,
+            };
+            entity.contact(event);
+            if (!this.entities.isLive(entity)) return;
+            const policy = this.mergePolicy(contact.policy, event.policy, entity.resources.contactPolicy);
+            if (policy.defaultBounce) bounceFromWall(entity, contact);
+            if (policy.allowImpactDamage) this.impact(entity, contact.incomingSpeed);
+      }
+
+      private resolveEntity(contact: EntityContactSnapshot): void {
+            const first = this.entities.get(contact.first.id);
+            const second = this.entities.get(contact.second.id);
+            if (!first || !second || first.isDead || second.isDead) return;
+            const firstEvent = this.entityEvent(first, second, contact.normal, contact.incomingSpeed,
+                  contact.first.policy, contact.first.hadForegroundTask);
+            const secondEvent = this.entityEvent(second, first,
+                  { x: -contact.normal.x, y: -contact.normal.y }, contact.incomingSpeed,
+                  contact.second.policy, contact.second.hadForegroundTask);
+            first.contact(firstEvent);
+            if (this.entities.isLive(second)) second.contact(secondEvent);
+            // Components can observe ally/owner contacts (catch, attachments).
+            // Ambient impact damage is a match rule for opposing contestants.
+            if (first.teamId === second.teamId) return;
+            if (!first.tags.has("contestant") || !second.tags.has("contestant")) return;
+            if (this.entities.isLive(first) &&
+                  this.mergePolicy(contact.first.policy, firstEvent.policy, first.resources.contactPolicy).allowImpactDamage)
+                  this.impact(first, contact.incomingSpeed);
+            if (this.entities.isLive(second) &&
+                  this.mergePolicy(contact.second.policy, secondEvent.policy, second.resources.contactPolicy).allowImpactDamage)
+                  this.impact(second, contact.incomingSpeed);
+      }
+
+      private entityEvent(self: Entity, other: Entity, normal: Readonly<Vector2>,
+            incomingSpeed: number, policy: Readonly<ContactPolicy>, hadForegroundTask: boolean): ContactEvent {
+            return { kind: "entity", self, other, normal: { ...normal }, incomingSpeed,
+                  policy: { ...policy }, hadForegroundTask };
+      }
+
+      private impact(entity: Entity, incomingSpeed: number): void {
+            const damage = this.rules.impactDamage(entity, incomingSpeed,
+                  this.baseSpeeds.get(entity.runtimeId) ?? entity.config.speed * this.speedMultiplier);
+            if (damage > 0) this.combat.damage(entity, damage);
+      }
+
+      private mergePolicy(...policies: readonly ContactPolicy[]): ContactPolicy {
+            return { defaultBounce: policies.every(policy => policy.defaultBounce),
+                  allowImpactDamage: policies.every(policy => policy.allowImpactDamage) };
+      }
+}

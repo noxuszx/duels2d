@@ -2,30 +2,35 @@
 
 The Studio edits fighter JSON and previews the same sprite geometry used by the game. `main.ts` loads configuration and creates the application; `index.html` supplies the browser UI.
 
-Default Facing describes the direction the original sprite image faces. Studio displays that image without mirroring; the game mirrors it when the fighter faces the opposite direction. Aim muzzle/pivot coordinates and forward angles belong to the original image. Attack hitbox X offsets are facing-relative: positive means forward, so a positive offset appears on the left for a native left-facing sprite.
+Default Facing describes the direction the original sprite image faces. Studio displays that image without mirroring; the game mirrors it when the fighter faces the opposite direction. Aim muzzle/pivot coordinates and forward angles belong to the original image. Melee hitbox X offsets are facing-relative: positive means forward, so a positive offset appears on the left for a native left-facing sprite.
 
 The Aim tab selects either the body sprite or an independently aimed held weapon.
-Weapon muzzle and aim pivot coordinates are relative to the fighter center in its
-native facing; weapon offset positions the gun image center. Weapon aim uses
-`skills.weaponAim`, with base/transformed form inheritance and no pose override.
-Weapon image, scale, and attachment offset remain in the Weapon controls.
+Aim coordinates are relative to the fighter center in its native facing. Base
+settings live in `components.aim` and `components.weaponAim`; each named form has
+its own component settings. Weapon image, scale, and attachment offset remain in
+the Weapon controls.
 
-Skills are declared in fighter JSON. Top-level `skills` apply to the base form; `transformation.skills` override them after the transformation sequence finishes. Omitting that override inherits base skills, while `{}` disables them in the transformed form. Studio's existing form selector routes aim editing to the selected form.
+The Forms tab creates and selects named forms, edits optional health ratio data,
+and previews authored pose sequences. Runtime form application is still pending;
+this editor support does not make a transformation run during a match.
+Components and moves are editable as JSON in that tab; Apply validates known
+component names and move timing, commits one undo entry, and saves the document.
+The selected form's sprite and combat previews use its component and pose settings.
 
-Typed top-level `behavior` definitions and projectile `flight` policies are
-preserved through serialization and undo/redo. Behavior settings are tuned in
-JSON; the Studio does not add a panel for each behavior. Muscle Man's former
-`combat.damageRamp` tuning now lives in `behavior.settings` with type `damage-ramp`.
-Arbitrary pose names can be leased by gameplay scripts; missing transformed
-pose keys inherit base poses, and transformation transition poses retain priority.
+Arbitrary pose names can be used by gameplay scripts. Missing form poses inherit
+base sprites in the preview. Projectile flight and other mechanic settings remain
+editable through the Components JSON field; dedicated art controls still edit
+projectile scale and rotation directly. Composed form maps replace supplied base
+maps; omitted maps inherit, and explicitly empty maps survive serialization.
+Studio's visual fallback preview does not implement runtime form switching.
 
 ## Folder responsibilities
 
 | Folder | Responsibility |
 | --- | --- |
 | `app/` | Editor session, history snapshots, startup coordination, and event wiring. `studio-app.ts` provides structural host adapters to the feature modules. |
-| `document/` | Fighter normalization, pose inheritance and overrides, and base/transformed form resolution. |
-| `panels/` | Pose/dialog, transformation, projectile, weapon, and property-control editing. |
+| `document/` | Fighter normalization, pose inheritance and overrides, and named form resolution. |
+| `panels/` | Pose/dialog, forms, projectile, weapon, and property-control editing. |
 | `tools/` | Crop, body hitbox, attack hitbox, and aim canvas interactions. Geometry sits beside each tool; the canvas controller routes pointer events. |
 | `preview/` | Presentation defaults on a document copy, canvas drawing, and the disposable projectile animation clock. |
 | `assets/` | Body image loading and the sprite catalog. Loading an image does not create an authored crop. |
@@ -60,3 +65,12 @@ node tools/validate-config.js
 The automated tests cover editor state/history, save ordering and failure recovery, pose inheritance, targeted property changes, rendering without document mutation, draft transitions, and explicit control synchronization. DOM smoke tests use mocked elements and canvas methods; they cannot establish real browser layout, image decoding, pointer capture, or File System Access API behavior.
 
 Before shipping interaction changes, check fighter/pose/form selection, crop and hitbox Apply/Cancel, aim dragging, undo/redo, JSON downloads, and file saving in a browser.
+
+## Related guides
+
+See [configuration](../../config/README.md) for JSON/defaults/forms and shared
+validation, [architecture](../../docs/fighter-architecture.md) for runtime
+ownership, and [fighter authoring](../../docs/fighter-authoring.md) for equipping
+capabilities. Component data/editor controls can exist before their runtime
+mechanic is implemented; check the [migration checklist](../../docs/fighter-migration-checklist.md)
+for current capability status.

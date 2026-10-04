@@ -1,10 +1,10 @@
-import type { SpawnProjectileAction } from "../../../src/abilities/types";
-import type { FighterConfig } from "../../../src/types/fighter";
+import type { FighterComponents } from "../../../src/types/fighter";
+import type { ProjectileEmitterSettings } from "../../../src/config/component-settings";
 import { requireElement } from "../ui/dom";
 
 export interface ProjectilePanelHost {
-      _editingAbilities(): FighterConfig["abilities"];
-      _projectileAction(): SpawnProjectileAction | null;
+      _editingComponents(): FighterComponents;
+      _projectileAction(): ProjectileEmitterSettings | null;
       _projectileImages(): string[];
       _loadProjectilePreview(): void;
       _syncProjectileControls(): void;
@@ -17,14 +17,8 @@ export interface ProjectilePanelHost {
 
 export function _projectileAction(
       host: ProjectilePanelHost,
-): SpawnProjectileAction | null {
-      for (const ability of host._editingAbilities()) {
-            const action = ability.actions.find(
-                  (candidate) => candidate.type === "spawn-projectile",
-            );
-            if (action?.type === "spawn-projectile") return action;
-      }
-      return null;
+): ProjectileEmitterSettings | null {
+      return host._editingComponents().projectile ?? null;
 }
 
 export function _projectileImages(host: ProjectilePanelHost): string[] {

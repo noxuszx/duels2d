@@ -4,16 +4,14 @@ import type {
       Vector2,
 } from "../../../src/types/fighter";
 import type { IndicatorConfig } from "../../../src/types/game";
-import type {
-      AbilityConfig,
-      AttackHitboxAction,
-} from "../../../src/abilities/types";
+import type { FighterComponents } from "../../../src/types/fighter";
+import type { MeleeSettings } from "../../../src/config/component-settings";
 import type { EditableHitbox, PoseVisual } from "../app/editor-types";
 import {
       getHitboxRect,
       getSafetyRect,
 } from "../tools/body-hitbox/body-hitbox-geometry";
-import { formSkills } from "../document/form-model";
+import { formComponents } from "../document/form-model";
 import { preparePreviewConfig } from "./preview-model";
 
 export interface PreviewHost {
@@ -21,7 +19,7 @@ export interface PreviewHost {
       ctx: CanvasRenderingContext2D;
       mode: "default" | "crop" | "hitbox";
       activePoseKey: string;
-      activeForm?: "base" | "transformed";
+      activeForm?: string;
       cropDraft: ImageCrop | null;
       hitboxDraft: EditableHitbox | null;
       hitboxDraftOffset: Vector2 | null;
@@ -37,8 +35,8 @@ export interface PreviewHost {
       defaults?: FighterDefaults;
       _currentConfig(): StudioConfig;
       _getPoseVisual(config: StudioConfig, poseKey: string): PoseVisual;
-      _attackHitboxAction(): AttackHitboxAction | null;
-      _editingAbilities(): AbilityConfig[];
+      _attackHitboxAction(): NonNullable<MeleeSettings["hitbox"]> | null;
+      _editingComponents(): FighterComponents;
 }
 import type { StudioConfig, StudioTextStyle } from "../app/editor-types";
 import { attackHitboxRect } from "../tools/attack-hitbox/attack-hitbox-geometry";
@@ -350,12 +348,9 @@ export function drawStudio(studio: PreviewHost): void {
             ctx.restore();
       }
 
-      const projectileAction = studio
-            ._editingAbilities()
-            .flatMap((ability) => ability.actions)
-            .find((action) => action.type === "spawn-projectile");
+      const projectileAction = studio._editingComponents().projectile;
       if (
-            projectileAction?.type === "spawn-projectile" &&
+            projectileAction &&
             studio.images.projectile.complete &&
             studio.images.projectile.naturalWidth > 0
       ) {
@@ -430,14 +425,11 @@ export function drawStudio(studio: PreviewHost): void {
                   studio.images.weaponIdle.naturalWidth * weaponScale;
             const weaponHeight =
                   studio.images.weaponIdle.naturalHeight * weaponScale;
-            const weaponAim = formSkills(config, studio.activeForm ?? "base")?.weaponAim;
+            const weaponAim = formComponents(config, studio.activeForm ?? "base")?.weaponAim;
             const weaponPivot = weaponAim?.pivot ?? config.weaponPivot;
-            const swing = studio
-                  ._editingAbilities()
-                  .flatMap((ability) => ability.actions)
-                  .find((action) => action.type === "swing");
+            const swing = studio._editingComponents().melee?.swing;
             const previewAngle =
-                  !weaponAim && swing?.type === "swing"
+                  !weaponAim && swing
                         ? (swing.startDegrees * Math.PI) / 180
                         : 0;
             ctx.save();

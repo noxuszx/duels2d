@@ -13,18 +13,18 @@ export function validateFighterSoundCues(
 ): void {
       for (const fighter of fighters) {
             const characterCues = sounds.characters[fighter.id]?.cues ?? {};
-            for (const ability of fighter.abilities) {
-                  for (const [event, cueName] of Object.entries(
-                        ability.audio ?? {},
-                  )) {
-                        if (
-                              cueName &&
-                              !characterCues[cueName] &&
-                              !sounds.shared[cueName]
-                        )
-                              throw new Error(
-                                    `Fighter "${fighter.id}" ability "${ability.id}" audio.${event} references unknown cue "${cueName}".`,
-                              );
+            const banks = [fighter.components, ...Object.values(fighter.forms).map(form => form.components)];
+            for (const moves of [fighter.moves, ...Object.values(fighter.forms).map(form => form.moves)])
+                  for (const [name, move] of Object.entries(moves)) {
+                        if (move.windupSound && !characterCues[move.windupSound] && !sounds.shared[move.windupSound])
+                              throw new Error(`${fighter.id} moves.${name}.windupSound: unknown sound cue ${move.windupSound}`);
+                  }
+            for (const bank of banks) for (const [component, settings] of Object.entries(bank)) {
+                  if (!settings || typeof settings !== "object") continue;
+                  for (const [field, cue] of Object.entries(settings)) {
+                        if (!["sound", "hitSound"].includes(field) || !cue) continue;
+                        if (typeof cue !== "string" || (!characterCues[cue] && !sounds.shared[cue]))
+                              throw new Error(`${fighter.id} components.${component}.${field}: unknown sound cue ${String(cue)}`);
                   }
             }
       }
@@ -215,7 +215,7 @@ function validateSoundManifest(value: unknown): SoundManifest {
                   throw new Error(`${location}.pitchVariation must be boolean.`);
             if (cue.rate !== undefined)
                   requireNumber(cue.rate, `${location}.rate`, 0);
-            for (const field of ["loop", "stopOnPhaseEnd"]) {
+            for (const field of ["loop", "stopOnActionEnd"]) {
                   if (cue[field] !== undefined && typeof cue[field] !== "boolean")
                         throw new Error(`${location}.${field} must be boolean.`);
             }

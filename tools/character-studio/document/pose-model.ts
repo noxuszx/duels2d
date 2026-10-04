@@ -24,7 +24,8 @@ export function _getPoseConfig(
       poseKey: string,
 ): PoseConfig | null | undefined {
       if (poseKey === "base") return null;
-      return host._poseBank(config)[poseKey];
+      return host._poseBank(config)[poseKey] ??
+            (host.activeForm !== "base" ? config.poses?.[poseKey] : undefined);
 }
 
 export function _getPoseImagePath(
@@ -33,7 +34,7 @@ export function _getPoseImagePath(
       poseKey: string,
 ): string {
       if (poseKey === "base") return config.image ?? "";
-      const poseVal = host._poseBank(config)[poseKey];
+      const poseVal = _getPoseConfig(host, config, poseKey);
       if (!poseVal) return config.image ?? "";
       if (typeof poseVal === "string") return poseVal;
       return poseVal.image ?? config.image ?? "";
@@ -50,7 +51,8 @@ export function _setPoseImagePath(
             return;
       }
       const poses = ensurePoseBank(config, host.activeForm ?? "base");
-      const existing = poses[poseKey];
+      const existing = poses[poseKey] ??
+            (host.activeForm !== "base" ? config.poses?.[poseKey] : undefined);
       poses[poseKey] =
             existing && typeof existing === "object"
                   ? { ...existing, image: imagePath }
@@ -73,8 +75,10 @@ export function _availableSpritePaths(
             ...Object.values(config.poses ?? {}).map((pose) =>
                   typeof pose === "string" ? pose : pose.image,
             ),
-            ...Object.values(config.transformation?.poses ?? {}).map((pose) =>
-                  typeof pose === "string" ? pose : pose.image,
+            ...Object.values(config.forms ?? {}).flatMap((form) =>
+                  Object.values(form.poses ?? {}).map((pose) =>
+                        typeof pose === "string" ? pose : pose.image,
+                  ),
             ),
       ].filter((path): path is string => Boolean(path));
       const directories = new Set(
@@ -102,7 +106,7 @@ export function _getPoseVisual(
                   imageCrop: config.imageCrop ?? null,
             };
       }
-      const poseVal = host._poseBank(config)[poseKey];
+      const poseVal = _getPoseConfig(host, config, poseKey);
       const poseObj: Partial<Exclude<PoseConfig, string>> =
             poseVal && typeof poseVal === "object" ? poseVal : {};
       return {
@@ -134,10 +138,11 @@ export function _setPoseVisual(
             return;
       }
       const poses = ensurePoseBank(config, host.activeForm ?? "base");
-      const existing = poses[poseKey];
+      const existing = poses[poseKey] ??
+            (host.activeForm !== "base" ? config.poses?.[poseKey] : undefined);
       const poseObj: Exclude<PoseConfig, string> =
             existing && typeof existing === "object"
-                  ? existing
+                  ? structuredClone(existing)
                   : {
                         image:
                               typeof existing === "string"

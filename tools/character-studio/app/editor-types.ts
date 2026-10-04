@@ -50,6 +50,11 @@ export type StudioConfig = Omit<FighterConfig, "hitbox" | "poses"> & {
 };
 export type StudioState = Pick<
       StudioConfig,
+      | "maxHealth"
+      | "speed"
+      | "baseDamage"
+      | "faceTarget"
+      | "radius"
       | "hitbox"
       | "hitboxOffset"
       | "defaultFacing"
@@ -62,12 +67,13 @@ export type StudioState = Pick<
       | "weaponOffset"
       | "weaponPivot"
       | "weaponIdle"
-      | "skills"
-      | "behavior"
-      | "abilities"
-      | "transformation"
+      | "weaponAttack"
+      | "components"
+      | "moves"
+      | "forms"
+      | "lines"
       | "poses"
-> & { activePoseKey: string; activeForm: "base" | "transformed" };
+> & { activePoseKey: string; activeForm: string };
 export type JSONValue =
       | string
       | number

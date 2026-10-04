@@ -29,16 +29,19 @@ export function restoreStudioState(
             config: {
                   ...structuredClone(config),
                   ...structuredClone(fields),
-                  skills: structuredClone(state.skills),
-                  behavior: structuredClone(state.behavior),
+                  components: structuredClone(state.components),
+                  moves: structuredClone(state.moves),
+                  forms: structuredClone(state.forms),
+                  lines: structuredClone(state.lines),
                   weaponIdle: state.weaponIdle,
+                  weaponAttack: state.weaponAttack,
+                  faceTarget: structuredClone(state.faceTarget),
                   hitboxOffset: structuredClone(
                         state.hitboxOffset ?? { x: 0, y: 0 },
                   ),
                   defaultFacing: state.defaultFacing ?? "right",
                   imageCrop: structuredClone(state.imageCrop ?? null),
                   poses: structuredClone(state.poses ?? null),
-                  transformation: structuredClone(state.transformation ?? null),
             },
             state: {
                   ...state,
@@ -52,7 +55,7 @@ export function restoreStudioState(
 export class EditorSession {
       activeConfigIndex = 0;
       activePoseKey = "idle";
-      activeForm: "base" | "transformed" = "base";
+      activeForm: string = "base";
       mode: "default" | "crop" | "hitbox" = "default";
       cropDraft: ImageCrop | null = null;
       hitboxDraft: EditableHitbox | null = null;

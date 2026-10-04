@@ -3,9 +3,90 @@
   "id": "muscleman",
   "name": "Muscle Man",
   "color": "#69ba70",
-  "behavior": {
-    "type": "damage-ramp",
-    "settings": {
+  "combat": {
+    "baseDamage": 0,
+    "faceTarget": {
+      "mode": "always"
+    }
+  },
+  "presentation": {
+    "image": "assets/fighters/muscleman/sprites/muscleman-idle.png",
+    "imageScale": 2,
+    "poses": {
+      "idle": {
+        "image": "assets/fighters/muscleman/sprites/muscleman-idle.png",
+        "imageCrop": {
+          "x": 0,
+          "y": 0,
+          "width": 990,
+          "height": 1319
+        },
+        "imageScale": 2.8,
+        "imageOffset": {
+          "x": 5,
+          "y": -10
+        }
+      },
+      "attackWindup": {
+        "image": "assets/fighters/muscleman/sprites/muscleman-ramp.png",
+        "imageCrop": {
+          "x": 0,
+          "y": 0,
+          "width": 990,
+          "height": 1319
+        },
+        "imageScale": 2.8,
+        "imageOffset": {
+          "x": 5,
+          "y": -10
+        }
+      },
+      "attackActive": {
+        "image": "assets/fighters/muscleman/sprites/muscleman-throw.png",
+        "imageCrop": {
+          "x": 0,
+          "y": 0,
+          "width": 990,
+          "height": 1319
+        },
+        "imageScale": 2.8,
+        "imageOffset": {
+          "x": 17,
+          "y": -10
+        }
+      }
+    }
+  },
+  "components": {
+    "projectile": {
+      "projectile": {
+        "radius": 12,
+        "speed": 12,
+        "damage": 0,
+        "flight": {
+          "collision": {
+            "response": "sensor",
+            "enemyContact": "pierce",
+            "ownerContact": "catch",
+            "walls": "bounce"
+          },
+          "lifetime": {
+            "type": "persistent"
+          },
+          "ownership": {
+            "onOwnerDeath": "remove",
+            "onOwnerRemoval": "remove",
+            "onMatchEnd": "remove"
+          }
+        },
+        "image": "assets/fighters/muscleman/sprites/muscleman-projectile.png",
+        "imageScales": {
+          "assets/fighters/muscleman/sprites/muscleman-projectile.png": 3.5
+        },
+        "rotationSpeed": 0.09
+      }
+    },
+    "damageRamp": {
       "amountPerIncrease": 30,
       "maxDamage": 350,
       "hurtThrowThreshold": 0,
@@ -17,63 +98,12 @@
       "increasePoseMs": 150
     }
   },
-  "combat": {
-    "baseDamage": 0,
-    "faceTarget": { "mode": "always" },
-    "abilities": [
-      {
-        "id": "power-throw",
-        "trigger": { "type": "nearest-enemy" },
-        "timing": { "cooldownMs": 1, "windupMs": 0, "activeMs": 0, "recoveryMs": 0 },
-        "actions": [
-          {
-            "type": "spawn-projectile",
-            "projectile": {
-              "radius": 12,
-              "speed": 12,
-              "damage": 0,
-              "flight": {
-                "collision": {
-                  "response": "sensor",
-                  "enemyContact": "pierce",
-                  "ownerContact": "catch",
-                  "walls": "bounce"
-                },
-                "lifetime": { "type": "persistent" },
-                "ownership": { "onOwnerDeath": "remove", "onOwnerRemoval": "remove", "onMatchEnd": "remove" }
-              },
-              "lifetimeMs": 30000,
-              "image": "assets/fighters/muscleman/sprites/muscleman-projectile.png",
-              "imageScales": { "assets/fighters/muscleman/sprites/muscleman-projectile.png": 3.5 },
-              "rotationSpeed": 0.09
-            }
-          }
-        ]
-      }
-    ]
-  },
-  "presentation": {
-    "image": "assets/fighters/muscleman/sprites/muscleman-idle.png",
-    "imageScale": 2,
-    "poses": {
-      "idle": {
-        "image": "assets/fighters/muscleman/sprites/muscleman-idle.png",
-        "imageCrop": { "x": 0, "y": 0, "width": 990, "height": 1319 },
-        "imageScale": 2.8,
-        "imageOffset": { "x": 5, "y": -10 }
-      },
-      "attackWindup": {
-        "image": "assets/fighters/muscleman/sprites/muscleman-ramp.png",
-        "imageCrop": { "x": 0, "y": 0, "width": 990, "height": 1319 },
-        "imageScale": 2.8,
-        "imageOffset": { "x": 5, "y": -10 }
-      },
-      "attackActive": {
-        "image": "assets/fighters/muscleman/sprites/muscleman-throw.png",
-        "imageCrop": { "x": 0, "y": 0, "width": 990, "height": 1319 },
-        "imageScale": 2.8,
-        "imageOffset": { "x": 17, "y": -10 }
-      }
+  "moves": {
+    "power-throw": {
+      "cooldownMs": 1,
+      "windupMs": 0,
+      "attackDurationMs": 0,
+      "recoveryMs": 0
     }
   }
 }

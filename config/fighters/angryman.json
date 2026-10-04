@@ -4,44 +4,92 @@
   "name": "Angry Man",
   "color": "#d94a38",
   "combat": {
-    "faceTarget": { "mode": "always" },
-    "abilities": [{
-      "id": "charge",
-      "trigger": { "type": "nearest-enemy" },
-      "audio": { "windup": "attackWindup" },
-      "timing": { "cooldownMs": 6000, "windupMs": 875, "activeMs": 183, "recoveryMs": 150 },
-      "actions": [
-        { "type": "dash", "speedMultiplier": 6, "accelerationForce": 0.018, "endOn": ["fighter-collision", "wall-collision"] },
-        { "type": "damage", "amount": 50 },
-        { "type": "knockback", "forceMagnitude": 0.1 }
-      ]
-    }]
+    "faceTarget": {
+      "mode": "always"
+    }
   },
   "presentation": {
     "image": "assets/fighters/angryman/sprites/angryman.png",
     "imageScale": 3,
-    "imageOffset": { "x": 1, "y": 6 },
+    "imageOffset": {
+      "x": 1,
+      "y": 6
+    },
     "poses": {
       "idle": {
         "image": "assets/fighters/angryman/sprites/angryman.png",
-        "imageCrop": { "x": 0, "y": 0, "width": 1086, "height": 1128 },
+        "imageCrop": {
+          "x": 0,
+          "y": 0,
+          "width": 1086,
+          "height": 1128
+        },
         "imageScale": 2.6,
-        "imageOffset": { "x": -1, "y": -3 }
+        "imageOffset": {
+          "x": -1,
+          "y": -3
+        }
       },
       "attackWindup": {
         "image": "assets/fighters/angryman/sprites/angryman-windup.png",
-        "imageCrop": { "x": 0, "y": 0, "width": 1086, "height": 1060 },
+        "imageCrop": {
+          "x": 0,
+          "y": 0,
+          "width": 1086,
+          "height": 1060
+        },
         "imageScale": 3,
-        "imageOffset": { "x": -1, "y": 3 }
+        "imageOffset": {
+          "x": -1,
+          "y": 3
+        }
       },
       "attackActive": {
         "image": "assets/fighters/angryman/sprites/angryman-dash.png",
-        "imageCrop": { "x": 0, "y": 0, "width": 1086, "height": 1066 },
+        "imageCrop": {
+          "x": 0,
+          "y": 0,
+          "width": 1086,
+          "height": 1066
+        },
         "imageScale": 3,
-        "imageOffset": { "x": 23, "y": -1 }
+        "imageOffset": {
+          "x": 23,
+          "y": -1
+        }
       }
     },
-    "imageCrop": { "x": 0, "y": 0, "width": 1086, "height": 1023 },
+    "imageCrop": {
+      "x": 0,
+      "y": 0,
+      "width": 1086,
+      "height": 1023
+    },
     "defaultFacing": "left"
+  },
+  "components": {
+    "dash": {
+      "speedMultiplier": 6,
+      "accelerationForce": 0.018,
+      "endOn": [
+        "fighter-collision",
+        "wall-collision"
+      ],
+      "maxDurationMs": 5000,
+      "pose": "attackActive",
+      "hit": {
+        "damage": 50,
+        "knockback": 0.1
+      }
+    }
+  },
+  "moves": {
+    "charge": {
+      "cooldownMs": 6000,
+      "windupMs": 875,
+      "attackDurationMs": 183,
+      "recoveryMs": 150,
+      "windupSound": "attackWindup"
+    }
   }
 }

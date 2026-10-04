@@ -1,3 +1,4 @@
+import type { KnockbackReaction } from "../components/knockback-reaction";
 import { Body } from "matter-js";
 import type { Entity } from "../../engine/entity";
 import type { EntityRegistry } from "../../engine/entity-registry";
@@ -94,6 +95,9 @@ export class CombatResolver {
                   x: vector.x / length * force * FORCE_SCALE,
                   y: vector.y / length * force * FORCE_SCALE,
             });
+            if (source !== target) {
+                  target.components.get<KnockbackReaction>("knockback-reaction")?.knockedBack(force);
+            }
             this.emit({ kind: "knockback", sourceId, targetId: target.runtimeId, force });
             return true;
       }

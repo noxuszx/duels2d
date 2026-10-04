@@ -1,3 +1,4 @@
+import { KnockbackReaction } from "./components/knockback-reaction";
 import { Bodies, Body } from "matter-js";
 import { Entity } from "../engine/entity";
 import { BehaviorRuntime } from "../engine/behavior-runtime";
@@ -94,29 +95,35 @@ export interface SpawnFighterOptions {
 }
 
 /** Common floating-box preset. A blueprint equips only that fighter's extra capabilities. */
-export function createFighter(
-      simulation: Simulation, config: FighterConfig, options: SpawnFighterOptions, blueprint?: FighterBlueprint,
-): Entity {
+export function createFighter(simulation: Simulation, config: FighterConfig, options: SpawnFighterOptions, blueprint?: FighterBlueprint,): Entity {
+
       assertComponentData(config.components, config.moves);
       const bodyOptions = {
             restitution: 0.82, friction: 0, frictionAir: 0.018, frictionStatic: 0,
             collisionFilter: { group: options.collisionGroup ?? 0, category: 1, mask: 0xffff },
       };
+      
       const body = config.hitbox.type === "box"
             ? Bodies.rectangle(options.position.x + config.hitboxOffset.x, options.position.y + config.hitboxOffset.y,
                   config.hitbox.width, config.hitbox.height, bodyOptions)
             : Bodies.circle(options.position.x + config.hitboxOffset.x, options.position.y + config.hitboxOffset.y,
                   config.hitbox.radius, bodyOptions);
+
       Body.setVelocity(body, options.velocity);
-      const entity = new Entity({ runtimeId: options.runtimeId, configId: config.id,
-            teamId: options.teamId, ownerId: options.ownerId, body, config });
+      const entity = new Entity({
+            runtimeId: options.runtimeId, configId: config.id,
+            teamId: options.teamId, ownerId: options.ownerId, body, config
+      });
+
       const context = { entity, simulation, config };
       try {
+            entity.components.use("knockback-reaction", new KnockbackReaction(context));
             entity.components.use("movement", new FloatingMovement(context,
                   Math.hypot(options.velocity.x, options.velocity.y) || config.speed));
             blueprint?.install(context);
             simulation.add(entity);
       }
+
       catch (error) { entity.remove("removed"); throw error; }
       return entity;
 }

@@ -10,8 +10,8 @@ import { FloatingMovement } from "./movement";
 import { actionSound } from "./action-sound";
 
 export class Dasher implements EntityComponent {
-      constructor(private readonly context: ComponentContext, private readonly settings: DashSettings) {}
-      attach(): void {}
+      constructor(private readonly context: ComponentContext, private readonly settings: DashSettings) { }
+      attach(): void { }
       start(target: Entity): ScriptOperation { return new DashOperation(this.context, this.settings, target); }
 }
 
@@ -23,19 +23,24 @@ class DashOperation implements ScriptOperation {
       private direction = { x: 1, y: 0 };
       private hitTargets = new Set<string>();
       rejectionReason: "rejected" | "resource-conflict" = "rejected";
-      constructor(private readonly context: ComponentContext, private readonly settings: DashSettings, private readonly target: Entity) {}
+      constructor(private readonly context: ComponentContext, private readonly settings: DashSettings, private readonly target: Entity) { }
       get isComplete(): boolean { return this.complete; }
+
       start(scope: ScriptScope): boolean {
+
             if (this.started) return false;
             this.started = true;
             const { entity, simulation } = this.context;
             if (!entity.isAlive || !this.target.isAlive || entity.teamId === this.target.teamId ||
                   !simulation.entities.all().includes(this.target)) return false;
+
             const release = entity.resources.acquireExclusive("locomotion");
             if (!release) { this.rejectionReason = "resource-conflict"; return false; }
+
             scope.add(release);
             scope.add(entity.resources.acquireContactPolicy({ allowImpactDamage: false }));
             if (this.settings.pose) scope.add(entity.presentation.acquirePose(this.settings.pose));
+
             actionSound(entity, scope, this.settings.sound);
             const x = this.target.body.position.x - entity.body.position.x;
             const y = this.target.body.position.y - entity.body.position.y;
@@ -45,7 +50,9 @@ class DashOperation implements ScriptOperation {
             this.active = true;
             return true;
       }
+
       advance(deltaMs: number): number {
+
             if (!this.active) return 0;
             const consumed = Math.min(deltaMs, this.settings.maxDurationMs - this.elapsedMs);
             this.elapsedMs += consumed;

@@ -91,7 +91,9 @@ only this order and target choice. Component tuning and move cooldown live in
 `config/fighters/babyman.json` and remain editable in Character Studio.
 
 The reusable projectile component is implemented at
-`src/gameplay/components/projectile.ts`. Equip a `ProjectileEmitter`; behavior
+`src/gameplay/components/projectile/`. Its emitter owns firing decisions and
+feedback, its factory constructs and registers projectiles, and flight owns each
+projectile's lifetime and contacts. Equip a `ProjectileEmitter`; behavior
 code can yield `emitter.start(target)` as a one-use operation. On admission it
 calls `spawn(target)`, registers an owner-bound projectile with the simulation,
 and applies its configured flight/contact/ownership policy. Each projectile

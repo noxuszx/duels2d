@@ -116,7 +116,7 @@ This example requires `components.projectile` and `moves.shoot` in its JSON;
 these names are configuration keys, while `gun` is the behavior's attached handle.
 The schema and [settings types](../src/config/component-settings.ts) describe
 projectile collision, lifetime, ownership, art, and recoil settings. Inspect
-[flight](../src/gameplay/components/projectile.ts) for their runtime semantics.
+[flight](../src/gameplay/components/projectile/flight.ts) for their runtime semantics.
 
 Yield `gun.start(target)` so the shot happens after admission. `spawn(target)`
 is a lower-level immediate method and does not itself enforce move cooldowns.

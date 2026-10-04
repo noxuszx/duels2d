@@ -240,9 +240,9 @@ export class EntityAudio {
             return Math.max(
                   0,
                   audio.masterVolume *
-                        categoryVolume *
-                        characterVolume *
-                        (config.volume ?? 1),
+                  categoryVolume *
+                  characterVolume *
+                  (config.volume ?? 1),
             );
       }
 

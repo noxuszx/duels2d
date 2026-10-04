@@ -12,8 +12,8 @@ export class SpriteAim implements EntityComponent {
       private tracking: { token: object; target: Entity } | null = null;
       private releaseRotation: (() => void) | null = null;
 
-      constructor(private readonly context: ComponentContext, private readonly options: AimSkillOptions) {}
-      attach(): void {}
+      constructor(private readonly context: ComponentContext, private readonly options: AimSkillOptions) { }
+      attach(): void { }
 
       /** Resolve again at firing time, including a pose changed during this same step. */
       get current(): AimSolution | null {
@@ -58,8 +58,10 @@ export class SpriteAim implements EntityComponent {
             const pose = entityPose(entity);
             const offset = pose.imageOffset ?? { x: 0, y: 0 };
             this.geometry.update({
-                  center: { x: entity.body.position.x - entity.config.hitboxOffset.x + offset.x,
-                        y: entity.body.position.y - entity.config.hitboxOffset.y + offset.y },
+                  center: {
+                        x: entity.body.position.x - entity.config.hitboxOffset.x + offset.x,
+                        y: entity.body.position.y - entity.config.hitboxOffset.y + offset.y
+                  },
                   facing: entity.facing, defaultFacing: entity.config.defaultFacing,
             }, target.body.position, pose.aim ?? this.options);
             const solution = this.geometry.current;

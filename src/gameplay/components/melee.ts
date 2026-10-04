@@ -10,8 +10,8 @@ import { actionSound } from "./action-sound";
 
 /** Authored melee geometry; each admitted operation owns its own hit history. */
 export class MeleeAttack implements EntityComponent {
-      constructor(private readonly context: ComponentContext, private readonly settings: MeleeSettings) {}
-      attach(): void {}
+      constructor(private readonly context: ComponentContext, private readonly settings: MeleeSettings) { }
+      attach(): void { }
 
       inRange(target: Entity, padding = 0): boolean {
             if (!isEnemy(this.context, target) || !Number.isFinite(padding) || padding < 0) return false;
@@ -60,7 +60,7 @@ class MeleeOperation implements ScriptOperation {
       readonly endReason = "complete" as const;
 
       constructor(private readonly context: ComponentContext, private readonly settings: MeleeSettings,
-            private readonly target: Entity, private readonly durationMs: number) {}
+            private readonly target: Entity, private readonly durationMs: number) { }
 
       get isComplete(): boolean { return this.complete; }
 

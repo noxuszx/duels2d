@@ -56,10 +56,14 @@ export class AimGeometry {
                   Math.atan2(localDirection.y, localDirection.x);
             const cos = Math.cos(angle), sin = Math.sin(angle);
             this.solution = {
-                  origin: { x: pivot.x + cos * offset.x - sin * offset.y,
-                        y: pivot.y + sin * offset.x + cos * offset.y },
-                  direction: { x: cos * localDirection.x - sin * localDirection.y,
-                        y: sin * localDirection.x + cos * localDirection.y },
+                  origin: {
+                        x: pivot.x + cos * offset.x - sin * offset.y,
+                        y: pivot.y + sin * offset.x + cos * offset.y
+                  },
+                  direction: {
+                        x: cos * localDirection.x - sin * localDirection.y,
+                        y: sin * localDirection.x + cos * localDirection.y
+                  },
                   angle, pivot, localPivot: { ...localPivot }, flip,
             };
       }

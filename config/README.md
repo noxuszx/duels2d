@@ -4,10 +4,10 @@ Fighter JSON stores editable identity, balance, body, presentation, component,
 move, pose, and named-form data. Character Studio edits and serializes the same
 fields. Runtime behavior is implemented in TypeScript under `src/`.
 
-Baby Man is currently the only fighter with an active behavior blueprint. Other
-fighters keep their configured art and stats and use the passive setup. Their
-authored attack settings do not execute until a blueprint equips the mechanics
-and a behavior uses them. Common body, art, and stat settings still apply.
+Baby Man and Granny have active behavior blueprints. Other fighters keep their
+configured art and stats and use the passive setup. Authored attack settings do
+not execute until a blueprint equips the mechanics and a behavior uses them.
+Common body, art, and stat settings still apply.
 
 ## Files
 
@@ -31,8 +31,10 @@ move setting types are in `src/config/component-settings.ts`. Fighter JSON uses
 `components` holds settings for capabilities a fighter can equip. `moves` holds
 move settings referenced by behavior code, including an optional `windupSound`
 cue. Runtime admission consumes `cooldownMs`; timing/range/cue fields require
-explicit behavior/component use and do not create an automatic phase sequence. `forms` stores named component/move/pose data;
-runtime form execution must be implemented before a behavior can switch forms.
+explicit behavior/component use and do not create an automatic phase sequence.
+`forms` stores named component/move/pose data. The reusable `Forms` component
+lets behavior select a form, but does not install or remove component handles:
+definitions equip handles up front, and scripts decide which handles to use.
 Within a named form, supplied `components`, `moves`, and `poses` maps replace
 their whole base maps, so each entry needs its full required settings. An omitted map
 inherits the base map. An explicit `{}` remains empty after Studio save/reload.
@@ -81,10 +83,16 @@ Component names and settings are defined in
 The example uses placeholder asset paths and a cue name; add the corresponding
 assets and sound cue before validating it as a real fighter.
 
-The `projectile` component has a reusable runtime emitter and flight lifecycle,
-but a fighter only fires it when its blueprint equips the component and its
-behavior yields the fire operation. Runtime form switching remains future work;
-authored form data alone does not apply a form during gameplay.
+The `projectile` component has a reusable runtime emitter and flight lifecycle.
+Granny's blueprint equips an emitter and `SpriteAim`; its behavior follows a
+target and yields a shot operation. `MeleeAttack` provides reusable range checks
+and timed swings. Granny's behavior also sequences timed poses and enters its
+transformed form when health reaches the configured threshold. These are explicit
+script decisions; form data alone does not create automatic thresholds or phases.
+In Granny's data, the rolling-pin strike deals 45 damage with a 1100 ms cooldown;
+the transformed shotgun deals 90 damage, applies 0.12 recoil, and has a 1400 ms
+cooldown. Windup, active, recovery, and transformation pose durations are also
+configured in the move/form data.
 
 ## Validation
 
@@ -103,7 +111,7 @@ and summon IDs.
    `src/content/fighters/<id>/`. Equip reusable components in the definition and
    keep character choices/action order in behavior code.
 4. Register the completed blueprint in `src/content/manifest.ts`. Baby Man's
-   `definition.ts` and `behavior.ts` are the current example.
+   wall-crawl sequence and Granny's attack/form sequence are working examples.
 5. Open the fighter in Character Studio for visual and JSON tuning.
 
 The simulation foundation and config model are described in

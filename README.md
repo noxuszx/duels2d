@@ -6,8 +6,9 @@ to fight until one team remains. It was built for recording
 vertical video content.
 
 Gameplay uses a headless 120 Hz Matter.js simulation, reusable components, and
-TypeScript behavior scripts. Baby Man is currently the only active scripted
-fighter; other roster entries are passive opponents awaiting behavior migration.
+TypeScript behavior scripts. Baby Man and Granny have active scripted
+blueprints; the other roster entries use the passive setup while awaiting
+behavior migration.
 
 Start with the [documentation index](docs/README.md), then the
 [architecture](docs/fighter-architecture.md) and

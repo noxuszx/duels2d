@@ -2,8 +2,8 @@
 
 See [fighter-architecture.md](fighter-architecture.md) for the current runtime
 and ownership contracts. The simulation foundation has been implemented, and
-Baby Man is the only actively scripted fighter. All other roster entries use
-the passive setup until they receive a blueprint and behavior.
+Baby Man and Granny have active blueprints. All other roster entries use the
+passive setup until they receive a blueprint and behavior.
 
 ## Implemented foundation
 
@@ -14,10 +14,11 @@ the passive setup until they receive a blueprint and behavior.
   cancellation handling.
 - [x] Typed fighter blueprint assembly and reusable targeting, movement,
   wall-crawl, and dash components exercised by Baby Man; blueprints support
-  configured `onSpawn`, `onUpdate`, `onContact`, and `onWallContact` handlers.
+  configured `onSpawn`, `onUpdate`, `onContact`, and `onWallContact` handlers;
+  Granny also exercises declaration-ordered named actions and interruption.
 - [x] Owner-bound projectile emitter and per-projectile flight component with
-  configured lifetime, collision, hit, and owner/match removal policies; covered
-  by headless simulation fixtures, though not yet equipped by a roster fighter.
+  configured lifetime, collision, hit, and owner/match removal policies; Granny
+  equips an emitter with sprite aiming for her transformed shotgun move.
 - [x] Fighter JSON composition with `components`, `moves`, and named `forms`;
   Character Studio can edit and serialize these settings.
 - [x] Shared schema validation used by browser loading, Character Studio, and
@@ -28,17 +29,13 @@ the passive setup until they receive a blueprint and behavior.
 
 ## Remaining work
 
-- [ ] Manually review Baby Man gameplay on the new runtime and Character Studio
-  save/reload/undo behavior after the overhaul.
-- [ ] Select the next fighter or new character after Baby Man review, implementing
-  only the reusable capabilities its behavior needs.
-- [ ] Migrate fighters one at a time: inspect their authored data and assets,
+- [ ] Manually review Baby Man and Granny gameplay on the new runtime and
+  Character Studio save/reload/undo behavior after the overhaul.
+- [ ] Continue migrating fighters one at a time: inspect authored data and assets,
   compose needed components, write readable behavior decisions, then add each
   blueprint to `src/content/manifest.ts` only when ready.
-- [ ] Equip implemented mechanics as needed and implement remaining mechanics
-  for upcoming fighters, including runtime form/transformation execution.
-  Existing JSON or Studio editing support alone does not mean a runtime mechanic
-  exists.
+- [ ] Implement remaining mechanics only as upcoming fighters require them.
+  Authored JSON or Studio editing support alone does not make a runtime mechanic.
 - [ ] Continue checking ownership, contact order, cancellation, and safe cleanup
   as new components and mechanics are added.
 
@@ -54,7 +51,7 @@ the passive setup until they receive a blueprint and behavior.
 - [ ] Route damage, statuses, and contact effects through shared services.
   Scope movement/presentation overrides and release them on completion,
   interruption, death, removal, reset, and match end as applicable.
-- [ ] Keep the fighter passive until its behavior is ready and registered.
+- [ ] Keep each fighter passive until its behavior is ready and registered.
 - [ ] Manually check ordinary use, collisions, target validity, cooldown,
   interruption, cleanup, and Studio round trips for the migrated fighter.
 
@@ -69,15 +66,20 @@ the passive setup until they receive a blueprint and behavior.
 - [ ] Fighter JSON opens, edits, saves, reloads, and undoes in Character Studio
   without losing component, move, pose, or named-form fields.
 - [ ] Representative passive opponents remain usable in matches.
+- [ ] Granny swings toward enemies, shows realization and rage for one second
+  each at 40% health, and then fires aimed shots with backward recoil. Review
+  sprite placement, muzzle alignment, both facings, and restart in the browser.
 
 ## Deferred scope
 
-The immediate next gameplay work is roster migration and only the mechanics
-those fighters require. Projectile emission and flight are implemented, but
-no roster fighter equips them yet; transformation/form execution still needs
-implementation before a fighter can rely on it. Parallel task scheduling,
-general scripting concurrency, networking/replay, and arbitrary independently
-acting attachments are not part of the current foundation.
+The immediate gameplay work is roster migration and only the mechanics those
+fighters require. Granny now exercises reusable melee and sprite aiming, projectile
+emission, scoped timed poses, named form selection, and a scripted threshold
+transformation. Her handles are equipped by the definition and remain stable
+across form entry; behavior explicitly chooses which handles to use. Other roster
+behaviors and laser, damage-ramp, and saucer mechanics remain future work. Parallel
+task scheduling, general scripting concurrency, networking/replay, and arbitrary
+independently acting attachments are not part of the current foundation.
 
 ## Recorded foundation checkpoint
 
@@ -90,7 +92,17 @@ These results describe that checkpoint; later changes need their own appropriate
 verification. Browser automation was not run. Renewed Baby Man gameplay/visual
 acceptance and Studio browser save/reload/undo remain outstanding.
 
-This documentation cleanup uses source, local-link, and diff inspection only.
+## Granny migration verification
+
+The Granny migration passed 113 tests across 16 files, including 11 Granny
+simulation fixtures, 3 melee fixtures, and 4 aiming/render-transform fixtures.
+TypeScript, arena/Studio production builds, validation for all 10 fighter configs
+and referenced assets, and whitespace checks passed using existing dependencies.
+Headless coverage includes threshold timing, attack cooldowns, aimed projectile
+damage, recoil direction, separate instances, interrupted transformation, stale
+targets, and death/removal/reset/match-end cleanup. Browser visual review remains
+outstanding.
+
 For verification commands see [the project README](../README.md). Record what
 ran and what remains for manual review; do not equate automated checks with
 browser acceptance.

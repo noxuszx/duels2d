@@ -6,11 +6,13 @@ import { Entity } from "../../engine/entity";
 import type { ScriptOperation } from "../../engine/scripting/operation";
 import type { ScriptScope } from "../../engine/scripting/scope";
 import type { ComponentContext } from "../fighter-factory";
+import type { AimSolution } from "./aim-geometry";
 
 /** An owner-bound capability. Each spawn owns its own flight state and contact history. */
 export class ProjectileEmitter implements EntityComponent {
-      constructor(private readonly context: ComponentContext, private readonly settings: ProjectileEmitterSettings) {}
-      attach(): void {}
+      constructor(private readonly context: ComponentContext, private readonly settings: ProjectileEmitterSettings,
+            private readonly firingGeometry?: () => AimSolution | null) { }
+      attach(): void { }
 
       /** Inert until admitted by a behavior; a successful shot commits its move cooldown. */
       start(target: Entity): ScriptOperation {
@@ -24,22 +26,30 @@ export class ProjectileEmitter implements EntityComponent {
                   !simulation.entities.isLive(target) || !target.tags.has("targetable") ||
                   owner.teamId === target.teamId) return null;
             const shot = this.settings.projectile;
+            
             if (!Number.isFinite(shot.radius) || shot.radius <= 0 ||
                   !Number.isFinite(shot.speed) || shot.speed <= 0 ||
                   !Number.isFinite(shot.damage) || shot.damage < 0 ||
                   (shot.flight.lifetime.type === "duration" &&
                         (!Number.isFinite(shot.flight.lifetime.durationMs) || shot.flight.lifetime.durationMs <= 0)) ||
                   (Array.isArray(shot.image) && shot.image.length === 0)) return null;
+                  
+            const aim = this.firingGeometry?.();
+            if (this.firingGeometry && (!aim ||
+                  ![aim.origin.x, aim.origin.y, aim.direction.x, aim.direction.y].every(Number.isFinite) ||
+                  Math.abs(Math.hypot(aim.direction.x, aim.direction.y) - 1) > 1e-6)) return null;
             const dx = target.body.position.x - owner.body.position.x;
             const dy = target.body.position.y - owner.body.position.y;
             const length = Math.hypot(dx, dy);
-            const direction = length ? { x: dx / length, y: dy / length }
-                  : { x: owner.facing === "left" ? -1 : 1, y: 0 };
+            const direction = aim?.direction ?? (length ? { x: dx / length, y: dy / length }
+                  : { x: owner.facing === "left" ? -1 : 1, y: 0 });
             const halfWidth = (owner.body.bounds.max.x - owner.body.bounds.min.x) / 2;
             const halfHeight = (owner.body.bounds.max.y - owner.body.bounds.min.y) / 2;
             const offset = Math.hypot(halfWidth, halfHeight) + shot.radius + 1;
-            const position = { x: owner.body.position.x + direction.x * offset,
-                  y: owner.body.position.y + direction.y * offset };
+            const position = aim?.origin ?? {
+                  x: owner.body.position.x + direction.x * offset,
+                  y: owner.body.position.y + direction.y * offset
+            };
             const body = Bodies.circle(position.x, position.y, shot.radius, {
                   isSensor: shot.flight.collision.response === "sensor",
                   friction: 0, frictionAir: 0, restitution: 1,
@@ -49,7 +59,8 @@ export class ProjectileEmitter implements EntityComponent {
             const image = Array.isArray(shot.image)
                   ? shot.image[Math.floor(simulation.rng.next() * shot.image.length)]
                   : shot.image;
-            const config = { ...owner.config,
+            const config = {
+                  ...owner.config,
                   id: `${owner.configId}:projectile`, radius: shot.radius,
                   hitbox: { type: "circle" as const, radius: shot.radius },
                   hitboxOffset: { x: 0, y: 0 },
@@ -61,10 +72,12 @@ export class ProjectileEmitter implements EntityComponent {
                   speed: shot.speed, maxHealth: 1,
             };
             const runtimeId = simulation.nextRuntimeId(`${owner.runtimeId}:projectile`);
-            const projectile = new Entity({ runtimeId, configId: config.id,
+            const projectile = new Entity({
+                  runtimeId, configId: config.id,
                   teamId: owner.teamId, ownerId: owner.runtimeId,
                   tags: [], body, config,
-                  containWithinArena: shot.flight.collision.walls === "bounce" });
+                  containWithinArena: shot.flight.collision.walls === "bounce"
+            });
             projectile.components.use("flight", new ProjectileFlight(this.context, projectile, shot,
                   this.settings.hitSound, owner.runtimeId));
             simulation.add(projectile, {
@@ -85,7 +98,7 @@ class FireProjectile implements ScriptOperation {
       readonly rejectionReason = "rejected" as const;
       readonly endReason = "complete" as const;
 
-      constructor(private readonly emitter: ProjectileEmitter, private readonly target: Entity) {}
+      constructor(private readonly emitter: ProjectileEmitter, private readonly target: Entity) { }
 
       get isComplete(): boolean { return this.complete; }
       start(_scope: ScriptScope): boolean {
@@ -94,7 +107,7 @@ class FireProjectile implements ScriptOperation {
             return this.complete;
       }
       advance(_deltaMs: number): number { return 0; }
-      cancel(_reason: CancellationReason): void {}
+      cancel(_reason: CancellationReason): void { }
 }
 
 /** Per-projectile simulation lifetime and contact policy. */
@@ -111,7 +124,7 @@ export class ProjectileFlight implements EntityComponent {
             private readonly settings: ProjectileSettings,
             private readonly hitSound: string | undefined,
             private readonly sourceId: string,
-      ) {}
+      ) { }
 
       attach(): void {
             const { projectile, settings } = this;

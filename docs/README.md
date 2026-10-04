@@ -18,14 +18,20 @@ For gameplay work, read the architecture and authoring guides, then inspect the
 actual component and fighter source you will use. For configuration or editor
 changes, also read the configuration and Studio guides.
 
-Baby Man is the working reference:
+Baby Man and Granny are active blueprint examples:
 
 - [Definition](../src/content/fighters/babyman/definition.ts): component assembly
   and behavior-to-move bindings.
 - [Behavior](../src/content/fighters/babyman/behavior.ts): wall contact, crawl,
   then dash toward a freshly selected enemy.
 - [Configuration](../config/fighters/babyman.json): editable tuning and art.
+- [Granny definition](../src/content/fighters/granny/definition.ts): equipped
+  components and configured moves.
+- [Granny behavior](../src/content/fighters/granny/behavior.ts): ordered action
+  checks, interruption, attack timing, aiming, and transformation decisions.
+- [Granny configuration](../config/fighters/granny.json): base and transformed
+  component, move, and pose settings.
 
-Only Baby Man currently has an active blueprint. Other fighters are passive
-opponents. Projectile emission is implemented but not equipped by the roster;
-runtime form switching and the remaining fighter behaviors still need work.
+Baby Man and Granny have active blueprints. Other roster entries remain passive
+opponents. Granny exercises reusable melee, aimed projectile shots, and scripted
+form entry; see the architecture and authoring guides for their contracts.

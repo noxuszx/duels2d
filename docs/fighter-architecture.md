@@ -2,9 +2,9 @@
 
 The simulation foundation is implemented. Gameplay runs in a headless, fixed
 120 Hz simulation with explicit fighter definitions, reusable owner-bound
-components, and one foreground behavior task per fighter. Baby Man is the only
-fighter with an active scripted behavior; other roster entries use the shared
-passive setup and remain available as opponents. Fighter JSON and Character
+components, and one foreground behavior task per fighter. Baby Man and Granny
+have active scripted behaviors; other roster entries use the shared passive
+setup and remain available as opponents. Fighter JSON and Character
 Studio now use `components`, `moves`, and named `forms` as editable data.
 
 The browser application owns real-time frame accumulation, input/UI, assets,
@@ -95,7 +95,8 @@ The reusable projectile component is implemented at
 code can yield `emitter.start(target)` as a one-use operation. On admission it
 calls `spawn(target)`, registers an owner-bound projectile with the simulation,
 and applies its configured flight/contact/ownership policy. Each projectile
-tracks its own lifetime and hit history. No roster fighter currently equips it.
+tracks its own lifetime and hit history. Granny equips it with `SpriteAim` and
+fires toward the current target inside an explicit `aim.follow()` interval.
 
 ## Authoring and data
 
@@ -111,8 +112,11 @@ component use. There is no automatic phase sequence.
 
 Supplied form `components`, `moves`, and `poses` maps replace their respective
 base maps; omitted maps inherit during composition. An empty map is explicit.
-Runtime form switching remains unimplemented. Editing a threshold or pose
-sequence in Studio does not make a transformation execute.
+The `Forms` component selects named config data when behavior calls `enter()`;
+it does not install or remove component handles. Definitions equip stable handles
+once, and scripts decide which to use. Granny's behavior owns its health
+threshold, interruption, timed realization/rage poses, and eventual form entry.
+No threshold or sequence runs automatically from JSON.
 
 ## Simulation lifecycle and entity ownership
 
@@ -162,10 +166,11 @@ stops simulation time. Drawing and audio consume presentation output.
 src/
 ├── app/game-app.ts                 browser frame loop and wiring
 ├── content/
-│   ├── manifest.ts                 active blueprint registry (Baby Man only)
-│   └── fighters/babyman/
-│       ├── definition.ts           equipped components and move bindings
-│       └── behavior.ts             character decisions and sequence
+│   ├── manifest.ts                 active blueprint registry (Baby Man, Granny)
+│   ├── fighters/babyman/
+│   │   ├── definition.ts           equipped components and move bindings
+│   │   └── behavior.ts             character decisions and sequence
+│   └── fighters/granny/            equipped components and scripted actions
 ├── engine/
 │   ├── simulation.ts               fixed tick and gameplay resolution
 │   ├── entity.ts                   identity and lifetime state
@@ -179,7 +184,8 @@ src/
 ├── gameplay/
 │   ├── fighter-factory.ts          common preset and typed assembly
 │   ├── match-rules.ts              team outcomes and ambient impact tuning
-│   ├── components/                 movement, targeting, crawl, dash, projectile
+│   ├── components/                 movement, targeting, crawl, dash, melee, aim,
+│   │                               projectile, forms, and timed visuals
 │   ├── combat/                     shared effects
 │   └── statuses/                   definitions, registry, and controller
 ├── config/                         JSON composition and shared validation
@@ -189,12 +195,14 @@ src/
 
 ## Current scope
 
-Baby Man exercises targeting, wall crawl, and dash on the new foundation.
-Projectile emission/flight and stun, ability-lock, and burn are implemented,
-but no active roster behavior uses projectiles or statuses yet. Named-form
-editing is implemented; runtime form application is pending. Melee, automatic
-aiming, lasers, damage ramps, and saucers retain authored data/editor support,
-but their runtime mechanics still need implementation.
+Baby Man exercises targeting, wall crawl, and dash; Granny exercises melee
+attacks, sprite-based aiming and shotgun fire, timed poses, and script-selected
+forms. Projectile emission/flight and stun, ability-lock, and burn are
+implemented. `MeleeAttack` supplies range checks and timed swings;
+`SpriteAim` resolves aim geometry from the current sprite pose, and `Visuals`
+provides scoped timed poses that restore prior presentation on interruption.
+Laser, damage-ramp, and saucer mechanics still need implementation; other roster
+behaviors remain pending migration.
 
 Scripts remain TypeScript in the repository. Add only capabilities required by
 concrete content. Parallel behavior tasks, runtime-loaded mods, replay/networking,

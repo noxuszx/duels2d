@@ -53,9 +53,12 @@ export class CanvasRenderer {
             const image = this.image(view.pose.image);
             ctx.save();
             const offset = view.pose.imageOffset ?? { x: 0, y: 0 };
-            ctx.translate(view.x + offset.x, view.y + offset.y);
+            const pivot = view.rotationPivot ?? { x: 0, y: 0 };
+            const mirror = view.facing !== view.config.defaultFacing ? -1 : 1;
+            ctx.translate(view.x + offset.x + mirror * pivot.x, view.y + offset.y + pivot.y);
             ctx.rotate(view.angle);
-            ctx.scale(view.facing !== view.config.defaultFacing ? -1 : 1, 1);
+            ctx.scale(mirror, 1);
+            ctx.translate(-pivot.x, -pivot.y);
             if (image) {
                   const supplied = view.pose.imageCrop;
                   const x = Math.max(0, Math.min(supplied?.x ?? 0, image.naturalWidth - 1));

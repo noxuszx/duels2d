@@ -33,7 +33,7 @@ export class Entity {
       readonly containWithinArena: boolean;
       readonly ownerId: string | null;
       readonly body: Matter.Body;
-      readonly config: FighterConfig;
+      config: FighterConfig;
       readonly maxHealth: number;
       readonly presentation = new PresentationState();
       readonly resources = new ResourceLeases();

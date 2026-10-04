@@ -96,6 +96,9 @@
     }
   },
   "moves": {
+    "transformation": {
+      "cooldownMs": 0
+    },
     "rolling-pin-strike": {
       "cooldownMs": 1100,
       "windupMs": 250,

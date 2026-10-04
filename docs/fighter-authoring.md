@@ -3,7 +3,10 @@
 Read [the architecture](fighter-architecture.md) for ownership and lifecycle.
 [Baby Man's definition](../src/content/fighters/babyman/definition.ts),
 [behavior](../src/content/fighters/babyman/behavior.ts), and
-[configuration](../config/fighters/babyman.json) are the working reference.
+[configuration](../config/fighters/babyman.json) show a movement sequence.
+[Granny's definition](../src/content/fighters/granny/definition.ts),
+[behavior](../src/content/fighters/granny/behavior.ts), and
+[configuration](../config/fighters/granny.json) show attacks, aiming, and forms.
 
 ## Add a fighter
 
@@ -40,10 +43,34 @@ Baby Man's handler expresses the sequence directly:
 The runtime owns admission/cooldown/cancellation. Components own movement, poses,
 hits, and resource cleanup. Reselecting after crawl is the character's decision.
 
+For several independent moves, return an `actions` map keyed by configured move
+ID. Each entry supplies a `when` predicate and generator `run`; no event binding
+is needed in `tasks` for these entries:
+
+```ts
+actions: {
+  shoot: {
+    when: () => !!targeting.nearestEnemy(),
+    *run() {
+      const target = targeting.nearestEnemy();
+      if (target) yield gun.start(target);
+    },
+  },
+}
+```
+
+The runtime checks declaration order and the active form's move map, admits one
+ready action, and owns its cooldown. An entry with `interrupt: true` may replace
+another task when its condition and admission checks pass; it cannot interrupt
+itself. Granny uses this for transformation. A cancelled sequence stops; it is
+not resumed automatically. Granny's still-true threshold permits a fresh attempt
+after a status restriction ends, committing the form only after both timed poses.
+
 ## Compose an existing mechanic
 
-Projectile emission is implemented. A new fighter could equip it with targeting
-in `definition.ts`:
+Projectile emission is implemented. Granny is the roster example: its
+definition equips targeting, aim, and an emitter, then its behavior chooses when
+to fire. A new fighter could equip an emitter with targeting in `definition.ts`:
 
 ```ts
 import { defineFighter } from "../../../gameplay/fighter-factory";
@@ -138,12 +165,14 @@ and owner/match removal policies, and clean up components on detach. Use
 flight is the current working example. Additions inside a step become registered
 at its final boundary; logical removal is immediate.
 
-Named forms are editable data; runtime switching is still pending. Supplied
-`components`, `moves`, and `poses` maps replace their base map, omitted maps
-inherit during composition, and `{}` is explicitly empty. Component entries
-need full required settings. Thresholds and pose sequences do not execute by
-being present in JSON. Implement a reusable form-application mechanic before
-a behavior relies on transformations.
+Named forms are editable data, and the `Forms` component provides explicit
+selection for behavior scripts. Supplied `components`, `moves`, and `poses` maps
+replace their base map, omitted maps inherit during composition, and `{}` is
+explicitly empty. Component entries need full required settings. Form selection
+updates active config data but does not install or remove component handles;
+definitions equip those once and scripts decide which to use. Thresholds and pose
+sequences do not execute by being present in JSON. For a working threshold and
+transformation sequence, follow [Granny's behavior](../src/content/fighters/granny/behavior.ts).
 
 ## Verification
 

@@ -11,8 +11,10 @@ its own component settings. Weapon image, scale, and attachment offset remain in
 the Weapon controls.
 
 The Forms tab creates and selects named forms, edits optional health ratio data,
-and previews authored pose sequences. Runtime form application is still pending;
-this editor support does not make a transformation run during a match.
+and previews authored pose sequences. Runtime scripts can select configuration
+with `Forms.enter()`; Granny's behavior explicitly checks her health threshold
+and shows the sequence before entering her transformed form. Editor data alone
+does not make a transformation run during a match.
 Components and moves are editable as JSON in that tab; Apply validates known
 component names and move timing, commits one undo entry, and saves the document.
 The selected form's sprite and combat previews use its component and pose settings.

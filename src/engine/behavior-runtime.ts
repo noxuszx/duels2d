@@ -54,15 +54,15 @@ export class BehaviorRuntime {
       private dispatching = false;
       private disposed = false;
 
-      constructor(readonly owner: Entity, private readonly host: BehaviorHost) {}
+      constructor(readonly owner: Entity, private readonly host: BehaviorHost) { }
 
       get isRunning(): boolean { return this.current !== null; }
       get isBusy(): boolean { return this.current !== null; }
       get currentMove(): MoveDefinition | null { return this.current?.move ?? null; }
 
-      readiness(move: MoveDefinition, target: Entity | null): TaskRejectionReason | null {
+      readiness(move: MoveDefinition, target: Entity | null, allowInterrupt = false): TaskRejectionReason | null {
             if (this.disposed || this.closing || !this.isOwnerLive()) return "inactive";
-            if (this.current || this.admitting) return "busy";
+            if ((!allowInterrupt && this.current) || this.admitting) return "busy";
             if (!move || !move.id || !Number.isFinite(move.cooldownMs) || move.cooldownMs < 0) return "rejected";
             if (target && !this.isLiveEnemy(target)) return "invalid-target";
             if (!this.owner.statuses.canStartCast) return "status-blocked";
@@ -72,16 +72,14 @@ export class BehaviorRuntime {
             return null;
       }
 
-      start(
-            move: MoveDefinition,
-            target: Entity | null,
-            createGenerator: () => TaskGenerator,
-      ): TaskStartResult {
+      start(move: MoveDefinition, target: Entity | null, createGenerator: () => TaskGenerator,): TaskStartResult {
+
             const failure = this.readiness(move, target);
             if (failure) {
                   this.trace("rejected", move?.id ?? "", failure);
                   return { started: false, reason: failure };
             }
+
             this.admitting = true;
             let generator: TaskGenerator;
             try { generator = createGenerator(); }
@@ -91,11 +89,13 @@ export class BehaviorRuntime {
                   state: "running", reason: null,
                   cancel: reason => this.cancelTask(active, reason ?? "interrupted"),
             };
+
             active = {
                   move, generator, operation: null, scope: null,
                   admittedAtMs: this.host.now(), committed: false,
                   handle, startFailure: null,
             };
+            
             this.current = active;
             this.trace("admitted", move.id);
             try { this.drain(active, 0); }

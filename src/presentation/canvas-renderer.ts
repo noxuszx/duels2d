@@ -54,7 +54,7 @@ export class CanvasRenderer {
             ctx.save();
             const offset = view.pose.imageOffset ?? { x: 0, y: 0 };
             const pivot = view.rotationPivot ?? { x: 0, y: 0 };
-            const mirror = view.facing !== view.config.defaultFacing ? -1 : 1;
+            const mirror = view.facing !== (view.config.defaultFacing ?? "right") ? -1 : 1;
             ctx.translate(view.x + offset.x + mirror * pivot.x, view.y + offset.y + pivot.y);
             ctx.rotate(view.angle);
             ctx.scale(mirror, 1);
@@ -74,7 +74,7 @@ export class CanvasRenderer {
                         ctx.fillRect(rect.dx, rect.dy, rect.dw, rect.dh);
                   }
             } else {
-                  ctx.fillStyle = view.config.color;
+                  ctx.fillStyle = view.config.color ?? "#ffffff";
                   const box = view.config.hitbox;
                   if (box.type === "box") ctx.fillRect(-box.width / 2, -box.height / 2, box.width, box.height);
                   else { ctx.beginPath(); ctx.arc(0, 0, box.radius, 0, Math.PI * 2); ctx.fill(); }
@@ -85,8 +85,9 @@ export class CanvasRenderer {
       private health(view: EntityView): void {
             const { ctx } = this;
             const size = view.config.radius * 2;
-            const x = view.x - size / 2 + view.config.healthBarOffset.x;
-            const y = view.y - view.config.radius - 20 + view.config.healthBarOffset.y;
+            const healthOffset = view.config.healthBarOffset ?? { x: 0, y: 0 };
+            const x = view.x - size / 2 + healthOffset.x;
+            const y = view.y - view.config.radius - 20 + healthOffset.y;
             const unit = size / 3;
             const trace = () => {
                   ctx.beginPath();

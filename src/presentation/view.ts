@@ -1,10 +1,11 @@
 import type { Entity } from "../engine/entity";
-import type { FighterConfig, PoseOverrides, Vector2 } from "../types/fighter";
+import type { EntityConfig } from "../types/entity";
+import type { PoseOverrides, Vector2 } from "../types/fighter";
 
 /** Detached render data. Drawing cannot advance tasks, contacts or physics. */
 export interface EntityView {
       readonly runtimeId: string;
-      readonly config: FighterConfig;
+      readonly config: EntityConfig;
       readonly x: number;
       readonly y: number;
       readonly angle: number;
@@ -22,7 +23,7 @@ export function entityPose(entity: Entity): PoseOverrides {
       const requested = config.poses?.[entity.presentation.pose ?? "idle"] ?? config.poses?.idle;
       const overrides = typeof requested === "string" ? { image: requested } : requested;
       return { image: config.image ?? "", imageScale: config.imageScale,
-            imageCrop: config.imageCrop, imageOffset: { ...config.imageOffset }, ...overrides,
+            imageCrop: config.imageCrop, imageOffset: { ...(config.imageOffset ?? { x: 0, y: 0 }) }, ...overrides,
             ...entity.presentation.visual };
 }
 
@@ -30,8 +31,8 @@ export function entityView(entity: Entity): EntityView {
       const { config } = entity;
       return {
             runtimeId: entity.runtimeId, config,
-            x: entity.body.position.x - config.hitboxOffset.x,
-            y: entity.body.position.y - config.hitboxOffset.y,
+            x: entity.body.position.x - (config.hitboxOffset?.x ?? 0),
+            y: entity.body.position.y - (config.hitboxOffset?.y ?? 0),
             angle: entity.presentation.rotation ?? entity.body.angle,
             rotationPivot: entity.presentation.rotationPivot ? { ...entity.presentation.rotationPivot } : null,
             facing: entity.facing, health: entity.health, maxHealth: entity.maxHealth,

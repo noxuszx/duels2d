@@ -1,5 +1,5 @@
 import type * as Matter from "matter-js";
-import type { FighterConfig } from "../types/fighter";
+import type { EntityConfig } from "../types/entity";
 import { PresentationState } from "../presentation/state";
 import { StatusController } from "../gameplay/statuses";
 import { ComponentContainer, ResourceLeases } from "./component";
@@ -16,14 +16,31 @@ export interface EntityOptions {
       teamId: string;
       ownerId?: string | null;
       body: Matter.Body;
-      config: FighterConfig;
+      config: EntityConfig;
       health?: number;
       tags?: readonly string[];
       containWithinArena?: boolean;
       onPeriodicDamage?: (target: Entity, amount: number, sourceId: string | null) => void;
 }
 
-/** Headless fighter identity and lifetime. World registration belongs to Simulation. */
+/** Executes each cleanup task and re-throws the first encountered failure after all finish. */
+function runAllAndThrowFirstError(actions: Array<() => void>): void {
+      let firstError: unknown;
+      let failed = false;
+      for (const action of actions) {
+            try {
+                  action();
+            } catch (error) {
+                  if (!failed) {
+                        firstError = error;
+                        failed = true;
+                  }
+            }
+      }
+      if (failed) throw firstError;
+}
+
+/** Headless entity identity and lifetime. World registration belongs to Simulation. */
 export class Entity {
       readonly id: string;
       readonly runtimeId: string;
@@ -33,7 +50,7 @@ export class Entity {
       readonly containWithinArena: boolean;
       readonly ownerId: string | null;
       readonly body: Matter.Body;
-      config: FighterConfig;
+      config: EntityConfig;
       readonly maxHealth: number;
       readonly presentation = new PresentationState();
       readonly resources = new ResourceLeases();
@@ -42,7 +59,6 @@ export class Entity {
       behavior: BehaviorRuntime | null = null;
       health: number;
       facing: "left" | "right";
-      private removed = false;
       private removal: EntityRemovalReason | null = null;
 
       constructor(options: EntityOptions) {
@@ -57,9 +73,9 @@ export class Entity {
             this.config = options.config;
             this.maxHealth = options.config.maxHealth;
             this.health = Math.max(0, Math.min(options.health ?? this.maxHealth, this.maxHealth));
-            this.facing = options.config.defaultFacing;
+            this.facing = options.config.defaultFacing ?? "right";
             this.presentation.facing = this.facing;
-            this.presentation.imagePath = options.config.image;
+            this.presentation.imagePath = options.config.image ?? null;
             this.presentation.position = {
                   x: this.body.position.x,
                   y: this.body.position.y,
@@ -81,8 +97,8 @@ export class Entity {
 
       get ownerRuntimeId(): string | null { return this.ownerId; }
       get isDead(): boolean { return this.health <= 0; }
-      get isRemoved(): boolean { return this.removed; }
-      get isAlive(): boolean { return !this.isDead && !this.removed; }
+      get isRemoved(): boolean { return this.removal !== null; }
+      get isAlive(): boolean { return !this.isDead && !this.isRemoved; }
       get removalReason(): EntityRemovalReason | null { return this.removal; }
 
       setPeriodicDamageHandler(
@@ -92,7 +108,7 @@ export class Entity {
       }
 
       setBehavior(runtime: BehaviorRuntime): void {
-            if (this.removed) throw new Error("Cannot attach behavior to a removed entity");
+            if (this.isRemoved) throw new Error("Cannot attach behavior to a removed entity");
             if (this.behavior && this.behavior !== runtime) throw new Error("Behavior already attached");
             this.behavior = runtime;
       }
@@ -103,17 +119,11 @@ export class Entity {
             const applied = Math.min(this.health, amount);
             this.health -= applied;
             if (this.isDead) {
-                  let firstError: unknown;
-                  let failed = false;
-                  for (const action of [
+                  runAllAndThrowFirstError([
                         () => this.behavior?.cancel("death"),
                         () => this.components.cancel("death"),
                         () => this.statuses.clear(),
-                  ]) {
-                        try { action(); }
-                        catch (error) { if (!failed) firstError = error; failed = true; }
-                  }
-                  if (failed) throw firstError;
+                  ]);
             }
             return applied;
       }
@@ -130,7 +140,8 @@ export class Entity {
             this.statuses.update(deltaMs);
             if (!this.isAlive) return;
             this.behavior?.update(deltaMs);
-            if (this.isAlive) this.components.beforeStep(deltaMs);
+            if (!this.isAlive) return;
+            this.components.beforeStep(deltaMs);
       }
 
       afterStep(deltaMs: number): void {
@@ -149,34 +160,26 @@ export class Entity {
       }
 
       cancel(reason: CancellationReason): void {
-            let failure: unknown;
-            let failed = false;
-            for (const action of [() => this.behavior?.cancel(reason), () => this.components.cancel(reason)]) {
-                  try { action(); }
-                  catch (error) { if (!failed) failure = error; failed = true; }
-            }
-            if (failed) throw failure;
+            runAllAndThrowFirstError([
+                  () => this.behavior?.cancel(reason),
+                  () => this.components.cancel(reason),
+            ]);
       }
 
       /** Marks lifetime synchronously; Simulation removes the Matter body safely later. */
       remove(reason: EntityRemovalReason = "removed"): void {
-            if (this.removed) return;
-            this.removed = true;
+            if (this.isRemoved) return;
             this.removal = reason;
             const cancellation: CancellationReason = reason === "match-ended" ? "match-ended"
                   : reason === "reset" ? "reset" : "removed";
-            let failed = false;
-            let firstError: unknown;
-            const release = (action: () => void) => {
-                  try { action(); }
-                  catch (error) { if (!failed) firstError = error; failed = true; }
-            };
-            release(() => this.behavior?.cancel(cancellation));
-            release(() => this.components.detach(cancellation));
-            release(() => this.statuses.clear());
-            release(() => this.resources.clear());
-            release(() => this.presentation.clear());
-            if (failed) throw firstError;
+
+            runAllAndThrowFirstError([
+                  () => this.behavior?.cancel(cancellation),
+                  () => this.components.detach(cancellation),
+                  () => this.statuses.clear(),
+                  () => this.resources.clear(),
+                  () => this.presentation.clear(),
+            ]);
       }
 
       private syncPresentation(): void {

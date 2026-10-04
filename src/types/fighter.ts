@@ -1,32 +1,46 @@
 import type { FighterComponents, MoveConfig } from "../config/component-settings";
 export type { FighterComponents, MoveConfig } from "../config/component-settings";
 
+export type Facing = "left" | "right";
+export type FaceTargetMode = "never" | "always" | "range";
+export interface FaceTargetConfig {
+      mode: FaceTargetMode;
+}
+
+
+
 export interface Vector2 {
       x: number;
       y: number;
 }
+
+
 export interface ImageCrop {
       x: number;
       y: number;
       width: number;
       height: number;
 }
-export type Facing = "left" | "right";
-export type FaceTargetMode = "never" | "always" | "range";
-export interface FaceTargetConfig {
-      mode: FaceTargetMode;
-}
+
+
+
 export interface BoxHitbox {
       type: "box";
       width: number;
       height: number;
 }
+
+
+
 export interface CircleHitbox {
       type: "circle";
       radius: number;
 }
+
 export type Hitbox = BoxHitbox | CircleHitbox;
-/** Coordinates in the unflipped sprite's local drawing space, in game pixels. */
+
+
+
 export interface AimSkillOptions {
       muzzle: Vector2;
       pivot?: Vector2;
@@ -41,8 +55,12 @@ export interface PoseOverrides {
       imageOffset?: Vector2;
       aim?: AimSkillOptions;
 }
+
+
 export type PoseConfig = string | PoseOverrides;
 export type FighterPoses = Record<string, PoseConfig> | null;
+
+
 
 /** Form settings are data; a behavior decides when and how to apply them. */
 export interface FighterForm {
@@ -112,25 +130,22 @@ export interface FighterDefaults {
       lines: FighterLines;
 }
 
+import type { EntityConfig } from "./entity";
+export type { EntityConfig } from "./entity";
+
 /** Fully-composed runtime representation consumed by fighters and game systems. */
-export interface FighterConfig {
-      id: string;
+export interface FighterConfig extends EntityConfig {
       name: string;
       color: string;
       selectable?: boolean;
       components: FighterComponents;
       moves: Record<string, MoveConfig>;
-      maxHealth: number;
-      speed: number;
       baseDamage: number;
       faceTarget: FaceTargetConfig;
-      radius: number;
-      hitbox: Hitbox;
       hitboxOffset: Vector2;
-      image: string | null;
+      defaultFacing: Facing;
       imageScale: number;
       imageOffset: Vector2;
-      imageCrop: ImageCrop | null;
       healthBarOffset: Vector2;
       weaponScale: number;
       weaponOffset: Vector2;
@@ -139,7 +154,6 @@ export interface FighterConfig {
       weaponAttack?: string | null;
       poses: FighterPoses;
       forms: Record<string, FighterForm>;
-      defaultFacing: Facing;
       lines: FighterLines;
 }
 

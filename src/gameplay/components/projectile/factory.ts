@@ -2,14 +2,22 @@ import { Bodies, Body } from "matter-js";
 import type { ProjectileSettings } from "../../../config/component-settings";
 import type { Vector2 } from "../../../engine/contracts";
 import { Entity } from "../../../engine/entity";
+import type { EntityConfig } from "../../../types/entity";
 import type { ComponentContext } from "../../fighter-factory";
 import { ProjectileFlight } from "./flight";
 
-export interface ProjectileTrajectory { position: Vector2; direction: Vector2; }
+export interface ProjectileTrajectory {
+      position: Vector2;
+      direction: Vector2;
+}
 
 /** Constructs a projectile, equips its flight component, and registers its lifetime policies. */
-export function createProjectile(context: ComponentContext, shot: ProjectileSettings, trajectory: ProjectileTrajectory, hitSound?: string,): Entity {
-
+export function createProjectile(
+      context: ComponentContext,
+      shot: ProjectileSettings,
+      trajectory: ProjectileTrajectory,
+      hitSound?: string,
+): Entity {
       const { entity: owner, simulation } = context;
       const { position, direction } = trajectory;
 
@@ -19,7 +27,7 @@ export function createProjectile(context: ComponentContext, shot: ProjectileSett
             frictionAir: 0,
             restitution: 1,
       });
-      
+
       Body.setInertia(body, Infinity);
       Body.setVelocity(body, { x: direction.x * shot.speed, y: direction.y * shot.speed });
 
@@ -27,29 +35,16 @@ export function createProjectile(context: ComponentContext, shot: ProjectileSett
             ? shot.image[Math.floor(simulation.rng.next() * shot.image.length)]
             : shot.image;
 
-      const config = {
-
-            ...owner.config,
-
+      const config: EntityConfig = {
             id: `${owner.configId}:projectile`,
             radius: shot.radius,
-
-            hitbox: { type: "circle" as const, radius: shot.radius },
+            hitbox: { type: "circle", radius: shot.radius },
             hitboxOffset: { x: 0, y: 0 },
-
-            image: image ?? null,
-            imageScale: image ? shot.imageScales?.[image] ?? 1 : 1,
-            imageOffset: { x: 0, y: 0 },
-            imageCrop: null,
-
-            healthBarOffset: { x: 0, y: 0 },
-            poses: null,
-
-            forms: {},
-            components: {},
-            moves: {},
             speed: shot.speed,
             maxHealth: 1,
+            defaultFacing: owner.facing,
+            image: image ?? null,
+            imageScale: image ? shot.imageScales?.[image] ?? 1 : 1,
       };
 
       const runtimeId = simulation.nextRuntimeId(`${owner.runtimeId}:projectile`);
@@ -74,5 +69,6 @@ export function createProjectile(context: ComponentContext, shot: ProjectileSett
             ownerRemoval: shot.flight.ownership.onOwnerRemoval,
             matchEnd: shot.flight.ownership.onMatchEnd,
       });
+
       return projectile;
 }

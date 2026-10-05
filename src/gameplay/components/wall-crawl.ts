@@ -5,7 +5,7 @@ import type { EntityComponent } from "../../engine/component";
 import type { ScriptOperation } from "../../engine/scripting/operation";
 import type { ScriptScope } from "../../engine/scripting/scope";
 import type { CrawlSettings } from "../../config/component-settings";
-import type { ComponentContext } from "../fighter-factory";
+import type { ComponentContext } from "../../engine/component";
 import { FloatingMovement } from "./movement";
 import { actionSound } from "./action-sound";
 

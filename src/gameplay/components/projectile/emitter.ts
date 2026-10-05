@@ -4,7 +4,7 @@ import type { CancellationReason, Vector2 } from "../../../engine/contracts";
 import type { Entity } from "../../../engine/entity";
 import type { ScriptOperation } from "../../../engine/scripting/operation";
 import type { ScriptScope } from "../../../engine/scripting/scope";
-import type { ComponentContext } from "../../fighter-factory";
+import type { ComponentContext } from "../../../engine/component";
 import type { AimSolution } from "../aim-geometry";
 
 import { createProjectile, type ProjectileTrajectory } from "./factory";
@@ -136,4 +136,3 @@ class FireProjectile implements ScriptOperation {
       advance(_deltaMs: number): number { return 0; }
       cancel(_reason: CancellationReason): void { }
 }
-

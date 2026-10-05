@@ -113,8 +113,11 @@ policies. Play/pause remain available after the result; reset/disposal still cle
 the world. The initial continuation check passed 115 tests across 16 files before
 its three additional post-result fixtures were removed. Existing expectations
 remain aligned with the new behavior; no tests were rerun for this removal.
-TypeScript still reports the same 14 existing errors
-from the partial `EntityConfig` migration; none were added by this change.
+At that checkpoint, TypeScript reported 14 errors from the partial `EntityConfig`
+migration. The subsequent entity-boundary completion resolves those errors,
+normalizes generic configuration defaults, and retains typed fighter contexts.
+TypeScript and arena/Studio builds pass; existing tests were reused, with no new
+fixtures added for that completion.
 
 For verification commands see [the project README](../README.md). Record what
 ran and what remains for manual review; do not equate automated checks with

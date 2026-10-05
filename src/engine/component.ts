@@ -1,5 +1,14 @@
 import type { ContactEvent, ContactPolicy, CancellationReason } from "./contracts";
 import type { Entity } from "./entity";
+import type { EntityConfig, RuntimeEntityConfig } from "../types/entity";
+import type { Simulation } from "./simulation";
+
+/** Mechanics can be attached to any entity; fighter assembly narrows its config. */
+export interface ComponentContext<C extends EntityConfig = EntityConfig> {
+      entity: Entity<C>;
+      simulation: Simulation;
+      readonly config: RuntimeEntityConfig<C>;
+}
 
 /** Persistent, owner-bound capability. Its public methods may create per-use operations. */
 export interface EntityComponent {

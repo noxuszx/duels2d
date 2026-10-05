@@ -8,22 +8,22 @@ import { SpriteAim } from "../src/gameplay/components/aim";
 import { ProjectileEmitter } from "../src/gameplay/components/projectile";
 import { CanvasRenderer } from "../src/presentation/canvas-renderer";
 import { entityView } from "../src/presentation/view";
-import type { FighterConfig } from "../src/types/fighter";
+import type { EntityConfig } from "../src/types/entity";
 
 function fixture() {
-      const config = { id: "aim", maxHealth: 100, speed: 0, radius: 10,
+      const config: EntityConfig = { id: "aim", maxHealth: 100, speed: 0, radius: 10,
             hitbox: { type: "circle", radius: 10 }, hitboxOffset: { x: 3, y: -4 },
             defaultFacing: "left", image: null, imageScale: 1, imageOffset: { x: 5, y: 7 },
             poses: { fire: { image: "", imageOffset: { x: -2, y: 6 },
                   aim: { muzzle: { x: -24, y: 5 }, pivot: { x: -6, y: 2 } } } },
-      } as FighterConfig;
+      };
       const simulation = new Simulation({ arena: { minX: 0, maxX: 500, minY: 0, maxY: 400 }, seed: 7 });
       const owner = new Entity({ runtimeId: "owner", configId: "owner", teamId: "A", config,
             body: Bodies.circle(100, 100, 10) });
       const target = new Entity({ runtimeId: "target", configId: "target", teamId: "B", config,
             body: Bodies.circle(300, 190, 10) });
       simulation.add(owner); simulation.add(target);
-      const context = { entity: owner, simulation, config };
+      const context = { entity: owner, simulation, get config() { return owner.config; } };
       const aim = owner.components.use("aim", new SpriteAim(context,
             { muzzle: { x: -20, y: 3 }, pivot: { x: -4, y: 1 } }));
       const settings: ProjectileEmitterSettings = { recoil: .12, projectile: { radius: 2, speed: 10, damage: 5,
@@ -71,7 +71,8 @@ describe("owner-bound sprite aim", () => {
             const solution = aim.current!;
             const calls: Array<[string, ...number[]]> = [];
             const ctx = { clearRect() {}, strokeRect() {}, fillText() {}, save() {}, restore() {},
-                  beginPath() {}, arc() {}, fill() {},
+                  beginPath() {}, arc() {}, fill() {}, rect() {}, moveTo() {}, lineTo() {}, closePath() {},
+                  measureText: () => ({ width: 80 }),
                   translate: (x: number, y: number) => calls.push(["translate", x, y]),
                   rotate: (angle: number) => calls.push(["rotate", angle]),
                   scale: (x: number, y: number) => calls.push(["scale", x, y]),
@@ -93,8 +94,8 @@ describe("owner-bound sprite aim", () => {
                   aim: { muzzle: { x: -30, y: 0 }, pivot: { x: -8, y: 0 } } });
             expect(aim.current!.localPivot).toEqual({ x: -8, y: 0 });
             visual();
-            owner.config = { ...config, imageOffset: { x: 20, y: 30 }, hitboxOffset: { x: 0, y: 0 } };
-            expect(aim.current!.pivot).toEqual({ x: 124, y: 131 });
+            owner.setConfiguration({ ...config, imageOffset: { x: 20, y: 30 } });
+            expect(aim.current!.pivot).toEqual({ x: 121, y: 135 });
             target.takeDamage(100);
             expect(aim.current).toBeNull();
             expect(emitter.spawn(target)).toBeNull();

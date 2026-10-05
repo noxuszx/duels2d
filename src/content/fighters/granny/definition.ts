@@ -10,7 +10,7 @@ import { grannyBehavior } from "./behavior";
 export const granny = defineFighter({
       id: "granny",
       components: {
-            targeting: context => new Targeting(context),
+            targeting: context => new Targeting(context, context.config.faceTarget),
             forms: context => new Forms(context),
             visuals: context => new Visuals(context),
             melee: context => {

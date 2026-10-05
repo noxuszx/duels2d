@@ -28,11 +28,13 @@ function halfExtents(entity: Entity): { x: number; y: number } {
 function snapshot(entity: Entity, wall: ArenaWall, normal: Vector2, incomingSpeed: number,
       velocity: Vector2): WallContactSnapshot {
       const policy = entity.resources.contactPolicy;
-      return Object.freeze({ kind: "wall", id: entity.runtimeId, wall,
+      return Object.freeze({
+            kind: "wall", id: entity.runtimeId, wall,
             normal: Object.freeze(normal), incomingSpeed,
             velocity: Object.freeze(velocity),
             policy: Object.freeze({ ...policy }),
-            hadForegroundTask: entity.behavior?.isRunning ?? false });
+            hadForegroundTask: entity.behavior?.isRunning ?? false
+      });
 }
 
 /** Corrects penetration after Matter integration and captures contacts for later gameplay dispatch. */

@@ -1,7 +1,7 @@
 import type { EntityComponent } from "../../engine/component";
 import type { FighterConfig, FighterForm } from "../../types/fighter";
 import type { MoveConfig } from "../../config/component-settings";
-import type { ComponentContext } from "../fighter-factory";
+import type { FighterContext } from "../fighter-factory";
 
 /** Named configuration selection; scripts own thresholds and transition sequences.
  * Equipped handles remain stable. Selecting a form never installs new components.
@@ -10,7 +10,7 @@ export class Forms implements EntityComponent {
       private readonly base: FighterConfig;
       private selected: string | null = null;
 
-      constructor(private readonly context: ComponentContext) { this.base = context.config; }
+      constructor(private readonly context: FighterContext) { this.base = context.config; }
       attach(): void {}
       get healthRatio(): number { return this.context.entity.health / this.context.entity.maxHealth; }
       is(name: string): boolean { return this.selected === name; }
@@ -27,8 +27,8 @@ export class Forms implements EntityComponent {
       enter(name: string): void {
             const form = this.settings(name);
             if (!this.context.entity.isAlive) return;
-            this.context.entity.config = { ...this.base,
-                  components: form.components, moves: form.moves, poses: form.poses };
+            this.context.entity.setConfiguration({ ...this.base,
+                  components: form.components, moves: form.moves, poses: form.poses });
             this.selected = name;
       }
 }

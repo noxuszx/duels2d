@@ -1,4 +1,6 @@
 {
-      "workbench.colorTheme": "GitHub Dark Colorblind (Beta)",
-      "workbench.iconTheme": "material-icon-theme"
+      "workbench.colorTheme": "Dark Modern",
+      "workbench.iconTheme": "material-icon-theme",
+      "editor.allowVariableFonts": true,
+      "editor.fontFamily": "'Hack Nerd Font', Consolas, 'Courier New', monospace"
 }

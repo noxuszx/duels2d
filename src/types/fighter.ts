@@ -1,67 +1,14 @@
 import type { FighterComponents, MoveConfig } from "../config/component-settings";
 export type { FighterComponents, MoveConfig } from "../config/component-settings";
 
-export type Facing = "left" | "right";
+import type { Facing, Vector2, ImageCrop, Hitbox, EntityPoses } from "./entity";
+export type { Facing, Vector2, ImageCrop, BoxHitbox, CircleHitbox, Hitbox,
+      AimSkillOptions, PoseOverrides, PoseConfig } from "./entity";
+export type FighterPoses = EntityPoses;
 export type FaceTargetMode = "never" | "always" | "range";
 export interface FaceTargetConfig {
       mode: FaceTargetMode;
 }
-
-
-
-export interface Vector2 {
-      x: number;
-      y: number;
-}
-
-
-export interface ImageCrop {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-}
-
-
-
-export interface BoxHitbox {
-      type: "box";
-      width: number;
-      height: number;
-}
-
-
-
-export interface CircleHitbox {
-      type: "circle";
-      radius: number;
-}
-
-export type Hitbox = BoxHitbox | CircleHitbox;
-
-
-
-export interface AimSkillOptions {
-      muzzle: Vector2;
-      pivot?: Vector2;
-      /** Barrel direction in the authored sprite, degrees clockwise from right. */
-      forwardDegrees?: number;
-}
-
-export interface PoseOverrides {
-      image: string;
-      imageCrop?: ImageCrop | null;
-      imageScale?: number;
-      imageOffset?: Vector2;
-      aim?: AimSkillOptions;
-}
-
-
-export type PoseConfig = string | PoseOverrides;
-export type FighterPoses = Record<string, PoseConfig> | null;
-
-
-
 /** Form settings are data; a behavior decides when and how to apply them. */
 export interface FighterForm {
       components: FighterComponents;

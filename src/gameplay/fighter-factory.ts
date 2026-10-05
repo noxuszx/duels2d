@@ -2,7 +2,7 @@ import { KnockbackReaction } from "./components/knockback-reaction";
 import { Bodies, Body } from "matter-js";
 import { Entity } from "../engine/entity";
 import { BehaviorRuntime } from "../engine/behavior-runtime";
-import type { EntityComponent } from "../engine/component";
+import type { EntityComponent, ComponentContext } from "../engine/component";
 import type { ArenaWall, ContactEvent, RuntimeTrace } from "../engine/contracts";
 import type { ScriptOperation } from "../engine/scripting/operation";
 import type { Simulation } from "../engine/simulation";
@@ -10,8 +10,8 @@ import type { FighterConfig, Vector2 } from "../types/fighter";
 import { FloatingMovement } from "./components/movement";
 import { assertComponentData } from "../config/validation";
 
-export interface ComponentContext { entity: Entity; simulation: Simulation; config: FighterConfig; }
-export type ComponentFactory<T extends EntityComponent> = (context: ComponentContext) => T;
+export type FighterContext = ComponentContext<FighterConfig>;
+export type ComponentFactory<T extends EntityComponent> = (context: FighterContext) => T;
 export type BehaviorContact = { kind: "wall"; wall: ArenaWall } | { kind: "entity"; other: Entity };
 
 export interface BehaviorAction {
@@ -39,7 +39,7 @@ interface DefinitionSpec<B extends BehaviorFactory> {
 }
 export interface FighterBlueprint {
       id: string;
-      install(context: ComponentContext): void;
+      install(context: FighterContext): void;
 }
 
 /** Typed assembly binds components once. Scripts receive handles, never the runtime. */
@@ -119,7 +119,7 @@ export interface SpawnFighterOptions {
 }
 
 /** Common floating-box preset. A blueprint equips only that fighter's extra capabilities. */
-export function createFighter(simulation: Simulation, config: FighterConfig, options: SpawnFighterOptions, blueprint?: FighterBlueprint,): Entity {
+export function createFighter(simulation: Simulation, config: FighterConfig, options: SpawnFighterOptions, blueprint?: FighterBlueprint,): Entity<FighterConfig> {
 
       assertComponentData(config.components, config.moves);
       const bodyOptions = {

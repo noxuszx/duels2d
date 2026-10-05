@@ -2,7 +2,7 @@ import type { EntityComponent } from "../../engine/component";
 import type { ScriptOperation } from "../../engine/scripting/operation";
 import { wait } from "../../engine/scripting/wait";
 import type { PoseConfig } from "../../types/fighter";
-import type { ComponentContext } from "../fighter-factory";
+import type { ComponentContext } from "../../engine/component";
 
 /** Scoped visual timing; interruption restores the previous pose automatically. */
 export class Visuals implements EntityComponent {

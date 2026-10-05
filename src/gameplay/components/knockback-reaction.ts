@@ -1,5 +1,5 @@
 import type { EntityComponent } from "../../engine/component";
-import type { ComponentContext } from "../fighter-factory";
+import type { ComponentContext } from "../../engine/component";
 
 /** Attack reactions temporarily yield upright control without changing collision policy. */
 export class KnockbackReaction implements EntityComponent {

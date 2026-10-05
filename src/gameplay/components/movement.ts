@@ -1,6 +1,6 @@
 import { Body } from "matter-js";
 import type { EntityComponent } from "../../engine/component";
-import type { ComponentContext } from "../fighter-factory";
+import type { ComponentContext } from "../../engine/component";
 import { SIMULATION_STEP_MS } from "../../engine/simulation";
 
 /** Default cruise/upright behavior yields control to a leased locomotion component. */

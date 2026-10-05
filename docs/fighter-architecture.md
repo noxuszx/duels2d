@@ -102,6 +102,18 @@ fires toward the current target inside an explicit `aim.follow()` interval.
 
 ## Authoring and data
 
+`Entity<C>` uses common physical/visual configuration, with optional fields
+normalized once at construction. `Entity<FighterConfig>` preserves fighter
+metadata for typed assembly without adding a separate fighter class. Generic
+mechanics use `ComponentContext` from `engine/component.ts`; fighter definitions
+and forms use `FighterContext` from the factory. Targeting receives its facing
+policy explicitly rather than assuming its owner is a fighter.
+
+Configuration access is read-only. `setConfiguration()` normalizes replacement
+settings and rejects changes to identity, hitbox/offset, radius, and maximum
+health, since it does not rebuild physics or health state. Forms use that method;
+equipped component handles still retain their explicitly supplied settings.
+
 See [fighter authoring](fighter-authoring.md) for definition/behavior examples,
 component contracts, and spawned entity ownership. The
 [configuration guide](../config/README.md) describes editable data and validation;

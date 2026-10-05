@@ -27,7 +27,7 @@ export class MatterContactCollector {
       private readonly contacts: EntityContactSnapshot[] = [];
       private attached = false;
 
-      constructor(private readonly engine: Engine, private readonly registry: EntityRegistry) {}
+      constructor(private readonly engine: Engine, private readonly registry: EntityRegistry) { }
 
       attach(): void {
             if (this.attached) return;
@@ -76,12 +76,16 @@ export class MatterContactCollector {
                   const incomingSpeed = Math.abs(relative.x * normalA.x + relative.y * normalA.y);
                   const snapshot: EntityContactSnapshot = Object.freeze({
                         kind: "entity",
-                        first: Object.freeze({ id: first.runtimeId,
+                        first: Object.freeze({
+                              id: first.runtimeId,
                               policy: snapshotPolicy(first.resources.contactPolicy),
-                              hadForegroundTask: first.behavior?.isRunning ?? false }),
-                        second: Object.freeze({ id: second.runtimeId,
+                              hadForegroundTask: first.behavior?.isRunning ?? false
+                        }),
+                        second: Object.freeze({
+                              id: second.runtimeId,
                               policy: snapshotPolicy(second.resources.contactPolicy),
-                              hadForegroundTask: second.behavior?.isRunning ?? false }),
+                              hadForegroundTask: second.behavior?.isRunning ?? false
+                        }),
                         normal: Object.freeze(normalA),
                         incomingSpeed,
                   });

@@ -7,7 +7,7 @@ import { babyBehavior } from "./behavior";
 export const babyMan = defineFighter({
       id: "babyman",
       components: {
-            targeting: context => new Targeting(context),
+            targeting: context => new Targeting(context, context.config.faceTarget),
             wallCrawl: context => {
                   if (!context.config.components.wallCrawl) throw new Error("Baby Man requires wallCrawl settings");
                   return new WallCrawler(context, context.config.components.wallCrawl);

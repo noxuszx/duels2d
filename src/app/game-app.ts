@@ -93,8 +93,10 @@ export class GameApp {
                   }
             }
             const views = this.simulation.entities.all().map(entityView);
-            this.renderer.render(this.width, this.height, { ax: this.overflow, ay: this.overflow,
-                  aw: this.arenaWidth, ah: this.arenaHeight }, views, this.simulation.nowMs);
+            this.renderer.render(this.width, this.height, {
+                  ax: this.overflow, ay: this.overflow,
+                  aw: this.arenaWidth, ah: this.arenaHeight
+            }, views, this.simulation.nowMs);
             requestAnimationFrame(next => this.frame(next));
       }
       private consumeEffects(): void {
@@ -102,8 +104,10 @@ export class GameApp {
             for (const event of world.events.splice(0)) {
                   if (event.kind === "damage") {
                         const entity = world.entities.get(event.targetId);
-                        if (entity) { this.renderer.hit(event.targetId, event.amount, entityView(entity), world.nowMs);
-                              this.voices.get(event.targetId)?.play("hurt"); }
+                        if (entity) {
+                              this.renderer.hit(event.targetId, event.amount, entityView(entity), world.nowMs);
+                              this.voices.get(event.targetId)?.play("hurt");
+                        }
                   } else if (event.kind === "match-ended") {
                         const status = document.getElementById("hud-status");
                         if (status) status.textContent = "";
@@ -147,18 +151,23 @@ export class GameApp {
             for (const voice of this.voices.values()) voice.destroy();
             this.voices.clear(); this.boundSounds.clear(); this.renderer.reset();
             const border = this.config.game.arena.borderWidth;
-            this.simulation = new Simulation({ arena: { minX: this.overflow + border, minY: this.overflow + border,
-                  maxX: this.overflow + this.arenaWidth - border, maxY: this.overflow + this.arenaHeight - border },
+            this.simulation = new Simulation({
+                  arena: {
+                        minX: this.overflow + border, minY: this.overflow + border,
+                        maxX: this.overflow + this.arenaWidth - border, maxY: this.overflow + this.arenaHeight - border
+                  },
                   seed: this.seed, impact: this.config.game.physics.impactDamage,
                   collisionCooldownMs: this.config.game.physics.collisionCooldownMs,
-                  globalSpeedMultiplier: this.config.game.physics.globalSpeedMultiplier });
+                  globalSpeedMultiplier: this.config.game.physics.globalSpeedMultiplier
+            });
             const groups = new Map<string, number>();
             for (let slot = 0; slot < this.selected.length; slot++) {
                   const config = this.fighterRoster.find(fighter => fighter.id === this.selected[slot])!;
                   const team = this.participantTeams?.[slot] ?? `team:${slot}`;
                   if (!groups.has(team)) groups.set(team, Body.nextGroup(true));
                   const speed = config.speed * this.config.game.physics.globalSpeedMultiplier;
-                  createFighter(this.simulation, config, { runtimeId: `fighter:${slot}`, teamId: team,
+                  createFighter(this.simulation, config, {
+                        runtimeId: `fighter:${slot}`, teamId: team,
                         collisionGroup: groups.get(team),
                         position: { x: this.overflow + this.arenaWidth * (slot ? .75 : .25), y: this.overflow + this.arenaHeight / 2 },
                         velocity: { x: slot ? -speed : speed, y: speed * (slot ? -.7 : .6) },
@@ -190,10 +199,13 @@ export class GameApp {
       }
       getRecordingView(): RecordingView {
             const views = this.simulation.entities.all().map(entityView);
-            return { canvas: this.canvas, logicalWidth: this.width, logicalHeight: this.height, visualOverflow: this.overflow,
+            return {
+                  canvas: this.canvas, logicalWidth: this.width, logicalHeight: this.height, visualOverflow: this.overflow,
                   backgroundColor: this.config.game.arena.backgroundColor, arenaBackgroundColor: getComputedStyle(this.container).backgroundColor,
                   arenaWidth: this.arenaWidth, arenaHeight: this.arenaHeight,
-                  fighterNames: views.map(view => view.config.name), targets: views.filter(view => !view.dead).map(view => ({ x: view.x, y: view.y })) };
+                  fighterNames: this.selected.map(id => this.fighterRoster.find(fighter => fighter.id === id)!.name),
+                  targets: views.filter(view => !view.dead).map(view => ({ x: view.x, y: view.y }))
+            };
       }
       private dispatchPlayback(): void {
             window.dispatchEvent(new CustomEvent("duels2d:playback", { detail: { paused: this.paused, gameOver: this.gameOver } }));

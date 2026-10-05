@@ -5,7 +5,7 @@ import type { CancellationReason } from "../../engine/contracts";
 import type { Entity } from "../../engine/entity";
 import type { ScriptOperation } from "../../engine/scripting/operation";
 import type { ScriptScope } from "../../engine/scripting/scope";
-import type { ComponentContext } from "../fighter-factory";
+import type { ComponentContext } from "../../engine/component";
 import { actionSound } from "./action-sound";
 
 /** Authored melee geometry; each admitted operation owns its own hit history. */

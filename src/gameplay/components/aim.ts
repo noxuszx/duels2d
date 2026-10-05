@@ -3,7 +3,7 @@ import type { Entity } from "../../engine/entity";
 import type { ScriptOperation } from "../../engine/scripting/operation";
 import { entityPose } from "../../presentation/view";
 import type { AimSkillOptions } from "../../types/fighter";
-import type { ComponentContext } from "../fighter-factory";
+import type { ComponentContext } from "../../engine/component";
 import { AimGeometry, type AimSolution } from "./aim-geometry";
 
 /** Owner-bound aiming capability. Behaviors explicitly hold and release tracking. */

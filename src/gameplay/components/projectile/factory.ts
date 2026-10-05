@@ -3,7 +3,7 @@ import type { ProjectileSettings } from "../../../config/component-settings";
 import type { Vector2 } from "../../../engine/contracts";
 import { Entity } from "../../../engine/entity";
 import type { EntityConfig } from "../../../types/entity";
-import type { ComponentContext } from "../../fighter-factory";
+import type { ComponentContext } from "../../../engine/component";
 import { ProjectileFlight } from "./flight";
 
 export interface ProjectileTrajectory {

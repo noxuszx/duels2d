@@ -1,10 +1,12 @@
 import type { Entity } from "../../engine/entity";
 import type { EntityComponent } from "../../engine/component";
-import type { ComponentContext } from "../fighter-factory";
+import type { ComponentContext } from "../../engine/component";
+import type { FaceTargetConfig } from "../../types/fighter";
 
 /** Owner-bound nearest-enemy query; behavior still decides when to ask for a target. */
 export class Targeting implements EntityComponent {
-      constructor(private readonly context: ComponentContext) {}
+      constructor(private readonly context: ComponentContext,
+            private readonly facing: FaceTargetConfig = { mode: "never" }) {}
       attach(): void {}
       nearestEnemy(): Entity | null {
             const { entity, simulation } = this.context;
@@ -23,9 +25,9 @@ export class Targeting implements EntityComponent {
             return nearest;
       }
       beforeStep(): void {
-            const { entity, config } = this.context;
+            const { entity } = this.context;
             if (entity.resources.isHeld("locomotion")) return;
-            const target = config.faceTarget.mode === "always" ? this.nearestEnemy() : null;
-            entity.facing = target ? target.body.position.x < entity.body.position.x ? "left" : "right" : config.defaultFacing;
+            const target = this.facing.mode === "always" ? this.nearestEnemy() : null;
+            entity.facing = target ? target.body.position.x < entity.body.position.x ? "left" : "right" : entity.config.defaultFacing;
       }
 }

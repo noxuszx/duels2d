@@ -81,7 +81,7 @@ import { shooterBehavior } from "./behavior";
 export const shooter = defineFighter({
   id: "shooter",
   components: {
-    targeting: context => new Targeting(context),
+    targeting: context => new Targeting(context, context.config.faceTarget),
     gun: context => {
       const settings = context.config.components.projectile;
       if (!settings) throw new Error("Shooter requires projectile settings");
@@ -128,7 +128,10 @@ For other decisions use the generic spawn/update/contact hooks documented in
 
 Place mechanics under `src/gameplay/components/`. Implement the needed
 `EntityComponent` hooks, accepting owner-bound `ComponentContext` and typed
-settings. Expose focused methods for behaviors; leave choreography in the script.
+settings. Import generic context from `src/engine/component.ts`; mechanics can
+operate on nonfighters and read normalized data through `context.entity.config`.
+Use the factory's `FighterContext` only when accessing fighter moves/forms or
+other fighter metadata. Expose focused methods for behaviors; leave choreography in the script.
 A component may run independent background work in its tick hooks.
 
 For a per-use action:

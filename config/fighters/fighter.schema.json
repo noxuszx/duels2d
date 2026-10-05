@@ -216,6 +216,10 @@
         "baseDamage": {
           "$ref": "#/$defs/nonNegativeNumber"
         },
+        "impactDamageMultiplier": {
+          "$ref": "#/$defs/nonNegativeNumber",
+          "description": "Wall and entity impact damage scaling: 0 is immune, 1 is normal. Does not affect attack damage or collision response."
+        },
         "faceTarget": {
           "$ref": "#/$defs/faceTarget"
         }
@@ -989,6 +993,9 @@
             "baseDamage": {
               "$ref": "#/$defs/nonNegativeNumber"
             },
+            "impactDamageMultiplier": {
+              "$ref": "#/$defs/nonNegativeNumber"
+            },
             "faceTarget": {
               "$ref": "#/$defs/faceTarget"
             }
@@ -998,6 +1005,7 @@
             "maxHealth",
             "speed",
             "baseDamage",
+            "impactDamageMultiplier",
             "faceTarget"
           ]
         },

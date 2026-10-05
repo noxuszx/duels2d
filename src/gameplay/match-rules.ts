@@ -46,8 +46,9 @@ export class MatchRules {
             const threshold = this.impact.minSpeed ?? baseSpeed * (this.impact.minSpeedMultiplier ?? 2.8);
             if (!Number.isFinite(threshold) || threshold <= 0 || incomingSpeed <= threshold) return 0;
             const baseDamage = this.impact.damage ?? 45;
-            return Math.max(1, Math.min(baseDamage * 4,
+            const damage = Math.max(1, Math.min(baseDamage * 4,
                   Math.round(baseDamage * (incomingSpeed - threshold) / threshold)));
+            return Math.round(damage * entity.config.impactDamageMultiplier);
       }
 
       reset(): void { this.contested = false; this.outcomeValue = null; this.registeredTeams.clear(); }

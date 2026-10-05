@@ -28,6 +28,13 @@ move setting types are in `src/config/component-settings.ts`. Fighter JSON uses
 
 ## Fighter gameplay data
 
+`combat.impactDamageMultiplier` scales damage from wall and fighter impacts after the
+normal speed threshold and damage cap. It defaults to `1`; `0` grants collision impact
+immunity, values between `0` and `1` grant resistance, and values above `1` grant
+vulnerability. It does not alter wall bouncing, attack damage, or attack knockback.
+Temporary contact policies can still disable
+impact damage during an action. Baby Man sets this multiplier to `0`.
+
 `components` holds settings for capabilities a fighter can equip. `moves` holds
 move settings referenced by behavior code, including an optional `windupSound`
 cue. Runtime admission consumes `cooldownMs`; timing/range/cue fields require

@@ -29,6 +29,7 @@ export interface FighterCombatOverrides {
       maxHealth?: number;
       speed?: number;
       baseDamage?: number;
+      impactDamageMultiplier?: number;
       faceTarget?: FaceTargetConfig;
 }
 export interface FighterBodyOverrides {
@@ -88,6 +89,7 @@ export interface FighterConfig extends EntityConfig {
       components: FighterComponents;
       moves: Record<string, MoveConfig>;
       baseDamage: number;
+      impactDamageMultiplier: number;
       faceTarget: FaceTargetConfig;
       hitboxOffset: Vector2;
       defaultFacing: Facing;

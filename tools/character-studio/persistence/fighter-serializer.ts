@@ -14,6 +14,7 @@ export const DEFAULT_FIGHTER_DEFAULTS: FighterDefaults = {
             maxHealth: 1000,
             speed: 10,
             baseDamage: 50,
+            impactDamageMultiplier: 1,
             faceTarget: { mode: "never" },
       },
       body: {
@@ -118,7 +119,7 @@ export function syncFighterDefinition(
       }
 
       definition.combat = definition.combat || {};
-      for (const field of ["maxHealth", "speed", "baseDamage"] as const) {
+      for (const field of ["maxHealth", "speed", "baseDamage", "impactDamageMultiplier"] as const) {
             if (!isEqual(config[field], defaults.combat[field]))
                   definition.combat[field] = cleanNumber(config[field]);
             else delete definition.combat[field];

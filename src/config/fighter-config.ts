@@ -104,6 +104,7 @@ export function composeFighter(
             maxHealth: merged.combat.maxHealth,
             speed: merged.combat.speed,
             baseDamage: merged.combat.baseDamage,
+            impactDamageMultiplier: merged.combat.impactDamageMultiplier,
             faceTarget: merged.combat.faceTarget,
             radius: merged.body.radius,
             hitbox: merged.body.hitbox,

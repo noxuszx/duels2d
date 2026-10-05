@@ -3,6 +3,7 @@
     "maxHealth": 1000,
     "speed": 11,
     "baseDamage": 50,
+    "impactDamageMultiplier": 1,
     "faceTarget": {
       "mode": "never"
     }

@@ -29,6 +29,8 @@ export interface EntityConfig {
       hitboxOffset?: Vector2;
       speed: number;
       maxHealth: number;
+      /** Collision impact damage scaling: 0 is immune, 1 is normal. Does not affect attacks or physics. */
+      impactDamageMultiplier?: number;
       defaultFacing?: Facing;
       image?: string | null;
       imageScale?: number;
@@ -48,10 +50,11 @@ export interface EntityConfig {
 /** Common optional fields are resolved once before mechanics use the config. */
 export type RuntimeEntityConfig<C extends EntityConfig = EntityConfig> = Readonly<C & Required<Pick<EntityConfig,
       "hitboxOffset" | "defaultFacing" | "image" | "imageScale" | "imageOffset" |
-      "imageCrop" | "healthBarOffset" | "color" | "poses">>>;
+      "imageCrop" | "healthBarOffset" | "color" | "poses" | "impactDamageMultiplier">>>;
 
 export function resolveEntityConfig<C extends EntityConfig>(config: C): RuntimeEntityConfig<C> {
       return Object.freeze({ ...config,
+            impactDamageMultiplier: config.impactDamageMultiplier ?? 1,
             hitboxOffset: { ...(config.hitboxOffset ?? { x: 0, y: 0 }) },
             defaultFacing: config.defaultFacing ?? "right",
             image: config.image ?? null,

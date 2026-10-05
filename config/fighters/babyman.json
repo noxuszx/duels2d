@@ -4,6 +4,7 @@
   "name": "Baby Man",
   "color": "#8ed8ee",
   "combat": {
+    "impactDamageMultiplier": 0,
     "faceTarget": {
       "mode": "always"
     }

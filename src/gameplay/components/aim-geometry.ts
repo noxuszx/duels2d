@@ -1,8 +1,10 @@
 import type { AimSkillOptions, Facing, Vector2 } from "../../types/fighter";
+import { childTransform, inversePoint, transformDirection, transformPoint, type VisualTransform } from "../../presentation/transform";
 
 export interface AimFrame {
-      /** World location of the sprite center, including its pose offset. */
-      center: Vector2;
+      root: VisualTransform;
+      /** Root-local sprite or weapon offset, including facing for weapons. */
+      offset: Vector2;
       facing: Facing;
       defaultFacing: Facing;
 }
@@ -10,7 +12,7 @@ export interface AimFrame {
 export interface AimSolution {
       origin: Vector2;
       direction: Vector2;
-      /** Absolute sprite rotation, applied after mirroring its local coordinates. */
+      /** Child rotation relative to the visual root, after local mirroring. */
       angle: number;
       pivot: Vector2;
       localPivot: Vector2;
@@ -30,8 +32,8 @@ export class AimGeometry {
             const mirror = flip ? -1 : 1;
             const localPivot = options.pivot ?? { x: 0, y: 0 };
             const pivot = {
-                  x: frame.center.x + mirror * localPivot.x,
-                  y: frame.center.y + localPivot.y,
+                  x: frame.offset.x + mirror * localPivot.x,
+                  y: frame.offset.y + localPivot.y,
             };
             const offset = {
                   x: mirror * (options.muzzle.x - localPivot.x),
@@ -40,8 +42,9 @@ export class AimGeometry {
             const forward = (options.forwardDegrees ??
                   (frame.defaultFacing === "left" ? 180 : 0)) * Math.PI / 180;
             const localDirection = { x: mirror * Math.cos(forward), y: Math.sin(forward) };
-            const dx = target.x - pivot.x;
-            const dy = target.y - pivot.y;
+            const localTarget = inversePoint(frame.root, target);
+            const dx = localTarget.x - pivot.x;
+            const dy = localTarget.y - pivot.y;
             const distance = Math.hypot(dx, dy);
             // Account for a muzzle displaced sideways from the pivot. A center-to-target
             // angle alone would make the barrel's ray miss the target.
@@ -54,17 +57,11 @@ export class AimGeometry {
             }
             const angle = Math.atan2(dy, dx) - Math.asin(lateral / distance) -
                   Math.atan2(localDirection.y, localDirection.x);
-            const cos = Math.cos(angle), sin = Math.sin(angle);
+            const transform = childTransform(frame.root, frame.offset, mirror, { angle, pivot: localPivot });
             this.solution = {
-                  origin: {
-                        x: pivot.x + cos * offset.x - sin * offset.y,
-                        y: pivot.y + sin * offset.x + cos * offset.y
-                  },
-                  direction: {
-                        x: cos * localDirection.x - sin * localDirection.y,
-                        y: sin * localDirection.x + cos * localDirection.y
-                  },
-                  angle, pivot, localPivot: { ...localPivot }, flip,
+                  origin: transformPoint(transform, options.muzzle),
+                  direction: transformDirection(transform, { x: Math.cos(forward), y: Math.sin(forward) }),
+                  angle, pivot: transformPoint(frame.root, pivot), localPivot: { ...localPivot }, flip,
             };
       }
 

@@ -1,74 +1,76 @@
-import { Body } from "matter-js";
-import type { ComponentContext, EntityComponent } from "../../../engine/component";
-import type { Entity } from "../../../engine/entity";
+import type { ComponentContext } from "../../../engine/component";
 import type { RectangleShape } from "../../../engine/spatial/shapes";
+import { SIMULATION_STEP_MS } from "../../../engine/simulation";
+import { all } from "../../../engine/scripting/all";
+import { race } from "../../../engine/scripting/race";
+import { scoped } from "../../../engine/scripting/scoped";
+import { sequence } from "../../../engine/scripting/sequence";
+import type { ScriptOperation } from "../../../engine/scripting/operation";
 import { wait } from "../../../engine/scripting/wait";
 import type { BehaviorHandlers } from "../../../gameplay/behavior";
-import { createFighter } from "../../../gameplay/fighter-factory";
 import type { SaucerSettings } from "../../../config/component-settings";
-import type { FighterConfig } from "../../../types/fighter";
-import { alien } from "../../fighters/alien/definition";
+import { moveTo } from "../../script-helpers/move-to";
+import { hitEnemies } from "../../script-helpers/query-hit";
+import { until } from "../../script-helpers/until";
 
 /** The sweep's direction and reversal points are decisions owned by this actor. */
-export function saucerSweep({ entity, simulation }: ComponentContext,
-      settings: SaucerSettings, direction: number): EntityComponent {
-      const left = simulation.arena.minX + settings.width / 2;
+function* patrol({ entity, simulation }: ComponentContext,
+      settings: SaucerSettings, direction: number): Generator<ScriptOperation, void, unknown> {
+      const left = Math.min(simulation.arena.maxX, simulation.arena.minX + settings.width / 2);
       const right = Math.max(left, simulation.arena.maxX - settings.width / 2);
-      return { beforeStep(deltaMs) {
-            let x = entity.body.position.x + direction * settings.speed * deltaMs / 1000;
-            if (x >= right) { x = right; direction = -1; }
-            if (x <= left) { x = left; direction = 1; }
-            Body.setPosition(entity.body, { x, y: entity.body.position.y });
-      } };
+      while (true) {
+            // Oversized actors and stationary tuning must still advance the script clock.
+            if (right === left || settings.speed <= 0) { yield wait(SIMULATION_STEP_MS); continue; }
+            const x = direction > 0 ? right : left;
+            const distance = Math.abs(x - entity.body.position.x);
+            yield moveTo(entity, { x, y: entity.body.position.y }, distance / settings.speed * 1000);
+            direction *= -1;
+      }
 }
 
-export function saucerBehavior({ entity, simulation }: ComponentContext, settings: SaucerSettings,
-      signal: { deploying: boolean }, summon: FighterConfig, roster: readonly FighterConfig[],
-      owner: Entity): BehaviorHandlers {
-      let deployed = false;
+interface SaucerScriptOptions {
+      settings: SaucerSettings;
+      signal: { deploymentAtMs: number | null };
+      spawnAlly(): void;
+      sourceId: string;
+      initialDirection: number;
+}
+
+export function saucerBehavior(context: ComponentContext,
+      { settings, signal, spawnAlly, sourceId, initialDirection }: SaucerScriptOptions): BehaviorHandlers {
+      const { entity, simulation } = context;
       const beam = (): RectangleShape => {
             const top = entity.body.position.y + settings.height / 2;
             const bottom = simulation.arena.maxY;
             return { type: "rectangle", center: { x: entity.body.position.x, y: (top + bottom) / 2 },
                   width: settings.beamWidth, height: bottom - top };
       };
-      return { actions: {
-            deployment: {
-                  interrupt: true,
-                  when: () => signal.deploying && !deployed,
-                  *run() {
-                        deployed = true;
-                        yield wait(settings.firstSpawnDelayMs);
-                        for (let count = 0; count < settings.maxSpawns; count++) {
-                              const speed = summon.speed * simulation.globalSpeedMultiplier;
-                              createFighter(simulation, summon, {
-                                    runtimeId: simulation.nextRuntimeId(`${owner.runtimeId}:alien`),
-                                    teamId: owner.teamId, ownerId: owner.runtimeId, roster,
-                                    collisionGroup: owner.body.collisionFilter.group,
-                                    position: { x: entity.body.position.x, y: simulation.arena.minY + summon.radius + 1 },
-                                    velocity: { x: simulation.rng.next() < .5 ? -speed : speed, y: speed * .6 },
-                              }, alien);
-                              if (count + 1 < settings.maxSpawns) yield wait(settings.spawnIntervalMs);
+      function* beams(): Generator<ScriptOperation, void, unknown> {
+            while (signal.deploymentAtMs === null) {
+                  yield* scoped(() => entity.presentation.acquireShape(beam, settings.beamColor, .25), function* () {
+                        for (let elapsed = 0; elapsed < settings.beamDurationMs;) {
+                              hitEnemies(context, beam(),
+                                    { damage: settings.beamDamage },
+                                    { independentCooldown: true, sourceId });
+                              const duration = Math.min(settings.beamDamageIntervalMs, settings.beamDurationMs - elapsed);
+                              yield wait(duration);
+                              elapsed += duration;
                         }
-                  },
-            },
-            beam: {
-                  when: () => !signal.deploying,
-                  *run() {
-                        const release = entity.presentation.acquireShape(beam, settings.beamColor, .25);
-                        try {
-                              for (let elapsed = 0; elapsed < settings.beamDurationMs;) {
-                                    for (const target of simulation.spatial.overlapArea(beam(), {
-                                          filter: other => other.teamId !== entity.teamId && other.tags.has("targetable"),
-                                    })) simulation.hit(entity, target, { damage: settings.beamDamage },
-                                          { independentCooldown: true, sourceId: owner.runtimeId });
-                                    const duration = Math.min(settings.beamDamageIntervalMs, settings.beamDurationMs - elapsed);
-                                    yield wait(duration);
-                                    elapsed += duration;
-                              }
-                        } finally { release(); }
-                        yield wait(Math.max(0, settings.beamIntervalMs - settings.beamDurationMs));
-                  },
-            },
+                  });
+                  yield wait(Math.max(0, settings.beamIntervalMs - settings.beamDurationMs));
+            }
+      }
+      function* lifecycle(): Generator<ScriptOperation, void, unknown> {
+            yield race(until(() => signal.deploymentAtMs !== null), sequence(beams));
+            const deploymentAtMs = signal.deploymentAtMs!;
+            for (let count = 0; count < settings.maxSpawns; count++) {
+                  const dueAtMs = deploymentAtMs + settings.firstSpawnDelayMs + count * settings.spawnIntervalMs;
+                  yield until(() => simulation.nowMs + 1e-9 >= dueAtMs);
+                  spawnAlly();
+            }
+      }
+      return { *onSpawn() {
+            yield all(sequence(() => patrol(context, settings, initialDirection)),
+                  sequence(lifecycle));
       } };
 }

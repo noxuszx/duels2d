@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AimGeometry } from "../../../src/gameplay/components/aim-geometry";
+import { rootTransform } from "../../../src/presentation/transform";
 import { AimTool, type AimToolHost } from "../tools/aim/aim-tool";
 import type { StudioConfig } from "../app/editor-types";
 import { ensureFormComponents, formComponents } from "../document/form-model";
@@ -57,7 +58,7 @@ describe("Original sprite facing", () => {
             const skill = new AimGeometry();
             for (const facing of ["left", "right"] as const) {
                   const direction = facing === "left" ? -1 : 1;
-                  skill.update({ center: { x: 0, y: 0 }, facing, defaultFacing },
+                  skill.update({ root: rootTransform({ x: 0, y: 0 }, 0), offset: { x: 0, y: 0 }, facing, defaultFacing },
                         { x: direction * 200, y: 0 },
                         { muzzle: { x: defaultFacing === "left" ? -50 : 50, y: 0 } });
                   expect(skill.current?.flip).toBe(facing !== defaultFacing);

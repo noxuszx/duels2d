@@ -1,7 +1,7 @@
 import type { Entity } from "./entity";
 import type { CancellationReason, ContactEvent, RuntimeTrace } from "./contracts";
 import type { ScriptOperation } from "./scripting/operation";
-import { ScriptScope } from "./scripting/scope";
+import { OperationRejected, OperationRunner } from "./scripting/operation-runner";
 
 export interface MoveDefinition { id: string; cooldownMs: number; }
 export type TaskGenerator = Generator<ScriptOperation, void, unknown>;
@@ -29,9 +29,7 @@ export interface BehaviorHost {
 
 interface ActiveTask {
       move: MoveDefinition;
-      generator: TaskGenerator;
-      operation: ScriptOperation | null;
-      scope: ScriptScope | null;
+      runner: OperationRunner;
       admittedAtMs: number;
       committed: boolean;
       handle: MutableTaskHandle;
@@ -43,15 +41,12 @@ interface MutableTaskHandle extends TaskHandle {
       reason: CancellationReason | TaskRejectionReason | null;
 }
 
-const MAX_IMMEDIATE_STEPS = 1024;
-
 /** One foreground simulation task per entity; components may tick independently. */
 export class BehaviorRuntime {
       private current: ActiveTask | null = null;
       private readonly lastUseTimes = new Map<string, number>();
       private closing = false;
       private admitting = false;
-      private dispatching = false;
       private disposed = false;
 
       constructor(readonly owner: Entity, private readonly host: BehaviorHost) { }
@@ -91,15 +86,28 @@ export class BehaviorRuntime {
             };
 
             active = {
-                  move, generator, operation: null, scope: null,
+                  move, runner: new OperationRunner(generator, {
+                        ensureActive: () => this.ensureActive(active),
+                        started: () => {
+                              if (!active.committed) {
+                                    active.committed = true;
+                                    this.lastUseTimes.set(active.move.id, active.admittedAtMs);
+                              }
+                              this.trace("operation-started", active.move.id);
+                        },
+                        operationCompleted: reason => this.trace("operation-completed", active.move.id, reason),
+                        completed: () => this.complete(active),
+                        rejected: reason => this.reject(active, reason),
+                        closed: () => { this.closing = false; },
+                  }),
                   admittedAtMs: this.host.now(), committed: false,
                   handle, startFailure: null,
             };
             
             this.current = active;
             this.trace("admitted", move.id);
-            try { this.drain(active, 0); }
-            catch (error) { this.cancelTask(active, "interrupted"); throw error; }
+            try { active.runner.drain(0); }
+            catch (error) { if (error instanceof OperationRejected) this.reject(active, error.reason); else { this.cancelTask(active, "interrupted"); throw error; } }
             if (active.startFailure) return { started: false, reason: active.startFailure };
             if (!active.committed && active.handle.state === "cancelled") {
                   return { started: false, reason: "inactive" };
@@ -112,21 +120,15 @@ export class BehaviorRuntime {
             if (!active) return;
             if (!this.ensureActive(active)) return;
             if (!Number.isFinite(deltaMs) || deltaMs <= 0) return;
-            try { this.drain(active, deltaMs); }
-            catch (error) { this.cancelTask(active, "interrupted"); throw error; }
+            try { active.runner.drain(deltaMs); }
+            catch (error) { if (error instanceof OperationRejected) this.reject(active, error.reason); else { this.cancelTask(active, "interrupted"); throw error; } }
       }
 
       contact(event: ContactEvent): void {
             const active = this.current;
-            if (!active || !this.ensureActive(active) || this.dispatching) return;
-            this.dispatching = true;
-            try { active.operation?.contact?.(event); }
-            catch (error) { this.cancelTask(active, "interrupted"); throw error; }
-            finally { this.dispatching = false; }
-            if (this.current === active) {
-                  try { this.drain(active, 0); }
-                  catch (error) { this.cancelTask(active, "interrupted"); throw error; }
-            }
+            if (!active || !this.ensureActive(active)) return;
+            try { active.runner.contact(event); }
+            catch (error) { if (error instanceof OperationRejected) this.reject(active, error.reason); else { this.cancelTask(active, "interrupted"); throw error; } }
       }
 
       cancel(reason: CancellationReason): void {
@@ -134,74 +136,6 @@ export class BehaviorRuntime {
             if (reason === "reset") this.lastUseTimes.clear();
             const active = this.current;
             if (active) this.cancelTask(active, reason);
-      }
-
-      private drain(active: ActiveTask, deltaMs: number): void {
-            let remainingMs = deltaMs;
-            let immediateSteps = 0;
-            while (this.current === active) {
-                  if (++immediateSteps > MAX_IMMEDIATE_STEPS) {
-                        throw new Error("Task exceeded the immediate operation limit");
-                  }
-                  if (!this.ensureActive(active)) return;
-                  if (active.operation?.isComplete) this.completeOperation(active);
-                  if (!this.ensureActive(active)) return;
-                  if (!active.operation) {
-                        const next = active.generator.next();
-                        if (!this.ensureActive(active)) return;
-                        if (next.done) {
-                              this.complete(active);
-                              return;
-                        }
-                        const operation = next.value;
-                        if (!operation || typeof operation.start !== "function" ||
-                              typeof operation.advance !== "function") {
-                              throw new TypeError("Task yielded an invalid operation");
-                        }
-                        active.operation = operation;
-                        const scope = new ScriptScope();
-                        active.scope = scope;
-                        const accepted = operation.start(scope);
-                        if (!this.ensureActive(active)) return;
-                        if (!accepted) {
-                              const reason = operation.rejectionReason ?? "rejected";
-                              active.startFailure = reason;
-                              this.reject(active, reason);
-                              return;
-                        }
-                        if (!active.committed) {
-                              active.committed = true;
-                              this.lastUseTimes.set(active.move.id, active.admittedAtMs);
-                        }
-                        this.trace("operation-started", active.move.id);
-                        if (operation.isComplete) continue;
-                  }
-                  const operation = active.operation;
-                  if (!operation || remainingMs <= 0) return;
-                  const consumed = operation.advance(remainingMs);
-                  if (!this.ensureActive(active)) return;
-                  if (!Number.isFinite(consumed) || consumed < 0 || consumed > remainingMs) {
-                        throw new RangeError("Operation returned invalid consumed time");
-                  }
-                  const beforeMs = remainingMs;
-                  remainingMs -= consumed;
-                  if (consumed > 0 && beforeMs === remainingMs) {
-                        throw new Error("Operation consumed too little time to advance tick");
-                  }
-                  if (consumed > 0) immediateSteps = 0;
-                  if (operation.isComplete) continue;
-                  if (consumed === 0) throw new Error("Operation made no progress");
-                  if (remainingMs <= 0) return;
-            }
-      }
-
-      private completeOperation(active: ActiveTask): void {
-            const operation = active.operation;
-            const scope = active.scope;
-            active.operation = null;
-            active.scope = null;
-            scope?.release();
-            this.trace("operation-completed", active.move.id, operation?.endReason);
       }
 
       private complete(active: ActiveTask): void {
@@ -220,6 +154,7 @@ export class BehaviorRuntime {
 
       private reject(active: ActiveTask, reason: TaskRejectionReason): void {
             if (this.current !== active) return;
+            active.startFailure = reason;
             active.handle.state = "rejected";
             active.handle.reason = reason;
             this.stop(active, "interrupted");
@@ -238,18 +173,8 @@ export class BehaviorRuntime {
             if (this.current !== active) return;
             this.closing = true;
             this.current = null;
-            const operation = active.operation;
-            const scope = active.scope;
-            active.operation = null;
-            active.scope = null;
-            try { operation?.cancel(reason); }
-            finally {
-                  try { scope?.release(); }
-                  finally {
-                        try { active.generator.return(undefined); }
-                        finally { this.closing = false; }
-                  }
-            }
+            try { active.runner.cancel(reason); }
+            finally { if (!active.runner.isClosing) this.closing = false; }
       }
 
       private ensureActive(active: ActiveTask): boolean {

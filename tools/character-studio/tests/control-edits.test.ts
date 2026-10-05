@@ -119,7 +119,7 @@ describe("control edits", () => {
       });
       it("creates a crop override when initial imageCrop is null and user adjusts crop sliders", () => {
             const { config, host, controls } = fixture();
-            // attackActive starts with no imageCrop
+            config.imageCrop = null;
             expect(host._getPoseVisual(config, host.activePoseKey).imageCrop).toBeNull();
             controls.imageCropX.value = "10";
             controls.imageCropY.value = "15";

@@ -3,12 +3,13 @@ import type { EntityComponent } from "../../../engine/component";
 import type { ContactEvent } from "../../../engine/contracts";
 import type { Entity } from "../../../engine/entity";
 import type { ComponentContext } from "../../../engine/component";
+import type { PresentationLease } from "../../../presentation/state";
 
 /** Per-projectile simulation lifetime and contact policy. */
 export class ProjectileFlight implements EntityComponent {
       private elapsedMs = 0;
       private rotation = 0;
-      private releaseRotation: (() => void) | null = null;
+      private rotationLease: PresentationLease<number> | null = null;
       private releaseIgnoredOwner: (() => void) | null = null;
       private readonly hitTargets = new Set<string>();
 
@@ -41,8 +42,8 @@ export class ProjectileFlight implements EntityComponent {
             }
             if (this.settings.rotationSpeed) {
                   this.rotation += (this.settings.rotationSpeed * deltaMs) / (1000 / 60);
-                  this.releaseRotation?.();
-                  this.releaseRotation = this.projectile.presentation.acquireRotation(this.rotation);
+                  this.rotationLease ??= this.projectile.presentation.acquireRotation();
+                  this.rotationLease.set(this.rotation);
             }
       }
 
@@ -100,8 +101,8 @@ export class ProjectileFlight implements EntityComponent {
       }
 
       detach(): void {
-            this.releaseRotation?.();
-            this.releaseRotation = null;
+            this.rotationLease?.release();
+            this.rotationLease = null;
             this.releaseIgnoredOwner?.();
             this.releaseIgnoredOwner = null;
             this.hitTargets.clear();

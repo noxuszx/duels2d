@@ -1,6 +1,8 @@
 import type { RuntimeConfig } from "../config/runtime-config";
 import { getAspectFitCropDrawRect } from "../rendering/sprite-geometry";
 import type { EntityView } from "./view";
+import { viewChildTransform, viewRootTransform } from "./view";
+import type { VisualTransform } from "./transform";
 import type { ShapeVisual } from "./state";
 
 type Arena = { ax: number; ay: number; aw: number; ah: number };
@@ -156,13 +158,7 @@ export class CanvasRenderer {
             const { ctx } = this;
             const image = this.image(view.pose.image);
             ctx.save();
-            const offset = view.pose.imageOffset ?? { x: 0, y: 0 };
-            const pivot = view.rotationPivot ?? { x: 0, y: 0 };
-            const mirror = view.facing !== view.config.defaultFacing ? -1 : 1;
-            ctx.translate(view.x + offset.x + mirror * pivot.x, view.y + offset.y + pivot.y);
-            ctx.rotate(view.angle);
-            ctx.scale(mirror, 1);
-            ctx.translate(-pivot.x, -pivot.y);
+            this.applyTransform(viewChildTransform(view, "sprite"));
             if (image) {
                   const supplied = view.pose.imageCrop;
                   const x = Math.max(0, Math.min(supplied?.x ?? 0, image.naturalWidth - 1));
@@ -182,7 +178,15 @@ export class CanvasRenderer {
             }
             ctx.restore();
             this.drawWeapon(view);
-            if (view.showHealth) this.health(view);
+            if (view.showHealth) {
+                  ctx.save();
+                  this.applyTransform(viewRootTransform(view));
+                  this.health(view);
+                  ctx.restore();
+            }
+      }
+      private applyTransform({ a, b, c, d, e, f }: VisualTransform): void {
+            this.ctx.transform(a, b, c, d, e, f);
       }
       private drawWeapon(view: EntityView): void {
             const config = view.config;
@@ -190,26 +194,21 @@ export class CanvasRenderer {
             const image = this.image(path ?? "");
             if (!image) return;
             const { ctx } = this;
-            const mirror = view.facing !== view.config.defaultFacing ? -1 : 1;
-            const offset = config.weaponOffset ?? { x: 0, y: 0 };
-            const pivot = view.weaponRotationPivot ?? config.weaponPivot ?? { x: 0, y: 0 };
             const scale = view.config.radius * 2 * (config.weaponScale ?? 1) /
                   Math.max(image.naturalWidth, image.naturalHeight);
             const width = image.naturalWidth * scale;
             const height = image.naturalHeight * scale;
             ctx.save();
-            ctx.translate(view.x + mirror * (offset.x + pivot.x), view.y + offset.y + pivot.y);
-            ctx.rotate(view.weaponAngle ?? 0);
-            ctx.scale(mirror, 1);
-            ctx.drawImage(image, -pivot.x - width / 2, -pivot.y - height / 2, width, height);
+            this.applyTransform(viewChildTransform(view, "weapon"));
+            ctx.drawImage(image, -width / 2, -height / 2, width, height);
             ctx.restore();
       }
       private health(view: EntityView): void {
             const { ctx } = this;
             const size = view.config.radius * 2;
             const healthOffset = view.config.healthBarOffset;
-            const x = view.x - size / 2 + healthOffset.x;
-            const y = view.y - view.config.radius - 20 + healthOffset.y;
+            const x = -size / 2 + healthOffset.x;
+            const y = -view.config.radius - 20 + healthOffset.y;
             const unit = size / 3;
             const trace = () => {
                   ctx.beginPath();

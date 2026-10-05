@@ -26,8 +26,7 @@ export const granny = defineFighter({
             shotgun: context => {
                   const settings = context.config.forms.transformed?.components.projectile;
                   if (!settings) throw new Error("Granny requires transformed projectile settings");
-                  const aim = context.entity.components.get<SpriteAim>("aim")!;
-                  return new ProjectileEmitter(context, settings, () => aim.current);
+                  return new ProjectileEmitter(context, settings);
             },
       },
       tasks: {},

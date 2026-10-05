@@ -97,7 +97,7 @@ describe("Granny in the simulation", () => {
             advance(simulation, 85);
             expect(enemy.health).toBe(910);
             expect(aim.current).toBeNull();
-            expect(fighter.presentation.rotation).toBeNull();
+            expect(fighter.presentation.orientation("sprite")).toBeNull();
             const shots = simulation.trace.filter(event => event.entityId === "granny" &&
                   event.kind === "admitted" && event.moveId === "shotgun-blast");
             expect(shots).toHaveLength(1);
@@ -158,7 +158,7 @@ describe("Granny in the simulation", () => {
             else simulation.reset();
             expect(fighter.behavior?.isRunning).toBe(false);
             expect(aim.current).toBeNull();
-            expect(fighter.presentation.rotation).toBeNull();
+            expect(fighter.presentation.orientation("sprite")).toBeNull();
             expect(fighter.presentation.pose).toBeNull();
             simulation.dispose();
       });

@@ -1,12 +1,19 @@
 # Fighter and component authoring
 
 Read [the architecture](fighter-architecture.md) for ownership and lifecycle.
+Read [scripting primitives](scripting-primitives.md) before composing timed or
+scoped behavior. Reusable character flourishes such as shake, pause-movement,
+and steering belong in `src/content/script-helpers/` and use generic
+timing/resource tools.
 [Baby Man's definition](../src/content/fighters/babyman/definition.ts),
 [behavior](../src/content/fighters/babyman/behavior.ts), and
 [configuration](../config/fighters/babyman.json) show a movement sequence.
 [Granny's definition](../src/content/fighters/granny/definition.ts),
 [behavior](../src/content/fighters/granny/behavior.ts), and
 [configuration](../config/fighters/granny.json) show attacks, aiming, and forms.
+[Angry Man's behavior](../src/content/fighters/angryman/behavior.ts) composes
+`scoped` with the content-level [shake](../src/content/script-helpers/shake.ts)
+and [pause](../src/content/script-helpers/pause-movement.ts) helpers.
 
 ## Add a fighter
 
@@ -53,7 +60,11 @@ actions: {
     when: () => !!targeting.nearestEnemy(),
     *run() {
       const target = targeting.nearestEnemy();
-      if (target) yield gun.start(target);
+      if (!target) return;
+      yield* scoped(() => aim.track(target), function* () {
+        const solution = aim.current;
+        if (solution) yield gun.emit({ position: solution.origin, direction: solution.direction });
+      });
     },
   },
 }
@@ -76,6 +87,7 @@ to fire. A new fighter could equip an emitter with targeting in `definition.ts`:
 import { defineFighter } from "../../../gameplay/fighter-factory";
 import { Targeting } from "../../../gameplay/components/targeting";
 import { ProjectileEmitter } from "../../../gameplay/components/projectile";
+import { SpriteAim } from "../../../gameplay/components/aim";
 import { shooterBehavior } from "./behavior";
 
 export const shooter = defineFighter({
@@ -86,6 +98,11 @@ export const shooter = defineFighter({
       const settings = context.config.components.projectile;
       if (!settings) throw new Error("Shooter requires projectile settings");
       return new ProjectileEmitter(context, settings);
+    },
+    aim: context => {
+      const settings = context.config.components.aim;
+      if (!settings) throw new Error("Shooter requires aim settings");
+      return new SpriteAim(context, settings);
     },
   },
   tasks: { onContact: "shoot" },
@@ -99,32 +116,65 @@ The companion `behavior.ts` names its typed handles:
 import type { BehaviorHandlers } from "../../../gameplay/fighter-factory";
 import type { Targeting } from "../../../gameplay/components/targeting";
 import type { ProjectileEmitter } from "../../../gameplay/components/projectile";
+import type { SpriteAim } from "../../../gameplay/components/aim";
+import { scoped } from "../../../engine/scripting/scoped";
 
-interface ShooterComponents { targeting: Targeting; gun: ProjectileEmitter; }
+interface ShooterComponents { targeting: Targeting; gun: ProjectileEmitter; aim: SpriteAim; }
 
-export function shooterBehavior({ targeting, gun }: ShooterComponents): BehaviorHandlers {
+export function shooterBehavior({ targeting, gun, aim }: ShooterComponents): BehaviorHandlers {
   return {
     *onContact() {
       const target = targeting.nearestEnemy();
-      if (target) yield gun.start(target);
+      if (!target) return;
+      yield* scoped(() => aim.track(target), function* () {
+        const solution = aim.current;
+        if (solution) yield gun.emit({ position: solution.origin, direction: solution.direction });
+      });
     },
   };
 }
 ```
 
-This example requires `components.projectile` and `moves.shoot` in its JSON;
-these names are configuration keys, while `gun` is the behavior's attached handle.
-The schema and [settings types](../src/config/component-settings.ts) describe
-projectile collision, lifetime, ownership, art, and recoil settings. Inspect
-[flight](../src/gameplay/components/projectile/flight.ts) for their runtime semantics.
-
-Yield `gun.start(target)` so the shot happens after admission. `spawn(target)`
-is a lower-level immediate method and does not itself enforce move cooldowns.
+The example's JSON requires `components.projectile`, `components.aim`, and
+`moves.shoot`; these are configuration keys, while `gun` and `aim` are the
+behavior's attached handles. The emitter and aim settings configure independent
+capabilities. The schema and [settings types](../src/config/component-settings.ts)
+describe projectile collision, lifetime, ownership, art, and recoil settings.
+Inspect [flight](../src/gameplay/components/projectile/flight.ts) for runtime
+semantics.
+`aim.track(target)` is scoped to the operation sequence, and `aim.current` is
+read at the firing point to obtain explicit muzzle position and direction.
+`gun.spawn(group)` emits immediately and does not itself enforce move cooldowns.
+Use content-level `burst(...)` for repeated emission.
 For other decisions use the generic spawn/update/contact hooks documented in
 [architecture](fighter-architecture.md). Gameplay waits use
 `wait(durationMs)` from `src/engine/scripting/wait.ts` and simulation milliseconds.
 
 ## Implement a reusable component or action
+
+Before creating a component, check whether a behavior script or content helper
+can compose the existing primitives. Do not retain old APIs through adapters or
+duplicate code paths during a primitives refactor; migrate their callers.
+Use content helpers for movement sequences: `steer` commands velocity on
+dynamic bodies, while `moveTo` moves static actors along a timed linear path.
+Use `all` and `race` to compose concurrent operations within one behavior task.
+Projectile groups and content-level `burst` handle multi-emission attacks.
+To run a multi-step generator alongside another effect, compose it with
+`sequence(factory)`:
+
+```ts
+yield all(sequence(patrol), sequence(function* () {
+  yield race(until(() => deploying), sequence(beams));
+  yield* deployAllies();
+}));
+```
+
+The saucer's [behavior](../src/content/actors/saucer/behavior.ts) is the working
+example: movement and beam/deployment scripts share one foreground task and
+use the same runner as other fighters. Named generator functions keep its
+phases readable. `until` observes script state without browser timers or a
+custom tick hook. Granny and Alien Man share configured `poseSequence` steps;
+their threshold and form-entry decisions remain in their own behaviors.
 
 Place mechanics under `src/gameplay/components/`. Implement the needed
 `EntityComponent` hooks, accepting owner-bound `ComponentContext` and typed
@@ -149,7 +199,8 @@ Inspect [wall crawl](../src/gameplay/components/wall-crawl.ts),
 [operation](../src/engine/scripting/operation.ts), and
 [scope](../src/engine/scripting/scope.ts) before implementing a mechanic.
 Route hit effects through shared combat and pose/rotation through presentation
-leases. Keep Matter manipulation inside mechanics/physics, out of behaviors.
+leases. Keep low-level Matter manipulation in focused mechanics, physics code,
+or content helpers so behavior scripts remain readable sequences.
 
 For editable component settings, update `FighterComponents` in
 `src/config/component-settings.ts` and the matching JSON Schema together.

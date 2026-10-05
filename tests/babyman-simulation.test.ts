@@ -36,7 +36,7 @@ function expectReleased(baby: Entity): void {
       expect(baby.resources.isHeld("upright")).toBe(false);
       expect(baby.resources.contactPolicy).toEqual({ defaultBounce: true, allowImpactDamage: true });
       expect(baby.presentation.pose).toBeNull();
-      expect(baby.presentation.rotation).toBeNull();
+      expect(baby.presentation.orientation("sprite")).toBeNull();
 }
 
 describe("Baby Man in a headless match", () => {
@@ -65,7 +65,7 @@ describe("Baby Man in a headless match", () => {
             expect(baby.resources.contactPolicy.defaultBounce).toBe(false);
             advance(simulation, 1);
             expect(baby.presentation.pose).toBe(config.components.dash!.pose);
-            expect(baby.presentation.rotation).toBeNull();
+            expect(baby.presentation.orientation("sprite")).toBeNull();
             expect(baby.resources.contactPolicy.defaultBounce).toBe(true);
             expect(baby.resources.contactPolicy.allowImpactDamage).toBe(false);
             const distance = Math.hypot(enemy.body.position.x - baby.body.position.x,

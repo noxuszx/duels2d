@@ -8,6 +8,7 @@ from planned work.
 | Guide | Use it for |
 | --- | --- |
 | [Fighter architecture](fighter-architecture.md) | Ownership, simulation lifecycle, scripting contracts, and the source tree |
+| [Scripting primitives](scripting-primitives.md) | Timing, scoped acquisition, presentation leases, steering, projectile emission, operation composition, and content helpers |
 | [Fighter authoring](fighter-authoring.md) | Creating fighters, composing mechanics, and implementing reusable components |
 | [Status effects](status-effects-architecture.md) | Applying and extending timed effects through shared combat |
 | [Migration checklist](fighter-migration-checklist.md) | Current roster status, remaining work, and gameplay acceptance |
@@ -32,6 +33,8 @@ Baby Man and Granny are active blueprint examples:
 - [Granny configuration](../config/fighters/granny.json): base and transformed
   component, move, and pose settings.
 
-Baby Man and Granny have active blueprints. Other roster entries remain passive
-opponents. Granny exercises reusable melee, aimed projectile shots, and scripted
-form entry; see the architecture and authoring guides for their contracts.
+Alien Man, summoned aliens, and Angry Man also have active blueprints. Other
+roster entries remain passive opponents. Granny exercises reusable melee,
+aimed projectile shots, and scripted form entry. [Angry Man's behavior](../src/content/fighters/angryman/behavior.ts)
+shows content helpers composed with timing and resource primitives; see the
+architecture and authoring guides for their contracts.

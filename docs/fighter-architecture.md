@@ -2,8 +2,9 @@
 
 The simulation foundation is implemented. Gameplay runs in a headless, fixed
 120 Hz simulation with explicit fighter definitions, reusable owner-bound
-components, and one foreground behavior task per fighter. Baby Man and Granny
-have active scripted behaviors; other roster entries use the shared passive
+components, and one foreground behavior task per fighter. Baby Man, Granny,
+Alien Man, summoned aliens, and Angry Man have active scripted behaviors;
+other roster entries use the shared passive
 setup and remain available as opponents. Fighter JSON and Character
 Studio now use `components`, `moves`, and named `forms` as editable data.
 
@@ -32,6 +33,7 @@ Browser app: frame accumulator ──> step ──> presentation view ──> Ca
 | Behavior | Character decisions, target selection, and ordering of yielded operations |
 | `BehaviorRuntime` | One foreground generator task, move cooldowns, admission/rejection, simulation-time advancement, cancellation, and tracing |
 | `ScriptOperation` and `ScriptScope` | One action use and its scoped resource leases/cleanup callbacks |
+| `OperationRunner` | Shared generator execution for foreground moves and composed sequence branches, including per-yield time budgets and scopes |
 | Combat and status services | Shared hit/damage/knockback results and registered timed status effects |
 | Browser app and presentation | Frame accumulation, rendering, asset and audio adapters, UI, and presentation output |
 | JSON and Character Studio | Editable identity, balance, component/move settings, sprites/poses, named forms, serialization, and history |
@@ -91,14 +93,13 @@ only this order and target choice. Component tuning and move cooldown live in
 `config/fighters/babyman.json` and remain editable in Character Studio.
 
 The reusable projectile component is implemented at
-`src/gameplay/components/projectile/`. Its emitter owns firing decisions and
-feedback, its factory constructs and registers projectiles, and flight owns each
-projectile's lifetime and contacts. Equip a `ProjectileEmitter`; behavior
-code can yield `emitter.start(target)` as a one-use operation. On admission it
-calls `spawn(target)`, registers an owner-bound projectile with the simulation,
-and applies its configured flight/contact/ownership policy. Each projectile
-tracks its own lifetime and hit history. Granny equips it with `SpriteAim` and
-fires toward the current target inside an explicit `aim.follow()` interval.
+`src/gameplay/components/projectile/`. Its emitter constructs and registers
+owner-bound projectiles, while flight owns each projectile's lifetime and
+contacts. `emit(group)` returns an inert operation for explicit position and
+direction geometry; `spawn(group)` emits immediately. Groups validate as a
+whole and share one sound and recoil response. Content-level `burst` can build
+each group from current geometry. Granny equips the emitter with `SpriteAim`
+and emits using live `aim.current` geometry after its windup.
 
 ## Authoring and data
 
@@ -223,6 +224,16 @@ src/
 │   ├── fighters/granny/            equipped components and scripted actions
 │   ├── fighters/alienman/          transformation and saucer arrival
 │   ├── fighters/alien/             targeting and piercing laser shots
+│   ├── fighters/angryman/          pause/shake windup and a bounded charge
+│   ├── script-helpers/             content math and small reusable sequences
+│   │   ├── pause-movement.ts       scoped voluntary movement pause
+│   │   ├── steer.ts                timed velocity control for dynamic bodies
+│   │   ├── move-to.ts              timed path for static actors
+│   │   ├── burst.ts                repeated explicit projectile groups
+│   │   ├── pose-sequence.ts        configured visual steps
+│   │   ├── query-hit.ts            ray geometry and explicit query effects
+│   │   ├── until.ts                wait for script state or an absolute deadline
+│   │   └── shake.ts                timed offset/rotation updates
 │   └── actors/saucer/              sweep, beam pulses, and deployment
 ├── engine/
 │   ├── simulation.ts               fixed tick and gameplay resolution
@@ -234,7 +245,17 @@ src/
 │   ├── random.ts                   seeded gameplay RNG
 │   ├── physics/                    Matter contact capture and arena response
 │   ├── spatial/                    segment/area queries, shapes, overlap history
-│   └── scripting/                  operations, scopes, and waits
+│   └── scripting/
+│       ├── operation.ts            per-use action contract
+│       ├── all.ts / race.ts         concurrent operation composition
+│       ├── sequence.ts             compose a generator branch as an operation
+│       ├── operation-runner.ts     shared generator execution and per-yield scopes
+│       ├── compound-operation.ts    shared operation lifecycle and cleanup
+│       ├── scope.ts                resource ownership and cleanup
+│       ├── scoped.ts               acquire, run sequence, release
+│       ├── during.ts               simulation-time callbacks
+│       ├── tween.ts                normalized progress callbacks
+│       └── wait.ts                 wait using the same timeline
 ├── gameplay/
 │   ├── fighter-factory.ts          common preset and typed assembly
 │   ├── behavior.ts                 shared fighter/actor script installation
@@ -244,7 +265,7 @@ src/
 │   ├── combat/                     shared effects
 │   └── statuses/                   definitions, registry, and controller
 ├── config/                         JSON composition and shared validation
-├── presentation/                   state, views, Canvas, and audio
+├── presentation/                   state/leases, shared transforms, Canvas/audio
 └── rendering/sprite-geometry.ts     sprite geometry shared with Studio
 ```
 
@@ -257,11 +278,30 @@ implemented. `MeleeAttack` supplies range checks and timed swings;
 `SpriteAim` resolves aim geometry from the current sprite pose, and `Visuals`
 provides scoped timed poses that restore prior presentation on interruption.
 Alien Man and his summoned aliens are active. The saucer is a separate owned
-actor using the same behavior runner as fighters. Its script sweeps horizontally,
-pulses a queried area beam, then deploys three aliens after Alien Man's scripted
-transformation. Alien lasers query one thick segment per shot and apply shared
+actor using the same generator execution path as fighters. Its script composes
+`sequence(patrol)` with a beam/deployment lifecycle through `all`. Patrol uses
+`moveTo` and continues through beam waits, deployment, and match results; the
+previous sweep tick component is removed. The lifecycle races beam cycles
+against `until` the deployment signal, then spawns three aliens at absolute
+deadlines from that signal. Alien lasers query one thick segment per shot and apply shared
 combat to each enemy hit; their flashes do not cause continuing damage.
 Damage-ramp mechanics and other roster behaviors remain pending migration.
+
+Angry Man reuses targeting and dash. His script scopes a voluntary movement
+pause around concurrent windup pose and shake operations, then races `dash.start(target)`
+against a simulation-time wait capped by the configured active duration. It
+recovers afterward, with a six-second move cooldown. Windup audio is scoped to
+its pose. These content helpers compose resources and timing without placing
+character effects in engine components.
+
+Simulation-time scripts use `during` and `tween`; resource holds use `scoped`.
+Initial scoped acquisition rejection runs no inner sequence and commits no move
+cooldown, while registered partial acquisitions are released. `during` invokes its initial
+zero-time callback and reports partial final advances; successful tweens reach
+progress one, while cancellation does not synthesize that endpoint. Additive
+offset and rotation leases share the presentation transform used by the body,
+weapon, health bar, and muzzle, keeping their visual alignment consistent.
+See [scripting primitives](scripting-primitives.md) for contracts and scope.
 
 `SpriteAim` can target the body sprite (Granny) or the held weapon (aliens), using
 the same tracking and muzzle calculations. Held weapon settings are optional
@@ -277,9 +317,15 @@ registry; no spawning or move-to component was added. Saucer tuning remains in
 the existing `components.saucer` authored data, but there is no runtime saucer
 component: its decisions and sequencing live in `content/actors/saucer`.
 
-Scripts remain TypeScript in the repository. Add only capabilities required by
-concrete content. Parallel behavior tasks, runtime-loaded mods, replay/networking,
-and arbitrary independently acting weapon attachments are deferred.
+Scripts remain TypeScript in the repository. Steering, grouped projectile
+emission, content-level bursts, and concurrent operation composition are
+available to behavior scripts. `all` and `race` compose operations inside the
+single foreground task, including generator branches through `sequence`.
+They do not add independent move admission or per-branch cooldowns. Add only
+capabilities required by concrete content, following the approval boundary in
+[scripting primitives](scripting-primitives.md). Parallel behavior tasks,
+runtime-loaded mods, replay/networking, and arbitrary independently acting
+weapon attachments are also deferred.
 
 See [the migration checklist](fighter-migration-checklist.md) for current work
 and recorded verification. Tests do not establish browser gameplay/visual or

@@ -7,6 +7,8 @@ import type { ScriptOperation } from "../../engine/scripting/operation";
 import type { ScriptScope } from "../../engine/scripting/scope";
 import type { ComponentContext } from "../../engine/component";
 import { actionSound } from "./action-sound";
+import { childTransform, rootTransform, transformPoint } from "../../presentation/transform";
+import type { PresentationLease, VisualOrientation } from "../../presentation/state";
 
 /** Authored melee geometry; each admitted operation owns its own hit history. */
 export class MeleeAttack implements EntityComponent {
@@ -36,13 +38,16 @@ function attackBody(entity: Entity, settings: MeleeSettings, padding = 0): Body 
       if (!box || !Number.isFinite(box.width) || box.width <= 0 ||
             !Number.isFinite(box.height) || box.height <= 0 ||
             !Number.isFinite(box.offset.x) || !Number.isFinite(box.offset.y)) return null;
-      const angle = entity.presentation.rotation ?? entity.body.angle;
-      const x = box.offset.x * (entity.facing === "left" ? -1 : 1);
-      const y = box.offset.y;
-      const cos = Math.cos(angle), sin = Math.sin(angle);
+      const offset = entity.presentation.offset;
+      const transform = childTransform(rootTransform({
+            x: entity.body.position.x - entity.config.hitboxOffset.x + offset.x,
+            y: entity.body.position.y - entity.config.hitboxOffset.y + offset.y,
+      }, entity.body.angle + entity.presentation.rotation), { x: 0, y: 0 },
+            entity.facing === "left" ? -1 : 1, entity.presentation.orientation("sprite") ?? { angle: 0 });
+      const center = transformPoint(transform, box.offset);
+      const angle = Math.atan2(transform.b, transform.a);
       return Bodies.rectangle(
-            entity.body.position.x - entity.config.hitboxOffset.x + cos * x - sin * y,
-            entity.body.position.y - entity.config.hitboxOffset.y + sin * x + cos * y,
+            center.x, center.y,
             box.width + padding * 2, box.height + padding * 2,
             { angle, isSensor: true },
       );
@@ -54,7 +59,7 @@ class MeleeOperation implements ScriptOperation {
       private complete = false;
       private elapsedMs = 0;
       private baseAngle = 0;
-      private releaseRotation: (() => void) | null = null;
+      private orientation: PresentationLease<VisualOrientation> | null = null;
       private readonly hitTargets = new Set<string>();
       readonly rejectionReason = "rejected" as const;
       readonly endReason = "complete" as const;
@@ -63,6 +68,7 @@ class MeleeOperation implements ScriptOperation {
             private readonly target: Entity, private readonly durationMs: number) { }
 
       get isComplete(): boolean { return this.complete; }
+      get nextBoundaryMs(): number { return Math.max(0, this.durationMs - this.elapsedMs); }
 
       start(scope: ScriptScope): boolean {
             if (this.started) return false;
@@ -73,8 +79,8 @@ class MeleeOperation implements ScriptOperation {
                   !attackBody(entity, this.settings)) return false;
             if (this.settings.swing && (!Number.isFinite(this.settings.swing.startDegrees) ||
                   !Number.isFinite(this.settings.swing.endDegrees))) return false;
-            this.baseAngle = entity.presentation.rotation ?? entity.body.angle;
-            scope.add(() => { this.active = false; this.releaseRotation?.(); this.releaseRotation = null; });
+            this.baseAngle = entity.presentation.orientation("sprite")?.angle ?? 0;
+            scope.add(() => { this.active = false; this.orientation?.release(); this.orientation = null; });
             if (this.settings.pose) scope.add(entity.presentation.acquirePose(this.settings.pose));
             actionSound(entity, scope, this.settings.sound);
             this.active = true;
@@ -98,8 +104,8 @@ class MeleeOperation implements ScriptOperation {
 
       cancel(_reason: CancellationReason): void {
             this.active = false;
-            this.releaseRotation?.();
-            this.releaseRotation = null;
+            this.orientation?.release();
+            this.orientation = null;
             this.hitTargets.clear();
       }
 
@@ -109,9 +115,9 @@ class MeleeOperation implements ScriptOperation {
             const degrees = swing.startDegrees + (swing.endDegrees - swing.startDegrees) *
                   this.elapsedMs / this.durationMs;
             const mirror = this.context.entity.facing === "left" ? -1 : 1;
-            this.releaseRotation?.();
-            this.releaseRotation = this.context.entity.presentation.acquireRotation(
-                  this.baseAngle + mirror * degrees * Math.PI / 180);
+            const value = { angle: this.baseAngle + mirror * degrees * Math.PI / 180 };
+            if (this.orientation) this.orientation.set(value);
+            else this.orientation = this.context.entity.presentation.acquireOrientation("sprite", value);
       }
 
       private hitOverlaps(): void {

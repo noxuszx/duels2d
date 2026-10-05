@@ -30,6 +30,7 @@ class CrawlOperation implements ScriptOperation {
       constructor(private readonly context: ComponentContext, private readonly settings: CrawlSettings,
             private readonly wall: ArenaWall, private readonly target: Entity) {}
       get isComplete(): boolean { return this.complete; }
+      get nextBoundaryMs(): number { return Math.max(0, this.settings.durationMs - this.elapsedMs); }
       start(scope: ScriptScope): boolean {
             if (this.started) return false;
             this.started = true;
@@ -48,7 +49,7 @@ class CrawlOperation implements ScriptOperation {
             this.direction = (Math.sign(delta || (vertical ? entity.body.velocity.y : entity.body.velocity.x) || 1) < 0) ? -1 : 1;
             const angle = this.wall === "top" ? Math.PI : this.wall === "left" ? Math.PI / 2
                   : this.wall === "right" ? -Math.PI / 2 : 0;
-            scope.add(entity.presentation.acquireRotation(angle));
+            scope.use(entity.presentation.acquireOrientation("sprite", { angle }));
             scope.add(() => { this.releasePose?.(); this.releasePose = null; });
             actionSound(entity, scope, this.settings.sound);
             Body.setAngle(entity.body, 0);

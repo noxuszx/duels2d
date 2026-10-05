@@ -5,6 +5,8 @@ import type { ProjectileEmitter } from "../../../gameplay/components/projectile"
 import type { SpriteAim } from "../../../gameplay/components/aim";
 import type { Forms } from "../../../gameplay/components/forms";
 import type { Visuals } from "../../../gameplay/components/visuals";
+import { scoped } from "../../../engine/scripting/scoped";
+import { poseSequence } from "../../script-helpers/pose-sequence";
 
 interface GrannyComponents {
       targeting: Targeting; melee: MeleeAttack; shotgun: ProjectileEmitter;
@@ -22,8 +24,7 @@ export function grannyBehavior({ targeting, melee, shotgun, aim, forms, visuals 
                         interrupt: true,
                         when: () => !forms.is("transformed") && forms.healthRatio <= transformed.healthRatio!,
                         *run() {
-                              for (const step of transformed.sequence ?? [])
-                                    yield visuals.pose(transformed.poses![step.pose], step.durationMs);
+                              yield* poseSequence(visuals, transformed.poses!, transformed.sequence ?? []);
                               forms.enter("transformed");
                         },
                   },
@@ -45,9 +46,11 @@ export function grannyBehavior({ targeting, melee, shotgun, aim, forms, visuals 
                         *run() {
                               const target = targeting.nearestEnemy();
                               if (!target) return;
-                              yield* aim.follow(target, function* () {
+                              yield* scoped(() => aim.track(target), function* () {
                                     yield visuals.pose("attackWindup", blast.windupMs ?? 0);
-                                    yield shotgun.start(target);
+                                    const solution = aim.current;
+                                    if (!solution) return;
+                                    yield shotgun.emit({ position: solution.origin, direction: solution.direction });
                                     yield visuals.pose("attackActive", blast.attackDurationMs ?? 0);
                                     yield visuals.pose("recovery", blast.recoveryMs ?? 0);
                               });

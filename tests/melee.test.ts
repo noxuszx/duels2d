@@ -84,7 +84,7 @@ describe("scoped melee attacks", () => {
             operation.advance(25);
             expect(afterCancel.health).toBe(100);
             scope.release();
-            releaseRotation();
+            releaseRotation.release();
             simulation.dispose();
       });
 

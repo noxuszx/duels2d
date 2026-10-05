@@ -8,11 +8,14 @@ import type { DashSettings } from "../../config/component-settings";
 import type { ComponentContext } from "../../engine/component";
 import { FloatingMovement } from "./movement";
 import { actionSound } from "./action-sound";
+import { SIMULATION_STEP_MS } from "../../engine/simulation";
 
 export class Dasher implements EntityComponent {
       constructor(private readonly context: ComponentContext, private readonly settings: DashSettings) { }
       attach(): void { }
-      start(target: Entity): ScriptOperation { return new DashOperation(this.context, this.settings, target); }
+      start(target: Entity): ScriptOperation {
+            return new DashOperation(this.context, this.settings, target);
+      }
 }
 
 class DashOperation implements ScriptOperation {
@@ -25,6 +28,7 @@ class DashOperation implements ScriptOperation {
       rejectionReason: "rejected" | "resource-conflict" = "rejected";
       constructor(private readonly context: ComponentContext, private readonly settings: DashSettings, private readonly target: Entity) { }
       get isComplete(): boolean { return this.complete; }
+      get nextBoundaryMs(): number { return Math.max(0, this.settings.maxDurationMs - this.elapsedMs); }
 
       start(scope: ScriptScope): boolean {
 
@@ -56,14 +60,15 @@ class DashOperation implements ScriptOperation {
             if (!this.active) return 0;
             const consumed = Math.min(deltaMs, this.settings.maxDurationMs - this.elapsedMs);
             this.elapsedMs += consumed;
-            if (this.settings.maxDurationMs - this.elapsedMs <= 1e-9) { this.active = false; this.complete = true; return consumed; }
             const { entity } = this.context;
             const forward = entity.body.velocity.x * this.direction.x + entity.body.velocity.y * this.direction.y;
             const speed = (entity.components.get<FloatingMovement>("movement")?.baseSpeed ?? entity.config.speed) * this.settings.speedMultiplier;
             if (forward < speed) {
-                  const force = this.settings.accelerationForce * Math.max(0, 1 - forward / speed) * 4;
+                  const force = this.settings.accelerationForce * Math.max(0, 1 - forward / speed) * 4 *
+                        consumed / SIMULATION_STEP_MS;
                   Body.applyForce(entity.body, entity.body.position, { x: this.direction.x * force, y: this.direction.y * force });
             }
+            if (this.settings.maxDurationMs - this.elapsedMs <= 1e-9) { this.active = false; this.complete = true; }
             return consumed;
       }
       contact(event: ContactEvent): void {

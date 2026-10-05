@@ -6,7 +6,7 @@ import alienData from "../config/fighters/alien.json";
 import { composeFighter } from "../src/config/fighter-config";
 import { alienMan } from "../src/content/fighters/alienman/definition";
 import { alien } from "../src/content/fighters/alien/definition";
-import { Simulation } from "../src/engine/simulation";
+import { SIMULATION_STEP_MS, Simulation } from "../src/engine/simulation";
 import { createFighter } from "../src/gameplay/fighter-factory";
 import { Forms } from "../src/gameplay/components/forms";
 import { SpriteAim } from "../src/gameplay/components/aim";
@@ -18,10 +18,10 @@ const alienConfig = composeFighter(defaults as FighterDefaults, alienData as Fig
 function advance(simulation: Simulation, ticks: number) {
       for (let index = 0; index < ticks; index++) simulation.step();
 }
-function setup(speed = .001) {
+function setup(speed = .001, arenaWidth = 1200) {
       const config = structuredClone(ownerConfig);
       config.components.saucer!.speed = speed;
-      const simulation = new Simulation({ arena: { minX: 0, maxX: 1200, minY: 0, maxY: 1000 },
+      const simulation = new Simulation({ arena: { minX: 0, maxX: arenaWidth, minY: 0, maxY: 1000 },
             seed: 11, impact: { minSpeed: 10_000 }, globalSpeedMultiplier: .25 });
       const owner = createFighter(simulation, config, { runtimeId: "owner", teamId: "A",
             collisionGroup: -1, roster: [config, alienConfig],
@@ -48,9 +48,57 @@ describe("Alien Man and owned actors", () => {
                         expect(visual.shape.width).toBe(100);
                   }
             }
-            expect(min).toBe(80); expect(max).toBe(1120);
+            // Reflection can occur inside a tick; sampled positions stay within one tick of each edge.
+            expect(min).toBeGreaterThanOrEqual(80);
+            expect(min).toBeLessThanOrEqual(80 + 1000 * SIMULATION_STEP_MS / 1000);
+            expect(max).toBeLessThanOrEqual(1120);
+            expect(max).toBeGreaterThanOrEqual(1120 - 1000 * SIMULATION_STEP_MS / 1000);
             expect(saucer.body.isSensor).toBe(true);
             expect(saucer.tags.size).toBe(0);
+            simulation.dispose();
+      });
+
+      it("continues the same patrol through transformation, deployment, and a recorded match result", () => {
+            const { simulation, owner, enemy, saucer, summons } = setup(100);
+            const initialX = saucer.body.position.x;
+            owner.takeDamage(500);
+            advance(simulation, 241);
+            const transformedX = saucer.body.position.x;
+            expect(Math.abs(transformedX - initialX)).toBeCloseTo(100 * 240 * SIMULATION_STEP_MS / 1000);
+            expect(saucer.presentation.shapes).toHaveLength(0);
+            advance(simulation, 120);
+            expect(summons()).toHaveLength(1);
+            expect(Math.abs(saucer.body.position.x - transformedX)).toBeCloseTo(100);
+            enemy.takeDamage(enemy.health);
+            simulation.step();
+            expect(simulation.state).toBe("ended");
+            const endedX = saucer.body.position.x;
+            advance(simulation, 120);
+            expect(Math.abs(saucer.body.position.x - endedX)).toBeCloseTo(100);
+            simulation.dispose();
+            expect(saucer.isRemoved).toBe(true);
+            expect(saucer.resources.isHeld("locomotion")).toBe(false);
+      });
+
+      it("keeps an oversized saucer stationary without an immediate-operation loop", () => {
+            const { simulation, saucer } = setup(100, 100);
+            advance(simulation, 300);
+            expect(saucer.body.position.x).toBe(80);
+            expect(saucer.behavior?.isRunning).toBe(true);
+            simulation.dispose();
+      });
+
+      it("releases concurrent beam and patrol resources when its owner dies mid-beam", () => {
+            const { simulation, owner, saucer } = setup(100);
+            simulation.step();
+            expect(saucer.presentation.shapes).toHaveLength(1);
+            expect(saucer.resources.isHeld("locomotion")).toBe(true);
+            owner.takeDamage(owner.health);
+            simulation.step();
+            expect(saucer.isRemoved).toBe(true);
+            expect(saucer.presentation.shapes).toHaveLength(0);
+            expect(saucer.resources.isHeld("locomotion")).toBe(false);
+            expect(saucer.behavior?.isRunning).toBe(false);
             simulation.dispose();
       });
 
@@ -78,13 +126,17 @@ describe("Alien Man and owned actors", () => {
             expect(owner.presentation.visual?.image).toContain("alienman-trans.png");
             advance(simulation, 239); expect(forms.is("transformed")).toBe(false);
             advance(simulation, 1); expect(forms.is("transformed")).toBe(true);
+            const deployedAtMs = simulation.nowMs;
             expect(saucer.presentation.shapes).toHaveLength(0);
             advance(simulation, 119); expect(summons()).toHaveLength(0);
             advance(simulation, 1); expect(summons()).toHaveLength(1);
+            expect(simulation.nowMs - deployedAtMs).toBeCloseTo(1000);
             expect(Math.hypot(summons()[0].body.velocity.x, summons()[0].body.velocity.y))
                   .toBeCloseTo(alienConfig.speed * simulation.globalSpeedMultiplier * Math.hypot(1, .6));
             advance(simulation, 360); expect(summons()).toHaveLength(2);
+            expect(simulation.nowMs - deployedAtMs).toBeCloseTo(4000);
             advance(simulation, 360); expect(summons()).toHaveLength(3);
+            expect(simulation.nowMs - deployedAtMs).toBeCloseTo(7000);
             const spawned = summons();
             expect(new Set(spawned.map(entity => entity.runtimeId)).size).toBe(3);
             for (const entity of spawned) {
@@ -98,7 +150,7 @@ describe("Alien Man and owned actors", () => {
             expect(summons()).toHaveLength(0);
             expect(saucer.isRemoved).toBe(true);
             expect(saucer.presentation.shapes).toHaveLength(0);
-            for (const entity of spawned) expect(entity.presentation.weaponRotation).toBeNull();
+            for (const entity of spawned) expect(entity.presentation.orientation("weapon")).toBeNull();
             simulation.dispose();
       });
 
@@ -117,8 +169,8 @@ describe("Alien Man and owned actors", () => {
             for (const entity of [shooter, ...targets]) Body.setStatic(entity.body, true);
             simulation.step();
             expect(targets.map(entity => entity.health)).toEqual([1000, 970, 970]);
-            expect(shooter.presentation.rotation).toBeNull();
-            expect(shooter.presentation.weaponRotation).not.toBeNull();
+            expect(shooter.presentation.orientation("sprite")).toBeNull();
+            expect(shooter.presentation.orientation("weapon")).not.toBeNull();
             expect(shooter.presentation.shapes).toHaveLength(1);
             advance(simulation, 8);
             expect(shooter.presentation.shapes).toHaveLength(0);
@@ -132,7 +184,7 @@ describe("Alien Man and owned actors", () => {
             expect(dx * solution.direction.y - dy * solution.direction.x).toBeCloseTo(0);
             expect(shooter.facing).toBe("left");
             simulation.reset();
-            expect(shooter.presentation.weaponRotation).toBeNull();
+            expect(shooter.presentation.orientation("weapon")).toBeNull();
             expect(shooter.presentation.shapes).toHaveLength(0);
             expect(simulation.entities.size).toBe(0);
             simulation.dispose();

@@ -10,6 +10,12 @@ export interface ScriptOperation {
       readonly isComplete: boolean;
       readonly endReason?: OperationEndReason;
       readonly rejectionReason?: "rejected" | "resource-conflict";
+      /**
+       * Time until the next possible completion during advance(), for concurrent slicing.
+       * Omission promises that advance consumes its entire budget unless already complete.
+       * Timed operations must expose their boundary; contact-only completion may omit it.
+       */
+      readonly nextBoundaryMs?: number;
       cancel(reason: CancellationReason): void;
       contact?(event: ContactEvent): void;
 }

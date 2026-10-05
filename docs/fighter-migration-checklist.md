@@ -2,8 +2,32 @@
 
 See [fighter-architecture.md](fighter-architecture.md) for the current runtime
 and ownership contracts. The simulation foundation has been implemented, and
-Baby Man, Granny, Alien Man, and summoned aliens have active blueprints. Other roster entries use the
+Baby Man, Granny, Alien Man, summoned aliens, and Angry Man have active blueprints. Other roster entries use the
 passive setup until they receive a blueprint and behavior.
+
+## Approved scripting phases
+
+- [x] **Phase 1 implemented and verified.** The scope was
+  simulation-time `during`/`tween`, failure-safe `scoped` acquisition,
+  additive presentation offset/rotation leases, and content-level shake and
+  pause-movement helpers.
+- [x] Remove `MovementControl`, `VisualMotion`, and `Visuals.shakeWhile`
+  completely and migrate every caller. No compatibility layers, intermediate
+  adapters, or duplicate code paths are allowed; temporary fighter breakage
+  during migration is acceptable.
+- [x] Verify that failed initial scoped acquisition runs no inner sequence and commits
+  no cooldown, partial acquisition is released, `during` receives its initial
+  zero-time callback and final partial delta, and successful `tween` completion
+  reaches one while cancellation does not synthesize the endpoint.
+- [x] Verify additive offset/rotation through the shared body, weapon, health
+  bar, and muzzle presentation transform.
+- [x] Implement content steering and kinematic movement helpers, explicit
+  single/group projectile emissions, and timed content bursts.
+- [x] Implement `all`/`race` with branch scopes and exact shared timing;
+  migrate affected API calls and remove replaced APIs.
+- [x] Complete active behavior cleanup: shared generator execution and
+  `sequence` composition, scripted saucer patrol/lifecycle, condition waits,
+  shared transformation poses and spatial-hit content helpers.
 
 ## Implemented foundation
 
@@ -72,7 +96,7 @@ passive setup until they receive a blueprint and behavior.
   each at 40% health, and then fires aimed shots with backward recoil. Review
   sprite placement, muzzle alignment, both facings, and restart in the browser.
 
-## Deferred scope
+## Scripting phase 2/3 scope
 
 The immediate gameplay work is roster migration and only the mechanics those
 fighters require. Granny now exercises reusable melee and sprite aiming, projectile
@@ -81,9 +105,18 @@ transformation. Her handles are equipped by the definition and remain stable
 across form entry; behavior explicitly chooses which handles to use. Other roster
 behaviors and damage-ramp mechanics remain future work. Alien Man's owned saucer
 and aliens use separate scripts, spatial queries, shared shape presentation,
-existing aiming, and owner cleanup. Parallel
-task scheduling, general scripting concurrency, networking/replay, and arbitrary
+existing aiming, and owner cleanup. Parallel foreground task scheduling,
+networking/replay, and arbitrary
 independently acting attachments are not part of the current foundation.
+
+- [x] **Phases 2/3 implemented and verified.** Added content-authored steering
+  helpers, explicit single/group projectile emission and content-level bursts,
+  concurrent `all` and `race` operation composition, and migrated existing
+  active fighters off special composition wrappers. This work does not add full
+  task concurrency or fighter-specific mechanics to engine code.
+
+Remaining passive-roster behavior is separate gameplay scope; these scripting
+phases do not establish that every fighter has an active blueprint.
 
 ## Recorded foundation checkpoint
 
@@ -154,3 +187,71 @@ velocity proportions. Sprite hit flashes are tinted on an isolated cached canvas
 so the beam behind transparent sprite pixels cannot fill the sprite rectangle.
 TypeScript, config validation, and eight Alien Man/aiming checks passed for this
 follow-up; visual acceptance remains a browser review.
+
+## Angry Man migration
+
+Angry Man's original stop/shake/charge sequence is restored through an active
+blueprint and readable behavior script. Targeting and dash are shared with other
+fighters. Content-level `pause-movement` and `shake` helpers keep reusable
+flourishes out of engine components; windup sound releases with its timed pose.
+His authored timing, hit effects, sprite settings, and six-second cooldown are
+preserved. The charge duration uses `race` with the configured 183 ms active
+duration as a simulation-time cap.
+
+Focused scenarios cover windup without physical jitter, sound cleanup, active
+duration/recovery/cooldown, collision damage and knockback, stale-target fallback,
+no-enemy idling, and interrupted/removal cleanup. Browser review is still needed
+for shake readability, charge feel, sprite alignment, and audio.
+
+TypeScript, arena/Studio builds, config/asset validation, and 28 focused Angry
+Man, Baby Man, Granny, and aiming checks passed. Four scenarios were added for
+Angry Man; browser gameplay and audio review remain outstanding.
+
+## Scripting primitives verification
+
+Phase 1 passed all 150 tests across 23 files, TypeScript, the combined arena and
+Studio production build, config/asset validation for all 10 fighter definitions,
+and whitespace checks. Coverage includes partial tick budgets, zero durations,
+exact tween endpoints, rejected acquisition without cooldown, cleanup after
+exceptions and reentrant cancellation, additive leases, both facing directions,
+and agreement between rendered transforms and world-space muzzle geometry.
+
+Angry Man now uses content-level pause and shake helpers. Wall crawl, melee,
+projectile spin, and sprite/weapon aiming use the new root and child leases;
+removed APIs have no adapters or fallback paths. The Studio aim fixture uses
+the new geometry frame, and its null-crop fixture now explicitly establishes
+that condition rather than inheriting Granny's authored crop. Browser gameplay,
+visuals, audio, and Studio interactions still require manual review.
+
+## Scripting phases 2/3 verification
+
+Phases 2/3 and active behavior cleanup passed 204 tests across 26 files,
+TypeScript, the combined arena and Studio production build, configuration and
+asset validation for all 10 fighter definitions, and diff checks. Coverage
+includes steering cleanup, static actor movement, grouped emission validation
+and recoil, burst geometry, aiming tracking cleanup, concurrent operation
+timing, startup rollback, dash force invariance when a tick is subdivided, and
+the current fighter behavior migrations. Browser gameplay, visual, audio, and
+Studio interaction review remain outstanding. Passive-roster behavior remains
+separate work.
+
+## Active behavior cleanup
+
+The saucer now runs `all(sequence(patrol), sequence(lifecycle))`. Movement uses
+`moveTo` instead of a custom sweep component. Its beam is scoped and raced
+against a content condition wait; spawning uses absolute deadlines from the
+captured deployment timestamp, preserving +1/+4/+7 seconds. Movement carries
+unused time across wall reversals and continues during deployment and after a
+match result. Zero-width travel intervals still consume simulation time.
+
+Granny and Alien Man share `poseSequence` for configured transformation steps,
+while their scripts own thresholds and form entry. Summoned aliens use shared
+ray geometry and explicit query-hit helpers. Baby Man's crawl/retarget/dash and
+Angry Man's scoped pause/all windup/race charge already use the new primitives
+and remain concise; they were reviewed without cosmetic rewrites.
+
+Foreground tasks and composed sequences share `OperationRunner`; the previous
+inlined execution path was removed. Nested rejection and cancellation stop all
+branches and release their scopes. There is no compatibility scheduler. The
+verification results above include this cleanup; browser gameplay, visual,
+audio, and Studio review remain outstanding.

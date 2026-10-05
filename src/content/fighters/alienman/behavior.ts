@@ -3,6 +3,7 @@ import type { Forms } from "../../../gameplay/components/forms";
 import type { Visuals } from "../../../gameplay/components/visuals";
 import { wait } from "../../../engine/scripting/wait";
 import { createSaucer, type SaucerControl } from "../../actors/saucer/definition";
+import { poseSequence } from "../../script-helpers/pose-sequence";
 
 interface AlienManComponents { forms: Forms; visuals: Visuals; }
 
@@ -20,8 +21,7 @@ export function alienManBehavior({ forms, visuals }: AlienManComponents,
                         interrupt: true,
                         when: () => !forms.is("transformed") && forms.healthRatio <= transformed.healthRatio!,
                         *run() {
-                              for (const step of transformed.sequence ?? [])
-                                    yield visuals.pose(transformed.poses![step.pose], step.durationMs);
+                              yield* poseSequence(visuals, transformed.poses!, transformed.sequence ?? []);
                               forms.enter("transformed");
                               saucer.deploy();
                         },

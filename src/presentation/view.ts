@@ -1,8 +1,9 @@
 import type { Entity } from "../engine/entity";
 import type { SpatialShape } from "../engine/spatial/shapes";
 import type { RuntimeEntityConfig } from "../types/entity";
-import type { PoseOverrides, Vector2 } from "../types/fighter";
-import type { ShapeVisual } from "./state";
+import type { PoseOverrides } from "../types/fighter";
+import type { ShapeVisual, VisualOrientation } from "./state";
+import { childTransform, rootTransform, type VisualTransform } from "./transform";
 
 function snapshotShape(shape: SpatialShape): SpatialShape {
       switch (shape.type) {
@@ -19,9 +20,8 @@ export interface EntityView {
       readonly x: number;
       readonly y: number;
       readonly angle: number;
-      readonly rotationPivot?: Vector2 | null;
-      readonly weaponAngle?: number | null;
-      readonly weaponRotationPivot?: Vector2 | null;
+      readonly spriteOrientation: VisualOrientation | null;
+      readonly weaponOrientation: VisualOrientation | null;
       readonly facing: "left" | "right";
       readonly health: number;
       readonly maxHealth: number;
@@ -42,18 +42,31 @@ export function entityPose(entity: Entity): PoseOverrides {
 
 export function entityView(entity: Entity): EntityView {
       const { config } = entity;
+      const offset = entity.presentation.offset;
       return {
             runtimeId: entity.runtimeId, config,
-            x: entity.body.position.x - config.hitboxOffset.x,
-            y: entity.body.position.y - config.hitboxOffset.y,
-            angle: entity.presentation.rotation ?? entity.body.angle,
-            rotationPivot: entity.presentation.rotationPivot ? { ...entity.presentation.rotationPivot } : null,
-            weaponAngle: entity.presentation.weaponRotation,
-            weaponRotationPivot: entity.presentation.weaponRotationPivot ? { ...entity.presentation.weaponRotationPivot } : null,
+            x: entity.body.position.x - config.hitboxOffset.x + offset.x,
+            y: entity.body.position.y - config.hitboxOffset.y + offset.y,
+            angle: entity.body.angle + entity.presentation.rotation,
+            spriteOrientation: entity.presentation.orientation("sprite"),
+            weaponOrientation: entity.presentation.orientation("weapon"),
             facing: entity.facing, health: entity.health, maxHealth: entity.maxHealth,
             dead: !entity.isAlive, busy: entity.behavior?.isRunning ?? false,
             showHealth: entity.tags.has("contestant"),
             pose: entityPose(entity),
             shapes: entity.presentation.shapes.map(visual => ({ ...visual, shape: snapshotShape(visual.shape) })),
       };
+}
+
+export function viewRootTransform(view: EntityView): VisualTransform {
+      return rootTransform(view, view.angle);
+}
+
+export function viewChildTransform(view: EntityView, target: "sprite" | "weapon"): VisualTransform {
+      const mirror = view.facing !== view.config.defaultFacing ? -1 : 1;
+      const offset = target === "weapon" ? view.config.weaponOffset : view.pose.imageOffset;
+      return childTransform(viewRootTransform(view),
+            { x: (offset?.x ?? 0) * (target === "weapon" ? mirror : 1), y: offset?.y ?? 0 }, mirror,
+            (target === "weapon" ? view.weaponOrientation : view.spriteOrientation) ??
+                  { angle: 0, pivot: target === "weapon" ? view.config.weaponPivot : undefined });
 }

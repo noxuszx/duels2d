@@ -2,7 +2,9 @@ import { Bodies } from "matter-js";
 import { Entity } from "../../../engine/entity";
 import { installBehavior } from "../../../gameplay/behavior";
 import type { FighterContext } from "../../../gameplay/fighter-factory";
-import { saucerBehavior, saucerSweep } from "./behavior";
+import { saucerBehavior } from "./behavior";
+import { createFighter } from "../../../gameplay/fighter-factory";
+import { alien } from "../../fighters/alien/definition";
 
 export interface SaucerControl { deploy(): void; }
 
@@ -29,12 +31,24 @@ export function createSaucer(context: FighterContext): SaucerControl {
             },
       });
       const actor = { entity, simulation, get config() { return entity.config; } };
-      const signal = { deploying: false };
+      const signal: { deploymentAtMs: number | null } = { deploymentAtMs: null };
+      const spawnAlly = () => {
+            const speed = summon.speed * simulation.globalSpeedMultiplier;
+            createFighter(simulation, summon, {
+                  runtimeId: simulation.nextRuntimeId(`${owner.runtimeId}:alien`),
+                  teamId: owner.teamId, ownerId: owner.runtimeId, roster,
+                  collisionGroup: owner.body.collisionFilter.group,
+                  position: { x: entity.body.position.x, y: simulation.arena.minY + summon.radius + 1 },
+                  velocity: { x: simulation.rng.next() < .5 ? -speed : speed, y: speed * .6 },
+            }, alien);
+      };
       try {
-            entity.components.use("sweep", saucerSweep(actor, settings, fromLeft ? 1 : -1));
-            installBehavior(actor, saucerBehavior(actor, settings, signal, summon, roster, owner), {},
+            installBehavior(actor, saucerBehavior(actor, {
+                  settings, signal, spawnAlly, sourceId: owner.runtimeId, initialDirection: fromLeft ? 1 : -1,
+            }),
+                  { onSpawn: "arrival" },
                   () => ({ cooldownMs: 0 }));
             simulation.add(entity);
       } catch (error) { entity.remove(); throw error; }
-      return { deploy: () => { signal.deploying = true; } };
+      return { deploy: () => { signal.deploymentAtMs ??= simulation.nowMs; } };
 }

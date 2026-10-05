@@ -4,7 +4,7 @@
 
 /* ---- CSS Custom Properties (Design Tokens) ------------------------------ */
 :root {
-      --clr-bg: #0d0f12;
+      --clr-bg: #0c2340;
       --clr-command: #000000;
       --clr-command-elevated: rgba(255, 255, 255, 0.08);
       --clr-command-hover: rgba(255, 255, 255, 0.12);
@@ -48,7 +48,28 @@ body {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #0d0f12;
+      background-color: #0c2340;
+      background-image:
+            /* Subtle vignette gives drafting paper depth */
+            radial-gradient(circle at 50% 50%, rgba(20, 60, 105, 0.45) 0%, rgba(6, 17, 32, 0.88) 100%),
+            /* Major blueprint grid (100px) */
+            linear-gradient(rgba(130, 205, 255, 0.22) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(130, 205, 255, 0.22) 1px, transparent 1px),
+            /* Minor blueprint grid (20px) */
+            linear-gradient(rgba(130, 205, 255, 0.07) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(130, 205, 255, 0.07) 1px, transparent 1px);
+      background-size:
+            100% 100%,
+            100px 100px,
+            100px 100px,
+            20px 20px,
+            20px 20px;
+      background-position:
+            0 0,
+            -1px -1px,
+            -1px -1px,
+            -1px -1px,
+            -1px -1px;
       font-family: var(--font-body);
       color: var(--clr-text);
       display: flex;
@@ -66,7 +87,7 @@ body {
    ============================================================================ */
 #game-container {
       position: relative;
-      background: #1a1d24;
+      background: transparent;
 
       /*
    * Constrain size to fit both viewport width and height (accounting for margins/HUD),
@@ -78,10 +99,6 @@ body {
       max-width: 500px;
       max-height: 500px;
       flex-shrink: 0;
-
-      /* Rounded corners and shadow for premium feel since it's now detached from edges */
-      border-radius: 2px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 
       /* The logical arena stays this size, but the canvas may draw UI/art outside. */
       overflow: visible;
@@ -176,10 +193,10 @@ body {
       font-family: var(--font-hud);
       font-size: 1.2rem;
       font-weight: bold;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.08em;
       color: #ffffff;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-      margin-top: 5px;
+      text-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
+      margin-top: 8px;
 }
 
 @keyframes pulse-gold {

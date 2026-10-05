@@ -173,4 +173,5 @@ describe("headless simulation", () => {
                   targetId: "second", amount: 2, killed: true });
             sim.dispose();
       });
+
 });

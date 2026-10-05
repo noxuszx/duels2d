@@ -68,7 +68,7 @@ export class GameApp {
             this.selection = new FighterSelectPanel(this);
             new ResizeObserver(() => this.resizeView()).observe(container);
             this.resizeView();
-            document.body.style.background = config.game.arena.backgroundColor;
+            document.body.style.backgroundColor = config.game.arena.backgroundColor;
             this.restart();
             requestAnimationFrame(time => this.frame(time));
       }
@@ -84,9 +84,9 @@ export class GameApp {
       private frame(time: number): void {
             const delta = this.previousFrame ? Math.min(250, Math.max(0, time - this.previousFrame)) : 0;
             this.previousFrame = time;
-            if (!this.paused && !this.gameOver) {
+            if (!this.paused) {
                   this.accumulator += delta;
-                  while (this.accumulator >= SIMULATION_STEP_MS && !this.gameOver) {
+                  while (this.accumulator >= SIMULATION_STEP_MS) {
                         this.simulation.step();
                         this.consumeEffects();
                         this.accumulator -= SIMULATION_STEP_MS;
@@ -105,11 +105,8 @@ export class GameApp {
                         if (entity) { this.renderer.hit(event.targetId, event.amount, entityView(entity), world.nowMs);
                               this.voices.get(event.targetId)?.play("hurt"); }
                   } else if (event.kind === "match-ended") {
-                        const outcome = event.outcome;
                         const status = document.getElementById("hud-status");
-                        if (status) status.textContent = outcome.kind === "draw" ? "DRAW"
-                              : world.entities.all().filter(entity => entity.teamId === outcome.teamId &&
-                                    entity.tags.has("contestant")).map(entity => entity.config.name).join(" & ") + " WINS";
+                        if (status) status.textContent = "";
                         const victoryPlayback = event.outcome.kind === "winner"
                               ? EntityAudio.playShared("victory", this.config.sounds, this.config.game) : null;
                         window.dispatchEvent(new CustomEvent("duels2d:gameover", { detail: { victoryPlayback } }));
@@ -134,7 +131,7 @@ export class GameApp {
                               this.boundSounds.delete(payload.token);
                         }
                   }
-                  voice.update(world.nowMs, entity.isAlive && !entity.behavior?.isRunning && !this.gameOver);
+                  voice.update(world.nowMs, entity.isAlive && !entity.behavior?.isRunning);
             }
             for (const [id, voice] of this.voices) if (!world.entities.get(id)) {
                   for (const [token, playback] of this.boundSounds) if (playback.entityId === id) {
@@ -168,14 +165,14 @@ export class GameApp {
                   }, fighterBlueprints.get(config.id));
             }
             const title = document.getElementById("hud-title");
-            if (title) title.textContent = this.selected.map(id => this.fighterRoster.find(fighter => fighter.id === id)!.name).join(" VS ");
+            if (title) title.innerHTML = this.selected.map(id => this.fighterRoster.find(fighter => fighter.id === id)!.name).join(' <span class="accent">VS</span> ');
             const status = document.getElementById("hud-status");
             if (status) status.textContent = this.config.game.text.statusFight;
             this.paused = false; this.accumulator = 0; this.previousFrame = 0;
             this.dispatchPlayback();
       }
-      start(): void { if (!this.gameOver) { this.paused = false; this.dispatchPlayback(); } }
-      pause(): void { if (!this.gameOver) { this.paused = true; this.dispatchPlayback(); } }
+      start(): void { this.paused = false; this.dispatchPlayback(); }
+      pause(): void { this.paused = true; this.dispatchPlayback(); }
       openCharacterSelect(): void { this.selection.open(); }
       getSelectedCharacterIds(): string[] { return [...this.selected]; }
       setSelectedCharacterIds(ids: readonly string[]): void {

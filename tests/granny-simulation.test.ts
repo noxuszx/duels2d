@@ -148,15 +148,14 @@ describe("Granny in the simulation", () => {
             simulation.dispose();
       });
 
-      it.each(["death", "remove", "reset", "match-end"] as const)("cleans aimed actions on %s", stop => {
+      it.each(["death", "remove", "reset"] as const)("cleans aimed actions on %s", stop => {
             const { simulation, fighter, enemy, forms, aim } = setup({ x: 750, y: 550 });
             forms.enter("transformed");
             simulation.step();
             expect(aim.current).not.toBeNull();
             if (stop === "death") fighter.takeDamage(1000);
             else if (stop === "remove") simulation.remove(fighter.runtimeId);
-            else if (stop === "reset") simulation.reset();
-            else { enemy.takeDamage(1000); simulation.step(); }
+            else simulation.reset();
             expect(fighter.behavior?.isRunning).toBe(false);
             expect(aim.current).toBeNull();
             expect(fighter.presentation.rotation).toBeNull();

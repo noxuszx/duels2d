@@ -24,12 +24,11 @@ export class CanvasRenderer {
             ctx.strokeStyle = this.settings.game.arena.borderColor;
             ctx.lineWidth = this.settings.game.arena.borderWidth * 2;
             ctx.strokeRect(arena.ax, arena.ay, arena.aw, arena.ah);
-            ctx.font = "600 14px sans-serif";
-            ctx.textAlign = "right";
-            ctx.fillStyle = "rgba(255,255,255,0.2)";
-            ctx.fillText("duels-2d", arena.ax + arena.aw - 12, arena.ay + 22);
+            this.drawWatermark(arena);
+            ctx.font = "bold 20px sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText(this.settings.game.text.footer, arena.ax + arena.aw / 2, arena.ay + arena.ah + 30);
+            ctx.fillStyle = "rgba(255,255,255,0.3)";
+            ctx.fillText(this.settings.game.text.footer, arena.ax + arena.aw / 2, arena.ay + arena.ah + 36);
             for (const view of views) if (!view.dead) this.drawEntity(view, now);
             for (const text of this.texts) {
                   const elapsed = now - text.born;
@@ -41,6 +40,56 @@ export class CanvasRenderer {
                   ctx.fillText(text.text, text.x, text.y - elapsed * 0.04);
                   ctx.restore();
             }
+      }
+      private drawWatermark(arena: Arena): void {
+            const { ctx } = this;
+            const centerX = arena.ax + arena.aw / 2;
+            const centerY = arena.ay + arena.ah / 2;
+
+            ctx.save();
+            ctx.globalAlpha = 0.25;
+            ctx.font = "bold 20px system-ui, -apple-system, sans-serif";
+            ctx.textBaseline = "middle";
+
+            const text = "duels-2d";
+            const textMetrics = ctx.measureText(text);
+            const textWidth = textMetrics.width;
+
+            const iconWidth = 26;
+            const iconHeight = 18;
+            const cornerRadius = 5;
+            const gap = 8;
+            const totalWidth = iconWidth + gap + textWidth;
+
+            const iconX = centerX - totalWidth / 2;
+            const iconY = centerY - iconHeight / 2;
+
+            ctx.fillStyle = "#ff0000";
+            ctx.beginPath();
+            if (typeof ctx.roundRect === "function") {
+                  ctx.roundRect(iconX, iconY, iconWidth, iconHeight, cornerRadius);
+            } else {
+                  ctx.rect(iconX, iconY, iconWidth, iconHeight);
+            }
+            ctx.fill();
+
+            ctx.fillStyle = "#ffffff";
+            const triWidth = 7;
+            const triHeight = 8;
+            const triX = iconX + (iconWidth - triWidth) / 2 + 0.75;
+
+            ctx.beginPath();
+            ctx.moveTo(triX, centerY - triHeight / 2);
+            ctx.lineTo(triX + triWidth, centerY);
+            ctx.lineTo(triX, centerY + triHeight / 2);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.textAlign = "left";
+            ctx.fillText(text, iconX + iconWidth + gap, centerY);
+
+            ctx.restore();
       }
       private image(path: string): HTMLImageElement | null {
             if (!path) return null;

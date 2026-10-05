@@ -50,7 +50,8 @@ passive setup until they receive a blueprint and behavior.
   cooldowns in JSON `moves`.
 - [ ] Route damage, statuses, and contact effects through shared services.
   Scope movement/presentation overrides and release them on completion,
-  interruption, death, removal, reset, and match end as applicable.
+  interruption, death, removal, reset, and disposal as applicable. Announcing
+  the result preserves live actions and their resources until their normal end.
 - [ ] Keep each fighter passive until its behavior is ready and registered.
 - [ ] Manually check ordinary use, collisions, target validity, cooldown,
   interruption, cleanup, and Studio round trips for the migrated fighter.
@@ -62,7 +63,8 @@ passive setup until they receive a blueprint and behavior.
 - [ ] Crawl follows each wall and uses configured poses, sound, duration, and
   speed; dash then chooses a current live enemy and ends under configured rules.
 - [ ] No target, status restriction, interruption, death, removal, reset, or
-  match end leaves a stale task or movement/presentation lease.
+  disposal leaves a stale task or movement/presentation lease. Match completion
+  must preserve ongoing live tasks rather than freeze the world.
 - [ ] Fighter JSON opens, edits, saves, reloads, and undoes in Character Studio
   without losing component, move, pose, or named-form fields.
 - [ ] Representative passive opponents remain usable in matches.
@@ -102,6 +104,17 @@ Headless coverage includes threshold timing, attack cooldowns, aimed projectile
 damage, recoil direction, separate instances, interrupted transformation, stale
 targets, and death/removal/reset/match-end cleanup. Browser visual review remains
 outstanding.
+
+## Post-result simulation
+
+Winner/draw announcements now occur once without stopping physics, live tasks,
+statuses, combat, or spawning. Projectiles retain their normal lifetime and owner
+policies. Play/pause remain available after the result; reset/disposal still clean
+the world. The initial continuation check passed 115 tests across 16 files before
+its three additional post-result fixtures were removed. Existing expectations
+remain aligned with the new behavior; no tests were rerun for this removal.
+TypeScript still reports the same 14 existing errors
+from the partial `EntityConfig` migration; none were added by this change.
 
 For verification commands see [the project README](../README.md). Record what
 ran and what remains for manual review; do not equate automated checks with

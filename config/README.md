@@ -41,6 +41,11 @@ inherits the base map. An explicit `{}` remains empty after Studio save/reload.
 Component names and settings are defined in
 `src/config/component-settings.ts`.
 
+Declaring a winner does not stop the world or invoke projectile `onMatchEnd`
+removal. Projectiles continue until their normal collision/lifetime/owner rules
+remove them; reset and disposal clear the world. The retained `onMatchEnd` policy
+is used only by explicit registry `retireMatchEnd()` cleanup.
+
 ```json
 {
   "id": "exampleman",

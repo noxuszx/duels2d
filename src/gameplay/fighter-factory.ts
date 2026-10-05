@@ -66,7 +66,7 @@ export function defineFighter<const B extends BehaviorFactory>(
                   const runtime = new BehaviorRuntime(entity, {
                         now: () => simulation.nowMs,
                         entities: () => simulation.entities.all(),
-                        isCombatActive: () => simulation.state === "running",
+                        isCombatActive: () => simulation.isCombatActive,
                         trace: (event: RuntimeTrace) => simulation.recordTrace(event),
                   });
                   entity.setBehavior(runtime);

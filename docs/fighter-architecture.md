@@ -122,7 +122,7 @@ No threshold or sequence runs automatically from JSON.
 
 ## Simulation lifecycle and entity ownership
 
-Each `step()` advances `1000 / 120` ms while the match runs. Live entities update
+Each `step()` advances `1000 / 120` ms until the simulation is disposed. Live entities update
 statuses, the active task, and component `beforeStep` hooks. Owner-death cleanup
 and queued removals occur before Matter, so expired bodies cannot impart impulses.
 The engine then updates physics, contains eligible bodies in the arena, resolves
@@ -134,14 +134,20 @@ Spawn through `simulation.add` and retire through `simulation.remove`. Removal
 changes logical liveness immediately; additions made during a step become
 registered at its final boundary. Components do not mutate the Matter world
 or maintain private entity/collision registries. Allocate spawned IDs with
-`simulation.nextRuntimeId(prefix)`. Owner-death, owner-removal, and match-end
-policies explicitly choose whether dependent entities persist or are removed.
+`simulation.nextRuntimeId(prefix)`. Owner-death and owner-removal policies
+explicitly choose whether dependent entities persist or are removed. Announcing
+the result does not invoke registry match-end cleanup; authored `onMatchEnd`
+policies apply only if a caller explicitly requests `retireMatchEnd()` cleanup.
 
 Ordinary fighters carry `targetable` and `contestant` tags. Projectile entities
 have an owner and empty tags; targeting and victory rules do not count them as
 fighters. Match rules count surviving teams of unowned contestants. Match end
-cancels active work and stops stepping. Reset clears the registry, timers, events,
-RNG, and trace before the caller repopulates the world.
+records the first outcome and emits one announcement; physics, live behaviors,
+statuses, spawning, projectile flight, and combat continue normally. The recorded
+result is not revised by later damage. The browser can still pause/resume manually.
+Death stops that entity's actions, while its dependents follow their owner policies.
+Reset clears the registry, timers, events, RNG, and trace before the caller
+repopulates the world. Disposal stops stepping and spawning and releases entities.
 
 Resource leases control locomotion/upright overrides, bounce/impact policy,
 and ignored pairs. Contact policy combines the captured snapshot, handler edits,

@@ -108,7 +108,7 @@ describe("projectile flight in the headless simulation", () => {
             surviving.ally.takeDamage(100);
             surviving.simulation.step();
             expect(surviving.simulation.rules.outcome).toEqual({ kind: "winner", teamId: "B" });
-            expect(flying.removalReason).toBe("match-ended");
+            expect(flying.isRemoved).toBe(false);
             surviving.simulation.dispose();
       });
 

@@ -35,7 +35,8 @@ export class Simulation {
       private readonly speedMultiplier: number;
       private seed: number;
       private nextEntitySerial = 0;
-      state: "running" | "ended" = "running";
+      /** Match completion records a result; only disposal stops the world. */
+      state: "running" | "ended" | "disposed" = "running";
       nowMs = 0;
       tick = 0;
 
@@ -53,7 +54,7 @@ export class Simulation {
             this.contacts.attach();
       }
 
-      get isCombatActive(): boolean { return this.state === "running"; }
+      get isCombatActive(): boolean { return this.state !== "disposed"; }
 
       recordTrace(event: RuntimeTrace): void {
             this.trace.push(event);
@@ -69,7 +70,7 @@ export class Simulation {
       }
 
       add(entity: Entity, registration: EntityRegistration = {}): void {
-            if (this.state !== "running") throw new Error("Cannot spawn after match end");
+            if (this.state === "disposed") throw new Error("Cannot spawn in a disposed simulation");
             this.entities.add(entity, registration);
             this.rules.observeSpawn(entity);
             const initialSpeed = Math.hypot(entity.body.velocity.x, entity.body.velocity.y);
@@ -99,7 +100,7 @@ export class Simulation {
 
       /** Advances exactly one 120 Hz simulation tick. Callers own real-time accumulation. */
       step(): void {
-            if (this.state !== "running") return;
+            if (this.state === "disposed") return;
             this.entities.beginMutationBoundary();
             try {
                   this.nowMs += SIMULATION_STEP_MS;
@@ -118,18 +119,9 @@ export class Simulation {
                   for (const entity of this.entities.all()) if (entity.isAlive) entity.afterStep(SIMULATION_STEP_MS);
                   this.entities.retireDeadOwners();
                   const outcome = this.rules.evaluate(this.entities.all());
-                  if (outcome) {
+                  if (outcome && this.state === "running") {
                         this.state = "ended";
                         this.events.push({ kind: "match-ended", outcome });
-                        let failure: unknown;
-                        let failed = false;
-                        const cleanup = (action: () => void) => {
-                              try { action(); }
-                              catch (error) { if (!failed) failure = error; failed = true; }
-                        };
-                        cleanup(() => this.entities.retireMatchEnd());
-                        for (const entity of this.entities.all()) cleanup(() => entity.cancel("match-ended"));
-                        if (failed) throw failure;
                   }
             } finally {
                   this.entities.endMutationBoundary();
@@ -155,7 +147,7 @@ export class Simulation {
       }
 
       dispose(): void {
-            this.state = "ended";
+            this.state = "disposed";
             this.contacts.dispose();
             this.entities.clear("removed");
       }

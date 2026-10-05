@@ -5,7 +5,6 @@
   "color": "#c7a0db",
   "combat": {
     "maxHealth": 1000,
-    "speed": 7,
     "faceTarget": {
       "mode": "always"
     }

@@ -179,7 +179,8 @@ transformation sequence, follow [Granny's behavior](../src/content/fighters/gran
 Use source/diff inspection and checks appropriate to the change. Commands are
 listed in [the project README](../README.md). Meaningful coverage exercises
 actual timing/contacts, rejected starts, cooldowns, interruption, death/removal/
-reset/match end, and independent instances. Avoid tests that copy implementation.
+reset/disposal, post-result continuation, and independent instances. Avoid tests
+that copy implementation.
 After editor/data changes, verify serialization, history, geometry preservation,
 and empty-versus-inherited form maps.
 

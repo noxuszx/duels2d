@@ -22,6 +22,48 @@ export interface RecordingView {
       targets: Array<{ x: number; y: number }>;
 }
 
+interface FighterSpawnTransform {
+      position: { x: number; y: number };
+      velocity: { x: number; y: number };
+}
+
+function calculateFighterSpawn(
+      slot: number,
+      totalSlots: number,
+      arenaWidth: number,
+      arenaHeight: number,
+      overflow: number,
+      speed: number,
+): FighterSpawnTransform {
+      if (totalSlots === 2) {
+            return {
+                  position: {
+                        x: overflow + arenaWidth * (slot === 0 ? 0.25 : 0.75),
+                        y: overflow + arenaHeight / 2,
+                  },
+                  velocity: {
+                        x: slot === 0 ? speed : -speed,
+                        y: speed * (slot === 0 ? 0.6 : -0.7),
+                  },
+            };
+      }
+
+      const ratio = (slot + 1) / (totalSlots + 1);
+      const isLeft = slot < totalSlots / 2;
+      const verticalJitter = slot % 2 === 0 ? 0.6 : -0.7;
+
+      return {
+            position: {
+                  x: overflow + arenaWidth * ratio,
+                  y: overflow + arenaHeight / 2,
+            },
+            velocity: {
+                  x: isLeft ? speed : -speed,
+                  y: speed * verticalJitter,
+            },
+      };
+}
+
 /** Browser shell. Physics, combat, components and lifetimes live in Simulation. */
 export class GameApp {
       paused = false;
@@ -46,24 +88,31 @@ export class GameApp {
       constructor(public readonly fighterRoster: FighterConfig[], private readonly config: RuntimeConfig) {
             const canvas = document.getElementById("arena-canvas");
             const container = document.getElementById("game-container");
-            if (!(canvas instanceof HTMLCanvasElement) || !(container instanceof HTMLElement))
+            if (!(canvas instanceof HTMLCanvasElement) || !(container instanceof HTMLElement)) {
                   throw new Error("Arena markup is missing");
+            }
             const ctx = canvas.getContext("2d");
             if (!ctx) throw new Error("Canvas 2D rendering unavailable");
-            this.canvas = canvas; this.container = container;
+
+            this.canvas = canvas;
+            this.container = container;
             this.arenaWidth = Math.round(container.getBoundingClientRect().width);
             this.arenaHeight = Math.round(container.getBoundingClientRect().height);
             this.overflow = config.game.arena.visualOverflow;
             this.width = this.arenaWidth + this.overflow * 2;
             this.height = this.arenaHeight + this.overflow * 2;
+
             const scale = config.game.rendering.scale;
-            canvas.width = Math.round(this.width * scale); canvas.height = Math.round(this.height * scale);
+            canvas.width = Math.round(this.width * scale);
+            canvas.height = Math.round(this.height * scale);
             ctx.setTransform(scale, 0, 0, scale, 0, 0);
+
             this.renderer = new CanvasRenderer(ctx, config);
             const selectable = fighterRoster.filter(fighter => fighter.selectable !== false);
             const first = selectable.find(fighter => fighterBlueprints.has(fighter.id)) ?? selectable[0];
             const second = selectable.find(fighter => fighter !== first);
             if (!first || !second) throw new Error("Two fighter configurations are required");
+
             this.selected = [first.id, second.id];
             this.selection = new FighterSelectPanel(this);
             new ResizeObserver(() => this.resizeView()).observe(container);
@@ -109,8 +158,7 @@ export class GameApp {
                               this.voices.get(event.targetId)?.play("hurt");
                         }
                   } else if (event.kind === "match-ended") {
-                        const status = document.getElementById("hud-status");
-                        if (status) status.textContent = "";
+                        this.updateHudStatus("");
                         const victoryPlayback = event.outcome.kind === "winner"
                               ? EntityAudio.playShared("victory", this.config.sounds, this.config.game) : null;
                         window.dispatchEvent(new CustomEvent("duels2d:gameover", { detail: { victoryPlayback } }));
@@ -118,6 +166,11 @@ export class GameApp {
                   }
             }
             for (const entity of world.entities.all()) {
+                  if (!entity.tags.has("contestant")) {
+                        entity.presentation.drainEvents();
+                        continue;
+                  }
+
                   let voice = this.voices.get(entity.runtimeId);
                   if (!voice) {
                         voice = new EntityAudio(entity.configId, this.config.game, this.config.sounds, () => world.nowMs);
@@ -137,76 +190,158 @@ export class GameApp {
                   }
                   voice.update(world.nowMs, entity.isAlive && !entity.behavior?.isRunning);
             }
-            for (const [id, voice] of this.voices) if (!world.entities.get(id)) {
-                  for (const [token, playback] of this.boundSounds) if (playback.entityId === id) {
-                        playback.sound.stop(playback.playbackId);
-                        this.boundSounds.delete(token);
+            for (const [id, voice] of this.voices) {
+                  if (!world.entities.get(id)) {
+                        for (const [token, playback] of this.boundSounds) {
+                              if (playback.entityId === id) {
+                                    playback.sound.stop(playback.playbackId);
+                                    this.boundSounds.delete(token);
+                              }
+                        }
+                        voice.destroy();
+                        this.voices.delete(id);
                   }
-                  voice.destroy(); this.voices.delete(id);
             }
       }
-      restart(): void {
+      restart(autoStart = true): void {
             this.simulation?.dispose();
             for (const playback of this.boundSounds.values()) playback.sound.stop(playback.playbackId);
             for (const voice of this.voices.values()) voice.destroy();
-            this.voices.clear(); this.boundSounds.clear(); this.renderer.reset();
+            this.voices.clear();
+            this.boundSounds.clear();
+            this.renderer.reset();
+
             const border = this.config.game.arena.borderWidth;
             this.simulation = new Simulation({
                   arena: {
-                        minX: this.overflow + border, minY: this.overflow + border,
-                        maxX: this.overflow + this.arenaWidth - border, maxY: this.overflow + this.arenaHeight - border
+                        minX: this.overflow + border,
+                        minY: this.overflow + border,
+                        maxX: this.overflow + this.arenaWidth - border,
+                        maxY: this.overflow + this.arenaHeight - border,
                   },
-                  seed: this.seed, impact: this.config.game.physics.impactDamage,
+                  seed: this.seed,
+                  impact: this.config.game.physics.impactDamage,
                   collisionCooldownMs: this.config.game.physics.collisionCooldownMs,
-                  globalSpeedMultiplier: this.config.game.physics.globalSpeedMultiplier
+                  globalSpeedMultiplier: this.config.game.physics.globalSpeedMultiplier,
             });
+
             const groups = new Map<string, number>();
-            for (let slot = 0; slot < this.selected.length; slot++) {
-                  const config = this.fighterRoster.find(fighter => fighter.id === this.selected[slot])!;
+            const totalSlots = this.selected.length;
+
+            for (let slot = 0; slot < totalSlots; slot++) {
+                  const config = this.fighterRoster.find(fighter => fighter.id === this.selected[slot]);
+                  if (!config) continue;
+
                   const team = this.participantTeams?.[slot] ?? `team:${slot}`;
                   if (!groups.has(team)) groups.set(team, Body.nextGroup(true));
+
                   const speed = config.speed * this.config.game.physics.globalSpeedMultiplier;
+                  const spawn = calculateFighterSpawn(
+                        slot,
+                        totalSlots,
+                        this.arenaWidth,
+                        this.arenaHeight,
+                        this.overflow,
+                        speed,
+                  );
+
                   createFighter(this.simulation, config, {
-                        runtimeId: `fighter:${slot}`, teamId: team,
+                        runtimeId: `fighter:${slot}`,
+                        teamId: team,
+                        roster: this.fighterRoster,
                         collisionGroup: groups.get(team),
-                        position: { x: this.overflow + this.arenaWidth * (slot ? .75 : .25), y: this.overflow + this.arenaHeight / 2 },
-                        velocity: { x: slot ? -speed : speed, y: speed * (slot ? -.7 : .6) },
+                        position: spawn.position,
+                        velocity: spawn.velocity,
                   }, fighterBlueprints.get(config.id));
             }
-            const title = document.getElementById("hud-title");
-            if (title) title.innerHTML = this.selected.map(id => this.fighterRoster.find(fighter => fighter.id === id)!.name).join(' <span class="accent">VS</span> ');
-            const status = document.getElementById("hud-status");
-            if (status) status.textContent = this.config.game.text.statusFight;
-            this.paused = false; this.accumulator = 0; this.previousFrame = 0;
+
+            this.updateHudTitle();
+            this.updateHudStatus(this.config.game.text.statusFight);
+            this.paused = !autoStart;
+            this.accumulator = 0;
+            this.previousFrame = 0;
             this.dispatchPlayback();
       }
-      start(): void { this.paused = false; this.dispatchPlayback(); }
-      pause(): void { this.paused = true; this.dispatchPlayback(); }
-      openCharacterSelect(): void { this.selection.open(); }
-      getSelectedCharacterIds(): string[] { return [...this.selected]; }
-      setSelectedCharacterIds(ids: readonly string[]): void {
-            const valid = ids.filter((id, index) => ids.indexOf(id) === index && this.fighterRoster.some(fighter => fighter.id === id && fighter.selectable !== false)).slice(0, 2);
-            if (valid.length !== 2) return;
-            this.selected = valid; this.participantTeams = null; this.restart(); this.pause();
+
+      start(): void {
+            this.paused = false;
+            this.dispatchPlayback();
       }
+
+      pause(): void {
+            this.paused = true;
+            this.dispatchPlayback();
+      }
+
+      openCharacterSelect(): void {
+            this.selection.open();
+      }
+
+      getSelectedCharacterIds(): string[] {
+            return [...this.selected];
+      }
+
+      setSelectedCharacterIds(ids: readonly string[]): void {
+            const valid = ids
+                  .filter((id, index) => ids.indexOf(id) === index && this.isSelectable(id))
+                  .slice(0, 2);
+            if (valid.length !== 2) return;
+            this.selected = valid;
+            this.participantTeams = null;
+            this.restart(false);
+      }
+
       setMatchParticipants(participants: readonly { configId: string; teamId: string }[]): void {
-            if (participants.length !== 2 || participants.some(participant => !participant.teamId ||
-                  !this.fighterRoster.some(fighter => fighter.id === participant.configId && fighter.selectable !== false)))
+            if (
+                  participants.length !== 2 ||
+                  participants.some(participant => !participant.teamId || !this.isSelectable(participant.configId))
+            ) {
                   throw new Error("A match requires two selectable participants with teams");
+            }
             this.selected = participants.map(participant => participant.configId);
             this.participantTeams = participants.map(participant => participant.teamId);
-            this.restart(); this.pause();
+            this.restart(false);
       }
+
+      get selectedFighterNames(): string[] {
+            return this.selected.map(id => this.fighterRoster.find(fighter => fighter.id === id)?.name ?? id);
+      }
+
       getRecordingView(): RecordingView {
             const views = this.simulation.entities.all().map(entityView);
+            const contestants = views.filter(view => view.showHealth);
             return {
-                  canvas: this.canvas, logicalWidth: this.width, logicalHeight: this.height, visualOverflow: this.overflow,
-                  backgroundColor: this.config.game.arena.backgroundColor, arenaBackgroundColor: getComputedStyle(this.container).backgroundColor,
-                  arenaWidth: this.arenaWidth, arenaHeight: this.arenaHeight,
-                  fighterNames: this.selected.map(id => this.fighterRoster.find(fighter => fighter.id === id)!.name),
-                  targets: views.filter(view => !view.dead).map(view => ({ x: view.x, y: view.y }))
+                  canvas: this.canvas,
+                  logicalWidth: this.width,
+                  logicalHeight: this.height,
+                  visualOverflow: this.overflow,
+                  backgroundColor: this.config.game.arena.backgroundColor,
+                  arenaBackgroundColor: getComputedStyle(this.container).backgroundColor,
+                  arenaWidth: this.arenaWidth,
+                  arenaHeight: this.arenaHeight,
+                  fighterNames: this.selectedFighterNames,
+                  targets: contestants.filter(view => !view.dead).map(view => ({ x: view.x, y: view.y }))
             };
       }
+
+      private isSelectable(id: string): boolean {
+            return this.fighterRoster.some(fighter => fighter.id === id && fighter.selectable !== false);
+      }
+
+      private updateHudTitle(): void {
+            const title = document.getElementById("hud-title");
+            if (title) {
+                  title.innerHTML = this.selectedFighterNames.join(' <span class="accent">VS</span> ');
+            }
+      }
+
+      private updateHudStatus(text: string): void {
+            const status = document.getElementById("hud-status");
+            if (status) {
+                  status.textContent = text;
+            }
+      }
+
       private dispatchPlayback(): void {
             window.dispatchEvent(new CustomEvent("duels2d:playback", { detail: { paused: this.paused, gameOver: this.gameOver } }));
       }

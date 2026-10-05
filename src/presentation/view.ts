@@ -1,6 +1,16 @@
 import type { Entity } from "../engine/entity";
+import type { SpatialShape } from "../engine/spatial/shapes";
 import type { RuntimeEntityConfig } from "../types/entity";
 import type { PoseOverrides, Vector2 } from "../types/fighter";
+import type { ShapeVisual } from "./state";
+
+function snapshotShape(shape: SpatialShape): SpatialShape {
+      switch (shape.type) {
+            case "segment": return { ...shape, from: { ...shape.from }, to: { ...shape.to } };
+            case "rectangle": return { ...shape, center: { ...shape.center } };
+            case "circle": return { ...shape, center: { ...shape.center } };
+      }
+}
 
 /** Detached render data. Drawing cannot advance tasks, contacts or physics. */
 export interface EntityView {
@@ -10,6 +20,8 @@ export interface EntityView {
       readonly y: number;
       readonly angle: number;
       readonly rotationPivot?: Vector2 | null;
+      readonly weaponAngle?: number | null;
+      readonly weaponRotationPivot?: Vector2 | null;
       readonly facing: "left" | "right";
       readonly health: number;
       readonly maxHealth: number;
@@ -17,6 +29,7 @@ export interface EntityView {
       readonly busy: boolean;
       readonly showHealth: boolean;
       readonly pose: PoseOverrides;
+      readonly shapes?: readonly ShapeVisual[];
 }
 export function entityPose(entity: Entity): PoseOverrides {
       const { config } = entity;
@@ -35,9 +48,12 @@ export function entityView(entity: Entity): EntityView {
             y: entity.body.position.y - config.hitboxOffset.y,
             angle: entity.presentation.rotation ?? entity.body.angle,
             rotationPivot: entity.presentation.rotationPivot ? { ...entity.presentation.rotationPivot } : null,
+            weaponAngle: entity.presentation.weaponRotation,
+            weaponRotationPivot: entity.presentation.weaponRotationPivot ? { ...entity.presentation.weaponRotationPivot } : null,
             facing: entity.facing, health: entity.health, maxHealth: entity.maxHealth,
             dead: !entity.isAlive, busy: entity.behavior?.isRunning ?? false,
             showHealth: entity.tags.has("contestant"),
             pose: entityPose(entity),
+            shapes: entity.presentation.shapes.map(visual => ({ ...visual, shape: snapshotShape(visual.shape) })),
       };
 }

@@ -148,34 +148,46 @@ export function applyControlEdit(
                         ? host.cropDraft
                         : host._getPoseVisual(config, host.activePoseKey)
                               .imageCrop;
-            if (existing) {
-                  let crop = {
-                        x: Math.max(0, value("imageCropX", existing.x, true)),
-                        y: Math.max(0, value("imageCropY", existing.y, true)),
-                        width: Math.max(
-                              1,
-                              value("imageCropWidth", existing.width, true),
-                        ),
-                        height: Math.max(
-                              1,
-                              value("imageCropHeight", existing.height, true),
-                        ),
-                  };
-                  const image = host.images.body;
-                  if (
-                        image.complete &&
-                        image.naturalWidth > 0 &&
-                        image.naturalHeight > 0
-                  ) {
-                        crop = _normalizeCropBounds(host, crop, image);
-                  }
-                  if (host.mode === "crop") host.cropDraft = crop;
-                  else
-                        host._setPoseVisual(config, host.activePoseKey, {
-                              imageCrop: crop,
-                        });
-                  _syncCropControls(host, { imageCrop: crop });
+            const image = host.images.body;
+            const fallbackWidth =
+                  image.complete && image.naturalWidth > 0
+                        ? image.naturalWidth
+                        : 512;
+            const fallbackHeight =
+                  image.complete && image.naturalHeight > 0
+                        ? image.naturalHeight
+                        : 512;
+            const current = existing ?? {
+                  x: 0,
+                  y: 0,
+                  width: fallbackWidth,
+                  height: fallbackHeight,
+            };
+            let crop = {
+                  x: Math.max(0, value("imageCropX", current.x, true)),
+                  y: Math.max(0, value("imageCropY", current.y, true)),
+                  width: Math.max(
+                        1,
+                        value("imageCropWidth", current.width, true),
+                  ),
+                  height: Math.max(
+                        1,
+                        value("imageCropHeight", current.height, true),
+                  ),
+            };
+            if (
+                  image.complete &&
+                  image.naturalWidth > 0 &&
+                  image.naturalHeight > 0
+            ) {
+                  crop = _normalizeCropBounds(host, crop, image);
             }
+            if (host.mode === "crop") host.cropDraft = crop;
+            else
+                  host._setPoseVisual(config, host.activePoseKey, {
+                        imageCrop: crop,
+                  });
+            _syncCropControls(host, { imageCrop: crop });
       }
       host._refreshLabels();
 }

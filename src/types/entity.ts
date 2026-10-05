@@ -37,6 +37,12 @@ export interface EntityConfig {
       healthBarOffset?: Vector2;
       color?: string;
       poses?: EntityPoses;
+      /** Optional held visual; aiming can rotate it independently of the body sprite. */
+      weaponIdle?: string | null;
+      weaponAttack?: string | null;
+      weaponScale?: number;
+      weaponOffset?: Vector2;
+      weaponPivot?: Vector2;
 }
 
 /** Common optional fields are resolved once before mechanics use the config. */

@@ -132,6 +132,36 @@ once, and scripts decide which to use. Granny's behavior owns its health
 threshold, interruption, timed realization/rage poses, and eventual form entry.
 No threshold or sequence runs automatically from JSON.
 
+## Spatial queries
+
+`simulation.spatial` detects registered entities without creating physics bodies
+or applying effects. `castSegment(from, to, { width })` returns hits ordered by
+their first intersection distance along the segment. Width is the full thickness,
+with flat ends; zero means a thin line. Segments must have positive length.
+`overlapSegment(shape)` accepts the same geometry as a reusable shape description.
+`overlapArea(shape)` accepts a circle or rotated rectangle and returns entities
+ordered by runtime ID.
+
+Queries use actual Matter body vertices and compound parts, including rotation;
+circle bodies retain Matter's polygon approximation. Boundary contact counts.
+Collision masks and sensor flags do not restrict detection. Dead entities are
+excluded unless `includeDead` is set, and removed entities are always excluded.
+The caller supplies exclusions and predicates for teams, tags, or ownership:
+
+```ts
+const hits = simulation.spatial.castSegment(from, to, {
+      width: 8,
+      exclude: [owner],
+      filter: entity => entity.teamId !== owner.teamId && entity.tags.has("targetable"),
+});
+```
+
+The caller decides whether to use the first hit, pierce multiple targets, or
+apply another effect. `OverlapTracker.update(entities)` reports `entered`,
+`staying`, and `exited` entities by object identity. The caller owns sampling,
+effect timing, and cleanup; `clear()` silently discards history and `update([])`
+reports exits. There are no automatic beam effects or tracking timers.
+
 ## Simulation lifecycle and entity ownership
 
 Each `step()` advances `1000 / 120` ms until the simulation is disposed. Live entities update
@@ -186,11 +216,14 @@ stops simulation time. Drawing and audio consume presentation output.
 src/
 ├── app/game-app.ts                 browser frame loop and wiring
 ├── content/
-│   ├── manifest.ts                 active blueprint registry (Baby Man, Granny)
+│   ├── manifest.ts                 active fighter blueprint registry
 │   ├── fighters/babyman/
 │   │   ├── definition.ts           equipped components and move bindings
 │   │   └── behavior.ts             character decisions and sequence
-│   └── fighters/granny/            equipped components and scripted actions
+│   ├── fighters/granny/            equipped components and scripted actions
+│   ├── fighters/alienman/          transformation and saucer arrival
+│   ├── fighters/alien/             targeting and piercing laser shots
+│   └── actors/saucer/              sweep, beam pulses, and deployment
 ├── engine/
 │   ├── simulation.ts               fixed tick and gameplay resolution
 │   ├── entity.ts                   identity and lifetime state
@@ -200,9 +233,11 @@ src/
 │   ├── contracts.ts                shared event types
 │   ├── random.ts                   seeded gameplay RNG
 │   ├── physics/                    Matter contact capture and arena response
+│   ├── spatial/                    segment/area queries, shapes, overlap history
 │   └── scripting/                  operations, scopes, and waits
 ├── gameplay/
 │   ├── fighter-factory.ts          common preset and typed assembly
+│   ├── behavior.ts                 shared fighter/actor script installation
 │   ├── match-rules.ts              team outcomes and ambient impact tuning
 │   ├── components/                 movement, targeting, crawl, dash, melee, aim,
 │   │                               projectile, forms, and timed visuals
@@ -221,8 +256,26 @@ forms. Projectile emission/flight and stun, ability-lock, and burn are
 implemented. `MeleeAttack` supplies range checks and timed swings;
 `SpriteAim` resolves aim geometry from the current sprite pose, and `Visuals`
 provides scoped timed poses that restore prior presentation on interruption.
-Laser, damage-ramp, and saucer mechanics still need implementation; other roster
-behaviors remain pending migration.
+Alien Man and his summoned aliens are active. The saucer is a separate owned
+actor using the same behavior runner as fighters. Its script sweeps horizontally,
+pulses a queried area beam, then deploys three aliens after Alien Man's scripted
+transformation. Alien lasers query one thick segment per shot and apply shared
+combat to each enemy hit; their flashes do not cause continuing damage.
+Damage-ramp mechanics and other roster behaviors remain pending migration.
+
+`SpriteAim` can target the body sprite (Granny) or the held weapon (aliens), using
+the same tracking and muzzle calculations. Held weapon settings are optional
+entity presentation data; aliens use the supplied left-facing gun sprite with
+configured grip pivot and barrel muzzle coordinates.
+`Visuals.shape()` supplies scoped, timed shape presentation. Persistent shape
+leases can use a geometry provider, so the moving saucer beam draws the same
+shape used for detection. Rendering consumes snapshots and applies no effects.
+
+Fighter behaviors receive equipped handles and their typed context, including
+simulation services and the loaded roster. Spawns use the existing factory and
+registry; no spawning or move-to component was added. Saucer tuning remains in
+the existing `components.saucer` authored data, but there is no runtime saucer
+component: its decisions and sequencing live in `content/actors/saucer`.
 
 Scripts remain TypeScript in the repository. Add only capabilities required by
 concrete content. Parallel behavior tasks, runtime-loaded mods, replay/networking,

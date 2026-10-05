@@ -7,61 +7,34 @@
   "combat": {
     "maxHealth": 100,
     "baseDamage": 0,
-    "faceTarget": {
-      "mode": "always"
-    }
+    "faceTarget": { "mode": "always" }
   },
   "body": {
     "radius": 20,
-    "hitbox": {
-      "type": "box",
-      "width": 38,
-      "height": 65
-    },
-    "hitboxOffset": {
-      "x": 0,
-      "y": 0
-    }
+    "hitbox": { "type": "box", "width": 45, "height": 84 },
+    "hitboxOffset": { "x": 0, "y": 0 }
   },
   "presentation": {
     "image": "assets/fighters/alien/sprites/alien.png",
-    "imageCrop": {
-      "x": 260,
-      "y": 0,
-      "width": 515,
-      "height": 711
-    },
-    "imageScale": 2,
-    "weaponIdle": null,
-    "weaponAttack": null,
-    "weaponScale": 0.8,
-    "weaponOffset": {
-      "x": 20,
-      "y": 15
-    },
-    "weaponPivot": {
-      "x": 10,
-      "y": 15
-    },
-    "healthBarOffset": {
-      "x": 0,
-      "y": -32
-    }
+    "imageCrop": { "x": 260, "y": 0, "width": 515, "height": 711 },
+    "imageScale": 3.2,
+    "defaultFacing": "left",
+    "weaponIdle": "assets/fighters/alien/sprites/alien-weapon.png",
+    "weaponAttack": "assets/fighters/alien/sprites/alien-weapon.png",
+    "weaponScale": 2,
+    "weaponOffset": { "x": -38, "y": 19 },
+    "weaponPivot": { "x": 12, "y": 5 },
+    "healthBarOffset": { "x": 0, "y": -32 },
+    "imageOffset": { "x": 0, "y": -4 }
   },
   "components": {
     "weaponAim": {
-      "muzzle": {
-        "x": 32,
-        "y": 15
-      },
-      "pivot": {
-        "x": 10,
-        "y": 15
-      },
-      "forwardDegrees": 0
+      "muzzle": { "x": -72.5, "y": 8 },
+      "pivot": { "x": -19.4, "y": 6.2 },
+      "forwardDegrees": 180
     },
     "instantLaser": {
-      "damage": 10,
+      "damage": 30,
       "intervalMs": 2000,
       "width": 8,
       "range": 2000,
@@ -69,5 +42,7 @@
       "color": "#5cfff0"
     }
   },
-  "moves": {}
+  "moves": {
+    "laser-shot": { "cooldownMs": 0 }
+  }
 }

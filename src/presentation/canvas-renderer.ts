@@ -1,6 +1,7 @@
 import type { RuntimeConfig } from "../config/runtime-config";
 import { getAspectFitCropDrawRect } from "../rendering/sprite-geometry";
 import type { EntityView } from "./view";
+import type { ShapeVisual } from "./state";
 
 type Arena = { ax: number; ay: number; aw: number; ah: number };
 interface FloatingText { text: string; x: number; y: number; born: number; }
@@ -8,6 +9,7 @@ interface FloatingText { text: string; x: number; y: number; born: number; }
 /** Browser-only asset/cache adapter and read-only drawing. Time is supplied by simulation. */
 export class CanvasRenderer {
       private readonly images = new Map<string, HTMLImageElement>();
+      private readonly hitSprites = new Map<string, HTMLCanvasElement>();
       private readonly flashes = new Map<string, number>();
       private texts: FloatingText[] = [];
       constructor(private readonly ctx: CanvasRenderingContext2D, private readonly settings: RuntimeConfig) {}
@@ -21,14 +23,23 @@ export class CanvasRenderer {
       render(width: number, height: number, arena: Arena, views: readonly EntityView[], now: number): void {
             const { ctx } = this;
             ctx.clearRect(0, 0, width, height);
-            ctx.strokeStyle = this.settings.game.arena.borderColor;
-            ctx.lineWidth = this.settings.game.arena.borderWidth * 2;
-            ctx.strokeRect(arena.ax, arena.ay, arena.aw, arena.ah);
             this.drawWatermark(arena);
             ctx.font = "bold 20px sans-serif";
             ctx.textAlign = "center";
             ctx.fillStyle = "rgba(255,255,255,0.3)";
             ctx.fillText(this.settings.game.text.footer, arena.ax + arena.aw / 2, arena.ay + arena.ah + 36);
+            // Keep query visuals inside the arena, then cover their ends with its border.
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(arena.ax, arena.ay, arena.aw, arena.ah);
+            ctx.clip();
+            for (const view of views) if (!view.dead) {
+                  for (const visual of view.shapes ?? []) this.drawShape(visual);
+            }
+            ctx.restore();
+            ctx.strokeStyle = this.settings.game.arena.borderColor;
+            ctx.lineWidth = this.settings.game.arena.borderWidth * 2;
+            ctx.strokeRect(arena.ax, arena.ay, arena.aw, arena.ah);
             for (const view of views) if (!view.dead) this.drawEntity(view, now);
             for (const text of this.texts) {
                   const elapsed = now - text.born;
@@ -40,6 +51,34 @@ export class CanvasRenderer {
                   ctx.fillText(text.text, text.x, text.y - elapsed * 0.04);
                   ctx.restore();
             }
+      }
+      private drawShape({ shape, color, opacity }: ShapeVisual): void {
+            const { ctx } = this;
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, Math.min(1, opacity));
+            ctx.fillStyle = color;
+            ctx.strokeStyle = color;
+            switch (shape.type) {
+                  case "segment":
+                        ctx.beginPath();
+                        ctx.moveTo(shape.from.x, shape.from.y);
+                        ctx.lineTo(shape.to.x, shape.to.y);
+                        ctx.lineCap = "butt";
+                        ctx.lineWidth = Math.max(1, shape.width);
+                        ctx.stroke();
+                        break;
+                  case "rectangle":
+                        ctx.translate(shape.center.x, shape.center.y);
+                        ctx.rotate(shape.angle ?? 0);
+                        ctx.fillRect(-shape.width / 2, -shape.height / 2, shape.width, shape.height);
+                        break;
+                  case "circle":
+                        ctx.beginPath();
+                        ctx.arc(shape.center.x, shape.center.y, shape.radius, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+            }
+            ctx.restore();
       }
       private drawWatermark(arena: Arena): void {
             const { ctx } = this;
@@ -97,6 +136,22 @@ export class CanvasRenderer {
             if (!image) { image = new Image(); image.src = path; this.images.set(path, image); }
             return image.complete && image.naturalWidth > 0 ? image : null;
       }
+      /** Tint an isolated crop so transparent pixels cannot pick up the scene behind it. */
+      private hitSprite(image: HTMLImageElement, crop: { x: number; y: number; width: number; height: number }): HTMLCanvasElement {
+            const key = `${image.src}:${crop.x},${crop.y},${crop.width},${crop.height}`;
+            let sprite = this.hitSprites.get(key);
+            if (!sprite) {
+                  sprite = document.createElement("canvas");
+                  sprite.width = crop.width; sprite.height = crop.height;
+                  const layer = sprite.getContext("2d")!;
+                  layer.drawImage(image, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
+                  layer.globalCompositeOperation = "source-atop";
+                  layer.fillStyle = "rgba(255,0,0,0.55)";
+                  layer.fillRect(0, 0, crop.width, crop.height);
+                  this.hitSprites.set(key, sprite);
+            }
+            return sprite;
+      }
       private drawEntity(view: EntityView, now: number): void {
             const { ctx } = this;
             const image = this.image(view.pose.image);
@@ -116,12 +171,9 @@ export class CanvasRenderer {
                         height: Math.max(1, Math.min(supplied?.height ?? image.naturalHeight, image.naturalHeight - y)) };
                   const rect = getAspectFitCropDrawRect(image.naturalWidth, image.naturalHeight, crop,
                         view.config.radius * (view.pose.imageScale ?? 1));
-                  ctx.drawImage(image, crop.x, crop.y, crop.width, crop.height, rect.dx, rect.dy, rect.dw, rect.dh);
                   if ((this.flashes.get(view.runtimeId) ?? 0) > now) {
-                        ctx.globalCompositeOperation = "source-atop";
-                        ctx.fillStyle = "rgba(255,0,0,0.55)";
-                        ctx.fillRect(rect.dx, rect.dy, rect.dw, rect.dh);
-                  }
+                        ctx.drawImage(this.hitSprite(image, crop), rect.dx, rect.dy, rect.dw, rect.dh);
+                  } else ctx.drawImage(image, crop.x, crop.y, crop.width, crop.height, rect.dx, rect.dy, rect.dw, rect.dh);
             } else {
                   ctx.fillStyle = view.config.color;
                   const box = view.config.hitbox;
@@ -129,7 +181,28 @@ export class CanvasRenderer {
                   else { ctx.beginPath(); ctx.arc(0, 0, box.radius, 0, Math.PI * 2); ctx.fill(); }
             }
             ctx.restore();
+            this.drawWeapon(view);
             if (view.showHealth) this.health(view);
+      }
+      private drawWeapon(view: EntityView): void {
+            const config = view.config;
+            const path = (view.busy && config.weaponAttack) || config.weaponIdle;
+            const image = this.image(path ?? "");
+            if (!image) return;
+            const { ctx } = this;
+            const mirror = view.facing !== view.config.defaultFacing ? -1 : 1;
+            const offset = config.weaponOffset ?? { x: 0, y: 0 };
+            const pivot = view.weaponRotationPivot ?? config.weaponPivot ?? { x: 0, y: 0 };
+            const scale = view.config.radius * 2 * (config.weaponScale ?? 1) /
+                  Math.max(image.naturalWidth, image.naturalHeight);
+            const width = image.naturalWidth * scale;
+            const height = image.naturalHeight * scale;
+            ctx.save();
+            ctx.translate(view.x + mirror * (offset.x + pivot.x), view.y + offset.y + pivot.y);
+            ctx.rotate(view.weaponAngle ?? 0);
+            ctx.scale(mirror, 1);
+            ctx.drawImage(image, -pivot.x - width / 2, -pivot.y - height / 2, width, height);
+            ctx.restore();
       }
       private health(view: EntityView): void {
             const { ctx } = this;

@@ -12,7 +12,8 @@ export class SpriteAim implements EntityComponent {
       private tracking: { token: object; target: Entity } | null = null;
       private releaseRotation: (() => void) | null = null;
 
-      constructor(private readonly context: ComponentContext, private readonly options: AimSkillOptions) { }
+      constructor(private readonly context: ComponentContext, private readonly options: AimSkillOptions,
+            private readonly visualTarget: "sprite" | "weapon" = "sprite") { }
       attach(): void { }
 
       /** Resolve again at firing time, including a pose changed during this same step. */
@@ -56,16 +57,21 @@ export class SpriteAim implements EntityComponent {
             const dx = target.body.position.x - entity.body.position.x;
             if (dx) entity.facing = dx < 0 ? "left" : "right";
             const pose = entityPose(entity);
-            const offset = pose.imageOffset ?? { x: 0, y: 0 };
+            const weaponOffset = entity.config.weaponOffset ?? { x: 0, y: 0 };
+            const offset = this.visualTarget === "weapon" ? weaponOffset : pose.imageOffset ?? { x: 0, y: 0 };
+            const mirror = entity.facing !== entity.config.defaultFacing ? -1 : 1;
             this.geometry.update({
                   center: {
-                        x: entity.body.position.x - entity.config.hitboxOffset.x + offset.x,
+                        x: entity.body.position.x - entity.config.hitboxOffset.x +
+                              (this.visualTarget === "weapon" ? mirror * offset.x : offset.x),
                         y: entity.body.position.y - entity.config.hitboxOffset.y + offset.y
                   },
                   facing: entity.facing, defaultFacing: entity.config.defaultFacing,
-            }, target.body.position, pose.aim ?? this.options);
+            }, target.body.position, this.visualTarget === "weapon" ? this.options : pose.aim ?? this.options);
             const solution = this.geometry.current;
-            if (solution) this.releaseRotation = entity.presentation.acquireRotation(solution.angle, solution.localPivot);
+            if (solution) this.releaseRotation = this.visualTarget === "weapon"
+                  ? entity.presentation.acquireWeaponRotation(solution.angle, solution.localPivot)
+                  : entity.presentation.acquireRotation(solution.angle, solution.localPivot);
       }
 
       private stop(): void {

@@ -71,7 +71,7 @@ describe("owner-bound sprite aim", () => {
             const solution = aim.current!;
             const calls: Array<[string, ...number[]]> = [];
             const ctx = { clearRect() {}, strokeRect() {}, fillText() {}, save() {}, restore() {},
-                  beginPath() {}, arc() {}, fill() {}, rect() {}, moveTo() {}, lineTo() {}, closePath() {},
+                  beginPath() {}, arc() {}, fill() {}, rect() {}, clip() {}, moveTo() {}, lineTo() {}, closePath() {},
                   measureText: () => ({ width: 80 }),
                   translate: (x: number, y: number) => calls.push(["translate", x, y]),
                   rotate: (angle: number) => calls.push(["rotate", angle]),

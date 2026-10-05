@@ -3,31 +3,35 @@
   "id": "alienman",
   "name": "Alien Man",
   "color": "#80e86d",
-  "combat": {},
   "presentation": {
     "image": "assets/fighters/alienman/sprites/alienman-idle.png",
     "imageScale": 2,
     "poses": {
-      "idle": "assets/fighters/alienman/sprites/alienman-idle.png",
-      "transformation": "assets/fighters/alienman/sprites/alienman-trans.png"
+      "idle": {
+        "image": "assets/fighters/alienman/sprites/alienman-idle.png",
+        "imageCrop": { "x": 0, "y": 0, "width": 1387, "height": 883 },
+        "imageScale": 3.1,
+        "imageOffset": { "x": 5, "y": 2 }
+      },
+      "transformation": {
+        "image": "assets/fighters/alienman/sprites/alienman-trans.png",
+        "imageCrop": { "x": 0, "y": 0, "width": 1387, "height": 883 },
+        "imageScale": 3.1,
+        "imageOffset": { "x": 5, "y": 2 }
+      }
     }
   },
   "components": {
     "saucer": {
       "image": "assets/fighters/alienman/sprites/alienman-saurcer.png",
-      "imageCrop": {
-        "x": 0,
-        "y": 385,
-        "width": 1024,
-        "height": 280
-      },
+      "imageCrop": { "x": 0, "y": 385, "width": 1024, "height": 280 },
       "width": 160,
       "height": 44,
       "altitude": 20,
       "speed": 100,
       "beamWidth": 100,
       "beamDamage": 10,
-      "beamDamageIntervalMs": 500,
+      "beamDamageIntervalMs": 166.667,
       "beamDurationMs": 2000,
       "beamIntervalMs": 3000,
       "beamColor": "#baff70",
@@ -37,17 +41,51 @@
       "maxSpawns": 3
     }
   },
-  "moves": {},
+  "moves": {
+    "arrival": { "cooldownMs": 0 },
+    "transformation": { "cooldownMs": 0 }
+  },
   "forms": {
     "transformed": {
       "healthRatio": 0.5,
       "sequence": [
-        {
-          "pose": "transformation",
-          "durationMs": 2000
-        }
+        { "pose": "transformation", "durationMs": 2000 }
       ],
-      "moves": {}
+      "moves": {},
+      "poses": {
+        "idle": {
+          "image": "assets/fighters/alienman/sprites/alienman-trans.png",
+          "imageScale": 3.1,
+          "imageOffset": { "x": 5, "y": 2 },
+          "imageCrop": { "x": 0, "y": 0, "width": 1387, "height": 883 }
+        },
+        "transformation": {
+          "image": "assets/fighters/alienman/sprites/alienman-trans.png",
+          "imageScale": 3.1,
+          "imageOffset": { "x": 5, "y": 2 },
+          "imageCrop": { "x": 0, "y": 0, "width": 1387, "height": 883 }
+        }
+      },
+      "components": {
+        "saucer": {
+          "image": "assets/fighters/alienman/sprites/alienman-saurcer.png",
+          "imageCrop": { "x": 0, "y": 385, "width": 1024, "height": 280 },
+          "width": 160,
+          "height": 44,
+          "altitude": 20,
+          "speed": 100,
+          "beamWidth": 100,
+          "beamDamage": 10,
+          "beamDamageIntervalMs": 166.667,
+          "beamDurationMs": 2000,
+          "beamIntervalMs": 3000,
+          "beamColor": "#baff70",
+          "summonConfigId": "alien",
+          "firstSpawnDelayMs": 1000,
+          "spawnIntervalMs": 3000,
+          "maxSpawns": 3
+        }
+      }
     }
   }
 }

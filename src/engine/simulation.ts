@@ -3,6 +3,7 @@ import type { ArenaBounds, ContactEvent, ContactPolicy, RuntimeTrace, Vector2 } 
 import type { Entity, EntityRemovalReason } from "./entity";
 import { EntityRegistry, type EntityRegistration } from "./entity-registry";
 import { SeededRandom } from "./random";
+import { SpatialQueries } from "./spatial/queries";
 import { MatterContactCollector, type EntityContactSnapshot } from "./physics/contacts";
 import { bounceFromWall, containEntity, type WallContactSnapshot } from "./physics/arena";
 import { CombatResolver, type CombatEvent, type HitEffects, type HitResult, type HitOptions } from "../gameplay/combat/effects";
@@ -24,6 +25,7 @@ export type SimulationEvent = CombatEvent | { kind: "match-ended"; outcome: Matc
 export class Simulation {
       readonly engine = Engine.create({ gravity: { x: 0, y: 0 }, enableSleeping: false });
       readonly entities = new EntityRegistry(this.engine.world);
+      readonly spatial = new SpatialQueries(this.entities);
       readonly arena: Readonly<ArenaBounds>;
       rng: SeededRandom;
       readonly trace: RuntimeTrace[] = [];
@@ -55,6 +57,7 @@ export class Simulation {
       }
 
       get isCombatActive(): boolean { return this.state !== "disposed"; }
+      get globalSpeedMultiplier(): number { return this.speedMultiplier; }
 
       recordTrace(event: RuntimeTrace): void {
             this.trace.push(event);

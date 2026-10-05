@@ -117,4 +117,21 @@ describe("control edits", () => {
                   imageScale: 2,
             });
       });
+      it("creates a crop override when initial imageCrop is null and user adjusts crop sliders", () => {
+            const { config, host, controls } = fixture();
+            // attackActive starts with no imageCrop
+            expect(host._getPoseVisual(config, host.activePoseKey).imageCrop).toBeNull();
+            controls.imageCropX.value = "10";
+            controls.imageCropY.value = "15";
+            controls.imageCropWidth.value = "50";
+            controls.imageCropHeight.value = "60";
+            applyControlEdit(host, "imageCropWidth");
+            expect(host._getPoseVisual(config, host.activePoseKey).imageCrop).toEqual({
+                  x: 10,
+                  y: 15,
+                  width: 50,
+                  height: 60,
+            });
+            expect(controls.imageCropWidth.value).toBe(50);
+      });
 });

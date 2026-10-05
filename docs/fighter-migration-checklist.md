@@ -2,7 +2,7 @@
 
 See [fighter-architecture.md](fighter-architecture.md) for the current runtime
 and ownership contracts. The simulation foundation has been implemented, and
-Baby Man and Granny have active blueprints. All other roster entries use the
+Baby Man, Granny, Alien Man, and summoned aliens have active blueprints. Other roster entries use the
 passive setup until they receive a blueprint and behavior.
 
 ## Implemented foundation
@@ -79,7 +79,9 @@ fighters require. Granny now exercises reusable melee and sprite aiming, project
 emission, scoped timed poses, named form selection, and a scripted threshold
 transformation. Her handles are equipped by the definition and remain stable
 across form entry; behavior explicitly chooses which handles to use. Other roster
-behaviors and laser, damage-ramp, and saucer mechanics remain future work. Parallel
+behaviors and damage-ramp mechanics remain future work. Alien Man's owned saucer
+and aliens use separate scripts, spatial queries, shared shape presentation,
+existing aiming, and owner cleanup. Parallel
 task scheduling, general scripting concurrency, networking/replay, and arbitrary
 independently acting attachments are not part of the current foundation.
 
@@ -122,3 +124,33 @@ fixtures added for that completion.
 For verification commands see [the project README](../README.md). Record what
 ran and what remains for manual review; do not equate automated checks with
 browser acceptance.
+
+## Alien Man migration
+
+Alien Man spawns an owned saucer that sweeps and beams until his two-second
+transformation completes at 50% health. Deployment then occurs at +1, +4, and
++7 seconds. Three 100-health aliens inherit his team and owner cleanup, aim their
+held weapon independently, and fire instantaneous piercing lasers every two
+seconds. Owner death/removal and reset clean up dependent actors; announcing a
+match result preserves ongoing simulation.
+
+Focused simulation fixtures cover sweep bounds and moving beam geometry, timed
+damage and ally filtering, transformation/deployment and owner-death cleanup,
+and piercing laser hits, weapon tracking, flash lifetime, and reset. Browser
+review is still needed for sprite sizing, muzzle placement, beam visibility,
+and restart. The supplied alien gun image is assigned for idle and firing,
+with left-facing artwork and initial grip/muzzle alignment in the alien config.
+
+Verification passed: TypeScript, arena/Studio production builds, configuration
+and asset validation for all 10 definitions, and 121 tests across 18 files.
+The new Alien Man file contains four integrated scenarios. Browser gameplay
+and visual review have not been performed.
+
+Follow-up tuning uses 10 damage per saucer beam pulse at roughly six pulses per
+second, and 30 damage per alien laser shot. Shape visuals are clipped to the arena
+and its border draws above them to hide beam ends at the boundary.
+Summoned aliens now apply the global speed multiplier and ordinary fighter spawn
+velocity proportions. Sprite hit flashes are tinted on an isolated cached canvas
+so the beam behind transparent sprite pixels cannot fill the sprite rectangle.
+TypeScript, config validation, and eight Alien Man/aiming checks passed for this
+follow-up; visual acceptance remains a browser review.

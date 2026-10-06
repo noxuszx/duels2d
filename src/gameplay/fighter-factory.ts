@@ -1,6 +1,7 @@
 import { FloatingMovement, KnockbackReaction } from "./components";
 import { Bodies, Body } from "matter-js";
-import { Entity } from "../engine/entity";
+import type { Entity } from "../engine/entity";
+import { createEntity } from "../engine/entity-factory";
 import type { EntityComponent, ComponentContext } from "../engine/component";
 import type { Simulation } from "../engine/simulation";
 import type { FighterConfig, Vector2 } from "../types/fighter";
@@ -39,8 +40,8 @@ export function defineFighter<const B extends BehaviorFactory>(
                   const handlers = spec.behavior(handles, context);
                   installBehavior(context, handlers, spec.tasks,
                         id => entity.config.moves[id],
-                        id => !!entity.config.moves[id] ||
-                              Object.values(entity.config.forms).some(form => !!form.moves[id]));
+                        { hasConfiguredMove: id => !!entity.config.moves[id] ||
+                              Object.values(entity.config.forms).some(form => !!form.moves[id]) });
             },
       };
 }
@@ -71,23 +72,19 @@ export function createFighter(simulation: Simulation, config: FighterConfig, opt
                   config.hitbox.radius, bodyOptions);
 
       Body.setVelocity(body, options.velocity);
-      const entity = new Entity({
+      return createEntity(simulation, {
             runtimeId: options.runtimeId, configId: config.id,
             teamId: options.teamId, ownerId: options.ownerId, body, config
-      });
-
-      const context: FighterContext = {
-            entity, simulation, get config() { return entity.config; },
-            roster: options.roster ?? [config],
-      };
-      try {
-            entity.components.use("knockback-reaction", new KnockbackReaction(context));
-            entity.components.use("movement", new FloatingMovement(context,
+      }, { install(actor) {
+            const context: FighterContext = {
+                  entity: actor.entity,
+                  simulation: actor.simulation,
+                  get config() { return actor.entity.config; },
+                  roster: options.roster ?? [config],
+            };
+            actor.entity.components.use("knockback-reaction", new KnockbackReaction(context));
+            actor.entity.components.use("movement", new FloatingMovement(context,
                   Math.hypot(options.velocity.x, options.velocity.y) || config.speed));
             blueprint?.install(context);
-            simulation.add(entity);
-      }
-
-      catch (error) { entity.remove("removed"); throw error; }
-      return entity;
+      } });
 }

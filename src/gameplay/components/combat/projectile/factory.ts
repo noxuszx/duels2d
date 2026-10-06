@@ -1,7 +1,8 @@
 import { Bodies, Body } from "matter-js";
 import type { ProjectileSettings } from "../../../../config/component-settings";
 import type { Vector2 } from "../../../../engine/contracts";
-import { Entity } from "../../../../engine/entity";
+import type { Entity } from "../../../../engine/entity";
+import { createEntity } from "../../../../engine/entity-factory";
 import type { EntityConfig } from "../../../../types/entity";
 import type { ComponentContext } from "../../../../engine/component";
 import { ProjectileFlight } from "./flight";
@@ -43,7 +44,7 @@ export function createProjectile( context: ComponentContext, shot: ProjectileSet
       };
 
       const runtimeId = simulation.nextRuntimeId(`${owner.runtimeId}:projectile`);
-      const projectile = new Entity({
+      return createEntity(simulation, {
             runtimeId,
             configId: config.id,
             teamId: owner.teamId,
@@ -52,18 +53,15 @@ export function createProjectile( context: ComponentContext, shot: ProjectileSet
             body,
             config,
             containWithinArena: shot.flight.collision.walls === "bounce",
+      }, {
+            install({ entity: projectile }) {
+                  projectile.components.use("flight",
+                        new ProjectileFlight(context, projectile, shot, hitSound, owner.runtimeId));
+            },
+            lifetime: {
+                  ownerDeath: shot.flight.ownership.onOwnerDeath,
+                  ownerRemoval: shot.flight.ownership.onOwnerRemoval,
+                  matchEnd: shot.flight.ownership.onMatchEnd,
+            },
       });
-
-      projectile.components.use(
-            "flight",
-            new ProjectileFlight(context, projectile, shot, hitSound, owner.runtimeId),
-      );
-
-      simulation.add(projectile, {
-            ownerDeath: shot.flight.ownership.onOwnerDeath,
-            ownerRemoval: shot.flight.ownership.onOwnerRemoval,
-            matchEnd: shot.flight.ownership.onMatchEnd,
-      });
-
-      return projectile;
 }

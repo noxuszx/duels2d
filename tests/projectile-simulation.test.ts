@@ -235,7 +235,8 @@ describe("projectile flight in the headless simulation", () => {
             expect(child.removalReason).toBe("hit");
             caught.simulation.dispose();
 
-            const surviving = fixture(settings({ lifetime: { type: "persistent" } }));
+            const surviving = fixture(settings({ lifetime: { type: "persistent" },
+                  ownership: { onOwnerDeath: "persist", onOwnerRemoval: "persist", onMatchEnd: "persist" } }));
             const flying = surviving.emitter.spawn(trajectory())?.[0]!;
             surviving.owner.takeDamage(100);
             surviving.simulation.step();

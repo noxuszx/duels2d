@@ -125,6 +125,7 @@ export class Simulation {
                   if (outcome && this.state === "running") {
                         this.state = "ended";
                         this.events.push({ kind: "match-ended", outcome });
+                        this.entities.retireMatchEnd();
                   }
             } finally {
                   this.entities.endMutationBoundary();

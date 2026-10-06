@@ -27,15 +27,21 @@ export interface BehaviorHandlers {
 export type BehaviorTask = Exclude<keyof BehaviorHandlers, "actions">;
 export type BehaviorTasks = Partial<Record<BehaviorTask, string>>;
 
+export interface BehaviorInstallOptions {
+      hasConfiguredMove?: (id: string) => boolean;
+      onTaskError?: (error: unknown) => void;
+}
+
 /** Attach the shared generator scheduler and event hooks to any entity. */
 export function installBehavior<C extends EntityConfig>(
       context: ComponentContext<C>,
       handlers: BehaviorHandlers,
       tasks: BehaviorTasks,
       getMove: (id: string) => MoveConfig | undefined,
-      hasConfiguredMove: (id: string) => boolean = id => !!getMove(id),
+      options: BehaviorInstallOptions = {},
 ): BehaviorRuntime {
       const { entity, simulation, config } = context;
+      const hasConfiguredMove = options.hasConfiguredMove ?? (id => !!getMove(id));
       for (const name of Object.keys(handlers).filter(name => name !== "actions") as BehaviorTask[]) {
             const id = tasks[name];
             if (handlers[name] && (!id || !getMove(id)))
@@ -50,6 +56,7 @@ export function installBehavior<C extends EntityConfig>(
             entities: () => simulation.entities.all(),
             isCombatActive: () => simulation.isCombatActive,
             trace: (event: RuntimeTrace) => simulation.recordTrace(event),
+            taskFailed: options.onTaskError,
       });
       entity.setBehavior(runtime);
       const run = (name: BehaviorTask,

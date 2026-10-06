@@ -2,7 +2,7 @@ import type { ComponentContext } from "../../../engine/component";
 import type { RectangleShape } from "../../../engine/spatial/shapes";
 import { SIMULATION_STEP_MS } from "../../../engine/simulation";
 import { all, race, scoped, sequence, wait, type ScriptOperation } from "../../../engine/scripting";
-import type { BehaviorHandlers } from "../../../gameplay/behavior";
+import type { TaskGenerator } from "../../../engine/behavior-runtime";
 import type { SaucerSettings } from "../../../config/component-settings";
 import { hitEnemies, moveTo, until } from "../../script-helpers";
 
@@ -29,8 +29,8 @@ interface SaucerScriptOptions {
       initialDirection: number;
 }
 
-export function saucerBehavior(context: ComponentContext,
-      { settings, signal, spawnAlly, sourceId, initialDirection }: SaucerScriptOptions): BehaviorHandlers {
+export function* saucerBehavior(context: ComponentContext,
+      { settings, signal, spawnAlly, sourceId, initialDirection }: SaucerScriptOptions): TaskGenerator {
       const { entity, simulation } = context;
       const beam = (): RectangleShape => {
             const top = entity.body.position.y + settings.height / 2;
@@ -62,8 +62,6 @@ export function saucerBehavior(context: ComponentContext,
                   spawnAlly();
             }
       }
-      return { *onSpawn() {
-            yield all(sequence(() => patrol(context, settings, initialDirection)),
-                  sequence(lifecycle));
-      } };
+      yield all(sequence(() => patrol(context, settings, initialDirection)),
+            sequence(lifecycle));
 }

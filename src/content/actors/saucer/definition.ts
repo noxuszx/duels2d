@@ -1,6 +1,5 @@
 import { Bodies } from "matter-js";
-import { Entity } from "../../../engine/entity";
-import { installBehavior } from "../../../gameplay/behavior";
+import { spawnActor } from "../../../gameplay/actor-factory";
 import type { FighterContext } from "../../../gameplay/fighter-factory";
 import { saucerBehavior } from "./behavior";
 import { createFighter } from "../../../gameplay/fighter-factory";
@@ -21,34 +20,27 @@ export function createSaucer(context: FighterContext): SaucerControl {
       const fromLeft = simulation.rng.next() < 0.5;
       const body = Bodies.rectangle(fromLeft ? left : right, minY - settings.altitude - settings.height / 2,
             settings.width, settings.height, { isStatic: true, isSensor: true, collisionFilter: { mask: 0 } });
-      const entity = new Entity({
-            runtimeId: simulation.nextRuntimeId(`${owner.runtimeId}:saucer`), configId: "saucer",
-            ownerId: owner.runtimeId, teamId: owner.teamId, body, tags: [], containWithinArena: false,
+      const signal: { deploymentAtMs: number | null } = { deploymentAtMs: null };
+      spawnActor(context, {
+            body, containWithinArena: false,
+            lifetime: { matchEnd: "persist" },
             config: {
                   id: "saucer", radius: settings.width / 2,
                   hitbox: { type: "box", width: settings.width, height: settings.height },
                   speed: settings.speed, maxHealth: 1, image: settings.image, imageCrop: settings.imageCrop
             },
-      });
-      const actor = { entity, simulation, get config() { return entity.config; } };
-      const signal: { deploymentAtMs: number | null } = { deploymentAtMs: null };
-      const spawnAlly = () => {
-            const speed = summon.speed * simulation.globalSpeedMultiplier;
-            createFighter(simulation, summon, {
-                  runtimeId: simulation.nextRuntimeId(`${owner.runtimeId}:alien`),
-                  teamId: owner.teamId, ownerId: owner.runtimeId, roster,
-                  collisionGroup: owner.body.collisionFilter.group,
-                  position: { x: entity.body.position.x, y: simulation.arena.minY + summon.radius + 1 },
-                  velocity: { x: simulation.rng.next() < .5 ? -speed : speed, y: speed * .6 },
-            }, alien);
-      };
-      try {
-            installBehavior(actor, saucerBehavior(actor, {
-                  settings, signal, spawnAlly, sourceId: owner.runtimeId, initialDirection: fromLeft ? 1 : -1,
-            }),
-                  { onSpawn: "arrival" },
-                  () => ({ cooldownMs: 0 }));
-            simulation.add(entity);
-      } catch (error) { entity.remove(); throw error; }
+      }, actor => saucerBehavior(actor, {
+            settings, signal, sourceId: owner.runtimeId, initialDirection: fromLeft ? 1 : -1,
+            spawnAlly: () => {
+                  const speed = summon.speed * simulation.globalSpeedMultiplier;
+                  createFighter(simulation, summon, {
+                        runtimeId: simulation.nextRuntimeId(`${owner.runtimeId}:alien`),
+                        teamId: owner.teamId, ownerId: owner.runtimeId, roster,
+                        collisionGroup: owner.body.collisionFilter.group,
+                        position: { x: actor.entity.body.position.x, y: simulation.arena.minY + summon.radius + 1 },
+                        velocity: { x: simulation.rng.next() < .5 ? -speed : speed, y: speed * .6 },
+                  }, alien);
+            },
+      }));
       return { deploy: () => { signal.deploymentAtMs ??= simulation.nowMs; } };
 }

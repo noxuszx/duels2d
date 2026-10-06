@@ -176,6 +176,16 @@ phases readable. `until` observes script state without browser timers or a
 custom tick hook. Granny and Alien Man share configured `poseSequence` steps;
 their threshold and form-entry decisions remain in their own behaviors.
 
+For an independently running trap, turret, or summon, use `spawnActor` from
+`src/gameplay/actor-factory.ts`. Supply a body, entity config, and generator
+receiving the actor's context. Actors inherit team and ownership, default to
+empty tags, and are removed on completion or owner/match retirement. Override
+`removeOnComplete` and `lifetime` when persistence is intentional. The saucer's
+definition uses this same API; larger actors can keep dedicated content folders.
+See [scripting primitives](scripting-primitives.md#entity-assembly-and-scripted-actors)
+for lifecycle details. Fighter, projectile, and actor factories all delegate
+construction and registration to `createEntity` in the engine.
+
 Place mechanics under `src/gameplay/components/`. Implement the needed
 `EntityComponent` hooks, accepting owner-bound `ComponentContext` and typed
 settings. Import generic context from `src/engine/component.ts`; mechanics can

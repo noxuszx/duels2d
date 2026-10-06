@@ -173,14 +173,15 @@ wall contacts followed by captured body contacts, runs `afterStep`, and evaluate
 match rules. Body contacts are sorted by runtime IDs. Remaining queued additions
 and removals flush at the final mutation boundary.
 
-Spawn through `simulation.add` and retire through `simulation.remove`. Removal
+Assemble through `createEntity`, which installs capabilities before calling
+`simulation.add`, and retire through `simulation.remove`. Removal
 changes logical liveness immediately; additions made during a step become
 registered at its final boundary. Components do not mutate the Matter world
 or maintain private entity/collision registries. Allocate spawned IDs with
 `simulation.nextRuntimeId(prefix)`. Owner-death and owner-removal policies
-explicitly choose whether dependent entities persist or are removed. Announcing
-the result does not invoke registry match-end cleanup; authored `onMatchEnd`
-policies apply only if a caller explicitly requests `retireMatchEnd()` cleanup.
+explicitly choose whether dependent entities persist or are removed. Recording
+the first match result retires entities whose match-end policy is `remove`;
+entities with `persist` continue running.
 
 Ordinary fighters carry `targetable` and `contestant` tags. Projectile entities
 have an owner and empty tags; targeting and victory rules do not count them as
@@ -241,6 +242,7 @@ src/
 │   ├── entity-registry.ts          registration and safe world mutation
 │   ├── component.ts                component container and resource leases
 │   ├── behavior-runtime.ts         foreground tasks and cooldowns
+│   ├── entity-factory.ts           shared construction, installation, and registration
 │   ├── contracts.ts                shared event types
 │   ├── random.ts                   seeded gameplay RNG
 │   ├── physics/                    Matter contact capture and arena response
@@ -258,6 +260,7 @@ src/
 │       └── wait.ts                 wait using the same timeline
 ├── gameplay/
 │   ├── fighter-factory.ts          common preset and typed assembly
+│   ├── actor-factory.ts            owned actors with independent lifecycle scripts
 │   ├── behavior.ts                 shared fighter/actor script installation
 │   ├── match-rules.ts              team outcomes and ambient impact tuning
 │   ├── components/                 movement, targeting, crawl, dash, melee, aim,
@@ -312,8 +315,9 @@ leases can use a geometry provider, so the moving saucer beam draws the same
 shape used for detection. Rendering consumes snapshots and applies no effects.
 
 Fighter behaviors receive equipped handles and their typed context, including
-simulation services and the loaded roster. Spawns use the existing factory and
-registry; no spawning or move-to component was added. Saucer tuning remains in
+simulation services and the loaded roster. Fighters, projectiles, and actors use
+the shared engine entity factory and registry. The saucer uses `spawnActor` with
+an explicit persistent match-end policy. Saucer tuning remains in
 the existing `components.saucer` authored data, but there is no runtime saucer
 component: its decisions and sequencing live in `content/actors/saucer`.
 

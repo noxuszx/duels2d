@@ -24,6 +24,8 @@ export interface BehaviorHost {
       entities(): readonly Entity[];
       isCombatActive(): boolean;
       trace?(event: RuntimeTrace): void;
+      /** Called after task cleanup for unhandled execution errors. */
+      taskFailed?(error: unknown): void;
 }
 
 interface ActiveTask {
@@ -106,7 +108,7 @@ export class BehaviorRuntime {
             this.current = active;
             this.trace("admitted", move.id);
             try { active.runner.drain(0); }
-            catch (error) { if (error instanceof OperationRejected) this.reject(active, error.reason); else { this.cancelTask(active, "interrupted"); throw error; } }
+            catch (error) { if (error instanceof OperationRejected) this.reject(active, error.reason); else this.fail(active, error); }
             if (active.startFailure) return { started: false, reason: active.startFailure };
             if (!active.committed && active.handle.state === "cancelled") {
                   return { started: false, reason: "inactive" };
@@ -120,14 +122,14 @@ export class BehaviorRuntime {
             if (!this.ensureActive(active)) return;
             if (!Number.isFinite(deltaMs) || deltaMs <= 0) return;
             try { active.runner.drain(deltaMs); }
-            catch (error) { if (error instanceof OperationRejected) this.reject(active, error.reason); else { this.cancelTask(active, "interrupted"); throw error; } }
+            catch (error) { if (error instanceof OperationRejected) this.reject(active, error.reason); else this.fail(active, error); }
       }
 
       contact(event: ContactEvent): void {
             const active = this.current;
             if (!active || !this.ensureActive(active)) return;
             try { active.runner.contact(event); }
-            catch (error) { if (error instanceof OperationRejected) this.reject(active, error.reason); else { this.cancelTask(active, "interrupted"); throw error; } }
+            catch (error) { if (error instanceof OperationRejected) this.reject(active, error.reason); else this.fail(active, error); }
       }
 
       cancel(reason: CancellationReason): void {
@@ -149,6 +151,14 @@ export class BehaviorRuntime {
                   active.handle.state = "completed";
                   this.trace("completed", active.move.id);
             }
+      }
+
+      private fail(active: ActiveTask, error: unknown): never {
+            try { this.cancelTask(active, "interrupted"); }
+            catch { /* Preserve the execution error. */ }
+            try { this.host.taskFailed?.(error); }
+            catch { /* Preserve the execution error after host cleanup. */ }
+            throw error;
       }
 
       private reject(active: ActiveTask, reason: TaskRejectionReason): void {

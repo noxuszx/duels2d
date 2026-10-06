@@ -2,7 +2,7 @@ import { BehaviorRuntime } from "../engine/behavior-runtime";
 import type { ComponentContext } from "../engine/component";
 import type { ArenaWall, ContactEvent, RuntimeTrace } from "../engine/contracts";
 import type { Entity } from "../engine/entity";
-import type { ScriptOperation } from "../engine/scripting/operation";
+import type { ScriptOperation } from "../engine/scripting";
 import type { MoveConfig } from "../config/component-settings";
 import type { EntityConfig } from "../types/entity";
 

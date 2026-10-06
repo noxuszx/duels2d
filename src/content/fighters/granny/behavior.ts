@@ -1,12 +1,7 @@
 import type { BehaviorHandlers } from "../../../gameplay/fighter-factory";
-import type { Targeting } from "../../../gameplay/components/targeting";
-import type { MeleeAttack } from "../../../gameplay/components/melee";
-import type { ProjectileEmitter } from "../../../gameplay/components/projectile";
-import type { SpriteAim } from "../../../gameplay/components/aim";
-import type { Forms } from "../../../gameplay/components/forms";
-import type { Visuals } from "../../../gameplay/components/visuals";
-import { scoped } from "../../../engine/scripting/scoped";
-import { poseSequence } from "../../script-helpers/pose-sequence";
+import type { Forms, MeleeAttack, ProjectileEmitter, SpriteAim, Targeting, Visuals } from "../../../gameplay/components";
+import { scoped } from "../../../engine/scripting";
+import { poseSequence } from "../../script-helpers";
 
 interface GrannyComponents {
       targeting: Targeting; melee: MeleeAttack; shotgun: ProjectileEmitter;

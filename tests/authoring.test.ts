@@ -9,7 +9,7 @@ import { defineFighter, createFighter } from "../src/gameplay/fighter-factory";
 import type { BehaviorContact } from "../src/gameplay/fighter-factory";
 import type { EntityComponent } from "../src/engine/component";
 import type { ArenaWall } from "../src/engine/contracts";
-import { wait } from "../src/engine/scripting/wait";
+import { wait } from "../src/engine/scripting";
 import { Simulation } from "../src/engine/simulation";
 import type { FighterConfig, FighterDefaults, FighterDefinition } from "../src/types/fighter";
 

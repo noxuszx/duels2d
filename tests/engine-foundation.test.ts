@@ -3,8 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { BehaviorRuntime } from "../src/engine/behavior-runtime";
 import type { ContactEvent } from "../src/engine/contracts";
 import { Entity } from "../src/engine/entity";
-import type { ScriptOperation } from "../src/engine/scripting/operation";
-import { wait } from "../src/engine/scripting/wait";
+import { wait, type ScriptOperation } from "../src/engine/scripting";
 import type { FighterConfig } from "../src/types/fighter";
 
 const config = {

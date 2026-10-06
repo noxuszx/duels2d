@@ -1,7 +1,5 @@
 import type { BehaviorHandlers } from "../../../gameplay/fighter-factory";
-import type { Targeting } from "../../../gameplay/components/targeting";
-import type { WallCrawler } from "../../../gameplay/components/wall-crawl";
-import type { Dasher } from "../../../gameplay/components/dash";
+import type { Dasher, Targeting, WallCrawler } from "../../../gameplay/components";
 
 interface BabyComponents { targeting: Targeting; wallCrawl: WallCrawler; dash: Dasher; }
 

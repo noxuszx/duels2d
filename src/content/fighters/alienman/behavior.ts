@@ -1,9 +1,8 @@
 import type { BehaviorHandlers, FighterContext } from "../../../gameplay/fighter-factory";
-import type { Forms } from "../../../gameplay/components/forms";
-import type { Visuals } from "../../../gameplay/components/visuals";
-import { wait } from "../../../engine/scripting/wait";
+import type { Forms, Visuals } from "../../../gameplay/components";
+import { wait } from "../../../engine/scripting";
 import { createSaucer, type SaucerControl } from "../../actors/saucer/definition";
-import { poseSequence } from "../../script-helpers/pose-sequence";
+import { poseSequence } from "../../script-helpers";
 
 interface AlienManComponents { forms: Forms; visuals: Visuals; }
 

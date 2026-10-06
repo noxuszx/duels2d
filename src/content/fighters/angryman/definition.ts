@@ -1,7 +1,5 @@
 import { defineFighter } from "../../../gameplay/fighter-factory";
-import { Targeting } from "../../../gameplay/components/targeting";
-import { Dasher } from "../../../gameplay/components/dash";
-import { Visuals } from "../../../gameplay/components/visuals";
+import { Dasher, Targeting, Visuals } from "../../../gameplay/components";
 import { angryManBehavior } from "./behavior";
 
 export const angryMan = defineFighter({

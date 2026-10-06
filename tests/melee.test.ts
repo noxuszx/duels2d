@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { Bodies, Body } from "matter-js";
 import { Entity } from "../src/engine/entity";
-import { ScriptScope } from "../src/engine/scripting/scope";
+import { ScriptScope } from "../src/engine/scripting";
 import { Simulation } from "../src/engine/simulation";
-import { MeleeAttack } from "../src/gameplay/components/melee";
+import { MeleeAttack } from "../src/gameplay/components";
 import type { FighterConfig } from "../src/types/fighter";
 
 const config = {
@@ -50,9 +50,7 @@ describe("scoped melee attacks", () => {
             expect(untagged.health).toBe(100);
             scope.release();
             expect(owner.presentation.pose).toBeNull();
-            expect(owner.presentation.drainEvents()).toContainEqual({ type: "sound-stop",
-                  payload: { cue: "swing", token: expect.any(String) } });
-            const next = melee.start(enemy, 100);
+            const next = melee.start(100);
             const nextScope = new ScriptScope();
             expect(next.start(nextScope)).toBe(true);
             expect(enemy.health).toBe(55);

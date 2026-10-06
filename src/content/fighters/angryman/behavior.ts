@@ -1,13 +1,7 @@
 import type { BehaviorHandlers, FighterContext } from "../../../gameplay/fighter-factory";
-import type { Targeting } from "../../../gameplay/components/targeting";
-import type { Dasher } from "../../../gameplay/components/dash";
-import type { Visuals } from "../../../gameplay/components/visuals";
-import { scoped } from "../../../engine/scripting/scoped";
-import { all } from "../../../engine/scripting/all";
-import { race } from "../../../engine/scripting/race";
-import { wait } from "../../../engine/scripting/wait";
-import { pauseMovement } from "../../script-helpers/pause-movement";
-import { shake } from "../../script-helpers/shake";
+import type { Dasher, Targeting, Visuals } from "../../../gameplay/components";
+import { all, race, scoped, wait } from "../../../engine/scripting";
+import { pauseMovement, shake } from "../../script-helpers";
 
 interface AngryManComponents {
       targeting: Targeting; visuals: Visuals; dash: Dasher;

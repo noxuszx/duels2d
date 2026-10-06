@@ -1,7 +1,5 @@
 import { defineFighter } from "../../../gameplay/fighter-factory";
-import { Targeting } from "../../../gameplay/components/targeting";
-import { SpriteAim } from "../../../gameplay/components/aim";
-import { Visuals } from "../../../gameplay/components/visuals";
+import { SpriteAim, Targeting, Visuals } from "../../../gameplay/components";
 import { alienBehavior } from "./behavior";
 
 export const alien = defineFighter({

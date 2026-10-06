@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AimGeometry } from "../../../src/gameplay/components/aim-geometry";
+import { AimGeometry } from "../../../src/gameplay/components";
 import { rootTransform } from "../../../src/presentation/transform";
 import { AimTool, type AimToolHost } from "../tools/aim/aim-tool";
 import type { StudioConfig } from "../app/editor-types";

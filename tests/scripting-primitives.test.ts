@@ -2,11 +2,7 @@ import * as Matter from "matter-js";
 import { describe, expect, it, vi } from "vitest";
 import { BehaviorRuntime } from "../src/engine/behavior-runtime";
 import { Entity } from "../src/engine/entity";
-import { during } from "../src/engine/scripting/during";
-import { tween } from "../src/engine/scripting/tween";
-import { wait } from "../src/engine/scripting/wait";
-import { scoped } from "../src/engine/scripting/scoped";
-import { ScriptScope } from "../src/engine/scripting/scope";
+import { during, scoped, ScriptScope, tween, wait } from "../src/engine/scripting";
 import type { FighterConfig } from "../src/types/fighter";
 
 function setup() {

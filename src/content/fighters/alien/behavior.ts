@@ -1,10 +1,7 @@
 import type { BehaviorHandlers, FighterContext } from "../../../gameplay/fighter-factory";
-import type { Targeting } from "../../../gameplay/components/targeting";
-import type { SpriteAim } from "../../../gameplay/components/aim";
-import type { Visuals } from "../../../gameplay/components/visuals";
-import { wait } from "../../../engine/scripting/wait";
-import { scoped } from "../../../engine/scripting/scoped";
-import { hitEnemies, raySegment } from "../../script-helpers/query-hit";
+import type { SpriteAim, Targeting, Visuals } from "../../../gameplay/components";
+import { scoped, wait } from "../../../engine/scripting";
+import { hitEnemies, raySegment } from "../../script-helpers";
 
 interface AlienComponents { targeting: Targeting; aim: SpriteAim; visuals: Visuals; }
 

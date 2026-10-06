@@ -1,6 +1,5 @@
 import { defineFighter } from "../../../gameplay/fighter-factory";
-import { Forms } from "../../../gameplay/components/forms";
-import { Visuals } from "../../../gameplay/components/visuals";
+import { Forms, Visuals } from "../../../gameplay/components";
 import { alienManBehavior } from "./behavior";
 
 export const alienMan = defineFighter({

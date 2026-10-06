@@ -12,8 +12,8 @@ timing/resource tools.
 [behavior](../src/content/fighters/granny/behavior.ts), and
 [configuration](../config/fighters/granny.json) show attacks, aiming, and forms.
 [Angry Man's behavior](../src/content/fighters/angryman/behavior.ts) composes
-`scoped` with the content-level [shake](../src/content/script-helpers/shake.ts)
-and [pause](../src/content/script-helpers/pause-movement.ts) helpers.
+`scoped` with the content-level [shake](../src/content/script-helpers/animation/shake.ts)
+and [pause](../src/content/script-helpers/motion/pause-movement.ts) helpers.
 
 ## Add a fighter
 
@@ -148,7 +148,7 @@ read at the firing point to obtain explicit muzzle position and direction.
 Use content-level `burst(...)` for repeated emission.
 For other decisions use the generic spawn/update/contact hooks documented in
 [architecture](fighter-architecture.md). Gameplay waits use
-`wait(durationMs)` from `src/engine/scripting/wait.ts` and simulation milliseconds.
+`wait(durationMs)` from `src/engine/scripting/time/wait.ts` and simulation milliseconds.
 
 ## Implement a reusable component or action
 
@@ -194,8 +194,8 @@ For a per-use action:
 - Add temporary lease/subscription releases to the scope. Cancellation stops
   work without continuing the sequence; cleanup is idempotent.
 
-Inspect [wall crawl](../src/gameplay/components/wall-crawl.ts),
-[dash](../src/gameplay/components/dash.ts),
+Inspect [wall crawl](../src/gameplay/components/locomotion/wall-crawl.ts),
+[dash](../src/gameplay/components/locomotion/dash.ts),
 [operation](../src/engine/scripting/operation.ts), and
 [scope](../src/engine/scripting/scope.ts) before implementing a mechanic.
 Route hit effects through shared combat and pose/rotation through presentation

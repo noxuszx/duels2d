@@ -3,15 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import { BehaviorRuntime } from "../src/engine/behavior-runtime";
 import type { ContactEvent } from "../src/engine/contracts";
 import { Entity } from "../src/engine/entity";
-import { all } from "../src/engine/scripting/all";
-import { during } from "../src/engine/scripting/during";
-import type { ScriptOperation } from "../src/engine/scripting/operation";
-import { race } from "../src/engine/scripting/race";
-import { ScriptScope } from "../src/engine/scripting/scope";
-import { wait } from "../src/engine/scripting/wait";
+import { all, during, race, ScriptScope, wait, type ScriptOperation } from "../src/engine/scripting";
 import type { FighterConfig } from "../src/types/fighter";
 import { Simulation } from "../src/engine/simulation";
-import { Dasher } from "../src/gameplay/components/dash";
+import { Dasher } from "../src/gameplay/components";
 
 function setup() {
       const owner = new Entity({

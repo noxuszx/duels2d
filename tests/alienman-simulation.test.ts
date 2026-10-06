@@ -8,8 +8,7 @@ import { alienMan } from "../src/content/fighters/alienman/definition";
 import { alien } from "../src/content/fighters/alien/definition";
 import { SIMULATION_STEP_MS, Simulation } from "../src/engine/simulation";
 import { createFighter } from "../src/gameplay/fighter-factory";
-import { Forms } from "../src/gameplay/components/forms";
-import { SpriteAim } from "../src/gameplay/components/aim";
+import { Forms, SpriteAim } from "../src/gameplay/components";
 import { entityView } from "../src/presentation/view";
 import type { FighterDefaults, FighterDefinition } from "../src/types/fighter";
 

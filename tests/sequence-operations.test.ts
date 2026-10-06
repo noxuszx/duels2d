@@ -2,14 +2,7 @@ import * as Matter from "matter-js";
 import { describe, expect, it, vi } from "vitest";
 import { BehaviorRuntime } from "../src/engine/behavior-runtime";
 import { Entity } from "../src/engine/entity";
-import { all } from "../src/engine/scripting/all";
-import { during } from "../src/engine/scripting/during";
-import type { ScriptOperation } from "../src/engine/scripting/operation";
-import { race } from "../src/engine/scripting/race";
-import { ScriptScope } from "../src/engine/scripting/scope";
-import { scoped } from "../src/engine/scripting/scoped";
-import { sequence } from "../src/engine/scripting/sequence";
-import { wait } from "../src/engine/scripting/wait";
+import { all, during, race, scoped, ScriptScope, sequence, wait, type ScriptOperation } from "../src/engine/scripting";
 
 function runtimeFixture() {
       const owner = new Entity({ runtimeId: "fixture", configId: "fixture", teamId: "a",

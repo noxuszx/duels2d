@@ -1,10 +1,9 @@
-import { KnockbackReaction } from "./components/knockback-reaction";
+import { FloatingMovement, KnockbackReaction } from "./components";
 import { Bodies, Body } from "matter-js";
 import { Entity } from "../engine/entity";
 import type { EntityComponent, ComponentContext } from "../engine/component";
 import type { Simulation } from "../engine/simulation";
 import type { FighterConfig, Vector2 } from "../types/fighter";
-import { FloatingMovement } from "./components/movement";
 import { assertComponentData } from "../config/validation";
 import { installBehavior, type BehaviorHandlers, type BehaviorTasks } from "./behavior";
 

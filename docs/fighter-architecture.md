@@ -93,7 +93,7 @@ only this order and target choice. Component tuning and move cooldown live in
 `config/fighters/babyman.json` and remain editable in Character Studio.
 
 The reusable projectile component is implemented at
-`src/gameplay/components/projectile/`. Its emitter constructs and registers
+`src/gameplay/components/combat/projectile/`. Its emitter constructs and registers
 owner-bound projectiles, while flight owns each projectile's lifetime and
 contacts. `emit(group)` returns an inert operation for explicit position and
 direction geometry; `spawn(group)` emits immediately. Groups validate as a

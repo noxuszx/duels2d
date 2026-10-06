@@ -1,7 +1,6 @@
 import type { Entity } from "./entity";
 import type { CancellationReason, ContactEvent, RuntimeTrace } from "./contracts";
-import type { ScriptOperation } from "./scripting/operation";
-import { OperationRejected, OperationRunner } from "./scripting/operation-runner";
+import { OperationRejected, OperationRunner, type ScriptOperation } from "./scripting";
 
 export interface MoveDefinition { id: string; cooldownMs: number; }
 export type TaskGenerator = Generator<ScriptOperation, void, unknown>;

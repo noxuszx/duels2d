@@ -4,9 +4,9 @@ import type { ProjectileEmitterSettings } from "../src/config/component-settings
 import { Entity } from "../src/engine/entity";
 import { BehaviorRuntime } from "../src/engine/behavior-runtime";
 import { Simulation } from "../src/engine/simulation";
-import { ScriptScope } from "../src/engine/scripting/scope";
-import { ProjectileEmitter, type ProjectileTrajectory } from "../src/gameplay/components/projectile";
-import { burst } from "../src/content/script-helpers/burst";
+import { ScriptScope } from "../src/engine/scripting";
+import { ProjectileEmitter, type ProjectileTrajectory } from "../src/gameplay/components";
+import { burst } from "../src/content/script-helpers";
 import { entityView } from "../src/presentation/view";
 import type { FighterConfig } from "../src/types/fighter";
 

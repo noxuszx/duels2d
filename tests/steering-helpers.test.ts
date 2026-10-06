@@ -2,10 +2,8 @@ import { Bodies, Body } from "matter-js";
 import { describe, expect, it } from "vitest";
 import { Entity } from "../src/engine/entity";
 import { BehaviorRuntime } from "../src/engine/behavior-runtime";
-import { steer } from "../src/content/script-helpers/steer";
-import { moveTo } from "../src/content/script-helpers/move-to";
-import { race } from "../src/engine/scripting/race";
-import { wait } from "../src/engine/scripting/wait";
+import { steer, moveTo } from "../src/content/script-helpers";
+import { race, wait } from "../src/engine/scripting";
 
 function fixture(isStatic = false) {
       const entity = new Entity({ runtimeId: "actor", configId: "actor", teamId: "A",

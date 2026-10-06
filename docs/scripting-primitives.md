@@ -185,6 +185,12 @@ attacks.
 Other roster behaviors remain separate gameplay work; capability availability
 does not imply that every fighter has an active blueprint.
 
+## Roadmap & future primitives
+
+The following primitives are approved for future implementation as fighter mechanics require them:
+
+- **Typed script events (`waitForEvent`)**: Scoped event subscriptions and `waitForEvent(entity, eventName, timeoutMs?)` with defined tick ordering. Enables counterattacks after taking damage, summons reacting to owner commands, or boomerangs/projectiles emitting return signals, without requiring polling loops or move interruption.
+
 ## Permission boundary
 
 If a mechanic truly requires a new core component or engine modification,

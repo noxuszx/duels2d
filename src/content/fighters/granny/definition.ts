@@ -1,10 +1,5 @@
 import { defineFighter } from "../../../gameplay/fighter-factory";
-import { Targeting } from "../../../gameplay/components/targeting";
-import { MeleeAttack } from "../../../gameplay/components/melee";
-import { ProjectileEmitter } from "../../../gameplay/components/projectile";
-import { SpriteAim } from "../../../gameplay/components/aim";
-import { Forms } from "../../../gameplay/components/forms";
-import { Visuals } from "../../../gameplay/components/visuals";
+import { Forms, MeleeAttack, ProjectileEmitter, SpriteAim, Targeting, Visuals } from "../../../gameplay/components";
 import { grannyBehavior } from "./behavior";
 
 export const granny = defineFighter({

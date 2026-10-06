@@ -1,17 +1,10 @@
 import type { ComponentContext } from "../../../engine/component";
 import type { RectangleShape } from "../../../engine/spatial/shapes";
 import { SIMULATION_STEP_MS } from "../../../engine/simulation";
-import { all } from "../../../engine/scripting/all";
-import { race } from "../../../engine/scripting/race";
-import { scoped } from "../../../engine/scripting/scoped";
-import { sequence } from "../../../engine/scripting/sequence";
-import type { ScriptOperation } from "../../../engine/scripting/operation";
-import { wait } from "../../../engine/scripting/wait";
+import { all, race, scoped, sequence, wait, type ScriptOperation } from "../../../engine/scripting";
 import type { BehaviorHandlers } from "../../../gameplay/behavior";
 import type { SaucerSettings } from "../../../config/component-settings";
-import { moveTo } from "../../script-helpers/move-to";
-import { hitEnemies } from "../../script-helpers/query-hit";
-import { until } from "../../script-helpers/until";
+import { hitEnemies, moveTo, until } from "../../script-helpers";
 
 /** The sweep's direction and reversal points are decisions owned by this actor. */
 function* patrol({ entity, simulation }: ComponentContext,

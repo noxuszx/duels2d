@@ -1,4 +1,4 @@
-import type { KnockbackReaction } from "../components/knockback-reaction";
+import type { KnockbackReaction } from "../components";
 import { Body } from "matter-js";
 import type { Entity } from "../../engine/entity";
 import type { EntityRegistry } from "../../engine/entity-registry";

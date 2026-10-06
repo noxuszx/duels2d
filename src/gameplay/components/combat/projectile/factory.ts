@@ -1,9 +1,9 @@
 import { Bodies, Body } from "matter-js";
-import type { ProjectileSettings } from "../../../config/component-settings";
-import type { Vector2 } from "../../../engine/contracts";
-import { Entity } from "../../../engine/entity";
-import type { EntityConfig } from "../../../types/entity";
-import type { ComponentContext } from "../../../engine/component";
+import type { ProjectileSettings } from "../../../../config/component-settings";
+import type { Vector2 } from "../../../../engine/contracts";
+import { Entity } from "../../../../engine/entity";
+import type { EntityConfig } from "../../../../types/entity";
+import type { ComponentContext } from "../../../../engine/component";
 import { ProjectileFlight } from "./flight";
 
 export interface ProjectileTrajectory {
@@ -12,12 +12,7 @@ export interface ProjectileTrajectory {
 }
 
 /** Constructs a projectile, equips its flight component, and registers its lifetime policies. */
-export function createProjectile(
-      context: ComponentContext,
-      shot: ProjectileSettings,
-      trajectory: ProjectileTrajectory,
-      hitSound?: string,
-): Entity {
+export function createProjectile( context: ComponentContext, shot: ProjectileSettings, trajectory: ProjectileTrajectory, hitSound?: string,): Entity {
       const { entity: owner, simulation } = context;
       const { position, direction } = trajectory;
 

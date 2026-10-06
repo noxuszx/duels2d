@@ -7,6 +7,7 @@ from planned work.
 
 | Guide | Use it for |
 | --- | --- |
+| [Behavior scripting guide](behavior-scripting-guide.md) | Practical cheat sheet, yieldable primitives, common patterns, and authoring checklist |
 | [Fighter architecture](fighter-architecture.md) | Ownership, simulation lifecycle, scripting contracts, and the source tree |
 | [Scripting primitives](scripting-primitives.md) | Timing, scoped acquisition, presentation leases, steering, projectile emission, operation composition, and content helpers |
 | [Fighter authoring](fighter-authoring.md) | Creating fighters, composing mechanics, and implementing reusable components |

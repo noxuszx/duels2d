@@ -191,6 +191,45 @@ The following primitives are approved for future implementation as fighter mecha
 
 - **Typed script events (`waitForEvent`)**: Scoped event subscriptions and `waitForEvent(entity, eventName, timeoutMs?)` with defined tick ordering. Enables counterattacks after taking damage, summons reacting to owner commands, or boomerangs/projectiles emitting return signals, without requiring polling loops or move interruption.
 
+Additional roadmap proposals are listed below. They are not implemented APIs;
+engine and component changes still follow the permission boundary below.
+
+- **Typed operation results**: Return action outcomes to the yielding generator,
+  including collision targets, completion versus timeout, and the winning branch
+  of a race. Use the shared `OperationRunner` for result propagation and define
+  how sequence and compound operations expose results. Enables hit-confirmed
+  follow-ups and different recovery decisions without shared mutable flags.
+- **Scoped background scripts**: Run child generators owned by an entity or
+  script scope through the existing runner. Define cancellation, status
+  restrictions, deterministic execution order, and resource conflicts explicitly.
+  Enables persistent auras, orbiting defenses, or independently maintained
+  effects while foreground moves retain their own admission and cooldowns.
+  Add this only when concrete content cannot reasonably use `all` and `sequence`.
+- **Temporary stat modifiers**: Scoped modifiers over resolved gameplay stats,
+  with explicit additive/multiplicative stacking and cleanup rules. Capabilities
+  read effective values at documented points rather than mutating authored
+  configuration. Enables slow, haste, armor, damage buffs, and stacking rage;
+  structural body/identity changes remain outside this mechanism.
+- **Shared actor authoring**: Extract generic entity blueprint assembly beneath
+  fighter-specific assembly, retaining the existing entity, component, behavior,
+  and registry contracts. Make team, tags, ownership, and retirement policies
+  explicit. Enables traps, turrets, familiars, hazards, and destructible objects
+  with less repeated setup; do not introduce a second behavior runtime.
+- **Behavior debugging**: Enrich traces with simulation tick/time, operation
+  labels, composition branches, and relevant resource conflicts. Expose active
+  tasks, cooldowns, and leases in the developer UI so rejected or stalled actions
+  can be diagnosed without changing gameplay decisions.
+- **Content pattern helpers**: Add orbit, pursuit, zigzag, and retreat patterns
+  using `steer`; fans, rings, and rotating bursts using projectile groups; and
+  periodic zones/enter-exit effects using spatial queries and `OverlapTracker`.
+  These belong in `src/content/script-helpers/` and can use existing primitives
+  without new engine capabilities. Scripts retain target choice, geometry,
+  timing, hit effects, and lifecycle ownership.
+
+Suggested implementation order: content pattern helpers, typed script events,
+then typed operation results. Schedule the remaining proposals when a concrete
+fighter or actor needs them, especially background scripts.
+
 ## Permission boundary
 
 If a mechanic truly requires a new core component or engine modification,

@@ -1,9 +1,9 @@
-import type { ProjectileSettings } from "../../../config/component-settings";
-import type { EntityComponent } from "../../../engine/component";
-import type { ContactEvent } from "../../../engine/contracts";
-import type { Entity } from "../../../engine/entity";
-import type { ComponentContext } from "../../../engine/component";
-import type { PresentationLease } from "../../../presentation/state";
+import type { ProjectileSettings } from "../../../../config/component-settings";
+import type { EntityComponent } from "../../../../engine/component";
+import type { ContactEvent } from "../../../../engine/contracts";
+import type { Entity } from "../../../../engine/entity";
+import type { ComponentContext } from "../../../../engine/component";
+import type { PresentationLease } from "../../../../presentation/state";
 
 /** Per-projectile simulation lifetime and contact policy. */
 export class ProjectileFlight implements EntityComponent {

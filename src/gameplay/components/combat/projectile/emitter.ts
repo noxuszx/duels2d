@@ -1,9 +1,9 @@
-import type { ProjectileEmitterSettings, ProjectileSettings } from "../../../config/component-settings";
-import type { EntityComponent } from "../../../engine/component";
-import type { CancellationReason, Vector2 } from "../../../engine/contracts";
-import type { Entity } from "../../../engine/entity";
-import type { ScriptOperation, ScriptScope } from "../../../engine/scripting";
-import type { ComponentContext } from "../../../engine/component";
+import type { ProjectileEmitterSettings, ProjectileSettings } from "../../../../config/component-settings";
+import type { EntityComponent } from "../../../../engine/component";
+import type { CancellationReason, Vector2 } from "../../../../engine/contracts";
+import type { Entity } from "../../../../engine/entity";
+import type { ScriptOperation, ScriptScope } from "../../../../engine/scripting";
+import type { ComponentContext } from "../../../../engine/component";
 
 import { createProjectile, type ProjectileTrajectory } from "./factory";
 

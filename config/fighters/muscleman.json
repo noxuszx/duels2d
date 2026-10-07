@@ -88,8 +88,8 @@
     },
     "damageRamp": {
       "amountPerIncrease": 30,
-      "maxDamage": 350,
-      "hurtThrowThreshold": 0,
+      "maxDamage": 300,
+      "hurtThrowThreshold": 30,
       "ratesPerSecond": [
         1,
         2,

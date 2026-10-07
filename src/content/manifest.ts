@@ -4,6 +4,7 @@ import { alienMan } from "./fighters/alienman/definition";
 import { alien } from "./fighters/alien/definition";
 import { angryMan } from "./fighters/angryman/definition";
 import { depressedMan } from "./fighters/depressedman/definition";
+import { muscleMan } from "./fighters/muscleman/definition";
 import type { FighterBlueprint } from "../gameplay/fighter-factory";
 
 /** Explicit content registration. Unmigrated identities use the ordinary passive preset. */
@@ -14,5 +15,6 @@ export const fighterBlueprints: ReadonlyMap<string, FighterBlueprint> = new Map(
       [alien.id, alien],
       [angryMan.id, angryMan],
       [depressedMan.id, depressedMan],
+      [muscleMan.id, muscleMan],
 ]);
 export const isFighterBehaviorEnabled = (id: string): boolean => fighterBlueprints.has(id);

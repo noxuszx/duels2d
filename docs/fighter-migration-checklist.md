@@ -2,7 +2,7 @@
 
 See [fighter-architecture.md](fighter-architecture.md) for the current runtime
 and ownership contracts. The simulation foundation has been implemented, and
-Baby Man, Granny, Alien Man, summoned aliens, and Angry Man have active blueprints. Other roster entries use the
+Baby Man, Granny, Alien Man, summoned aliens, Angry Man, Depressed Man, and Muscle Man have active blueprints. Other roster entries use the
 passive setup until they receive a blueprint and behavior.
 
 ## Approved scripting phases
@@ -103,7 +103,9 @@ fighters require. Granny now exercises reusable melee and sprite aiming, project
 emission, scoped timed poses, named form selection, and a scripted threshold
 transformation. Her handles are equipped by the definition and remain stable
 across form entry; behavior explicitly chooses which handles to use. Other roster
-behaviors and damage-ramp mechanics remain future work. Alien Man's owned saucer
+behaviors remain future work. Muscle Man's damage ramp and wall-returning dumbbell
+use content timing, projectile events, and steering without a new component.
+Alien Man's owned saucer
 and aliens use separate scripts, spatial queries, shared shape presentation,
 existing aiming, and owner cleanup. Parallel foreground task scheduling,
 networking/replay, and arbitrary

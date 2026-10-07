@@ -3,7 +3,7 @@
 The simulation foundation is implemented. Gameplay runs in a headless, fixed
 120 Hz simulation with explicit fighter definitions, reusable owner-bound
 components, and one foreground behavior task per fighter. Baby Man, Granny,
-Alien Man, summoned aliens, and Angry Man have active scripted behaviors;
+Alien Man, summoned aliens, Angry Man, Depressed Man, and Muscle Man have active scripted behaviors;
 other roster entries use the shared passive
 setup and remain available as opponents. Fighter JSON and Character
 Studio now use `components`, `moves`, and named `forms` as editable data.
@@ -295,7 +295,13 @@ previous sweep tick component is removed. The lifecycle races beam cycles
 against `until` the deployment signal, then spawns three aliens at absolute
 deadlines from that signal. Alien lasers query one thick segment per shot and apply shared
 combat to each enemy hit; their flashes do not cause continuing damage.
-Damage-ramp mechanics and other roster behaviors remain pending migration.
+Muscle Man ramps stored damage by 30 per increase, with one increase in the first
+second, two in the second, and three per second thereafter. Hurt triggers a throw
+at 30 or more stored damage; reaching 300 triggers an automatic throw. Each
+dumbbell snapshots its damage and resets the stored charge. Charging pauses while
+it is away. Its content script redirects it toward its owner at wall contact and
+uses `steer` to track the owner until flight catches it; catching restarts the ramp
+at the first rate. Other roster behaviors remain pending migration.
 
 Angry Man reuses targeting and dash. His script scopes a voluntary movement
 pause around concurrent windup pose and shake operations, then races `dash.start(target)`

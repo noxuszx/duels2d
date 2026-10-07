@@ -9,6 +9,7 @@ import { createProjectile } from "../src/gameplay/components/combat/projectile/f
 import type { ProjectileImpactEvent, ProjectileEndEvent } from "../src/gameplay/components/combat/projectile/events";
 import { onProjectileEvents } from "../src/content/script-helpers";
 import { spawnActor } from "../src/gameplay/actor-factory";
+import { ProjectileFlight } from "../src/gameplay/components/combat/projectile/flight";
 
 const config = { id: "fixture", radius: 5, hitbox: { type: "circle" as const, radius: 5 }, speed: 0, maxHealth: 100 };
 function setup(overrides: Partial<ProjectileSettings> = {}) {
@@ -222,6 +223,21 @@ describe("projectile lifecycle events", () => {
             expect(projectile.removalReason).toBe("hit");
             expect(projectile.presentation.rotation).toBe(0);
             expect(Composite.allBodies(simulation.engine.world)).toHaveLength(2);
+            simulation.dispose();
+      });
+
+      it("preserves the terminal event error when source-close observers also fail", () => {
+            const { simulation, projectile } = setup();
+            const failure = new Error("end failed");
+            const calls: string[] = [];
+            onProjectileEvents(projectile, { onEnd() { calls.push("end"); throw failure; } });
+            const flight = projectile.components.get<ProjectileFlight>("flight")!;
+            flight.events.onClose(() => { calls.push("close"); throw new Error("close failed"); });
+            flight.events.onClose(() => { calls.push("later close"); });
+            expect(() => simulation.remove(projectile.runtimeId)).toThrow(failure);
+            expect(calls).toEqual(["end", "close", "later close"]);
+            expect(flight.events.isClosed).toBe(true);
+            expect(projectile.isRemoved).toBe(true);
             simulation.dispose();
       });
 

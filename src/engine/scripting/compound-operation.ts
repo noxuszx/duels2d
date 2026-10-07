@@ -1,9 +1,11 @@
 import type { CancellationReason, ContactEvent } from "../contracts";
-import type { OperationEndReason, ScriptOperation } from "./operation";
+import type { AnyScriptOperation, OperationEndReason, ScriptOperation } from "./operation";
 import { ScriptScope } from "./scope";
+import { runAll } from "../cleanup";
 
 interface Branch {
-      operation: ScriptOperation;
+      index: number;
+      operation: AnyScriptOperation;
       scope: ScriptScope;
       active: boolean;
 }
@@ -13,7 +15,8 @@ interface Branch {
  * rejection releases every acquired resource, but cannot undo emitted damage, audio,
  * or other irreversible start callbacks. Put fallible acquisitions before such work.
  */
-export function compoundOperation(mode: "all" | "race", operations: readonly ScriptOperation[]): ScriptOperation {
+export function compoundOperation(mode: "all" | "race", operations: readonly AnyScriptOperation[]): ScriptOperation<unknown> {
+      if (mode === "race" && operations.length === 0) throw new RangeError("Race requires at least one branch");
       const branches: Branch[] = [];
       let started = false;
       let stopped = false;
@@ -21,23 +24,24 @@ export function compoundOperation(mode: "all" | "race", operations: readonly Scr
       let complete = false;
       let endReason: OperationEndReason | undefined;
       let rejectionReason: "rejected" | "resource-conflict" | undefined;
+      let result: unknown;
+      const results: unknown[] = new Array(operations.length);
 
       function closeBranch(branch: Branch, reason?: CancellationReason): void {
             if (!branch.active) return;
             branch.active = false;
-            try { if (reason) branch.operation.cancel(reason); }
-            finally { branch.scope.release(); }
+            runAll([
+                  () => {
+                        if (reason) branch.operation.cancel(reason);
+                        else if (mode === "all") results[branch.index] = branch.operation.result;
+                  },
+                  () => branch.scope.release(),
+            ]);
       }
 
       function closeAll(reason: CancellationReason): void {
             stopped = true;
-            let failed = false;
-            let firstError: unknown;
-            for (const branch of branches) {
-                  try { closeBranch(branch, reason); }
-                  catch (error) { if (!failed) firstError = error; failed = true; }
-            }
-            if (failed) throw firstError;
+            runAll(branches.map(branch => () => closeBranch(branch, reason)));
       }
 
       function fail(error: unknown): never {
@@ -50,8 +54,10 @@ export function compoundOperation(mode: "all" | "race", operations: readonly Scr
             if (stopped || complete) return;
             const finished = branches.filter(branch => branch.active && branch.operation.isComplete);
             if (mode === "race" && finished.length > 0) {
-                  endReason = finished[0].operation.endReason ?? "complete";
-                  for (const branch of finished) closeBranch(branch);
+                  const winner = finished[0];
+                  endReason = winner.operation.endReason ?? "complete";
+                  result = Object.freeze({ index: winner.index, result: winner.operation.result });
+                  closeBranch(winner);
                   if (stopped) return;
                   closeAll("interrupted");
                   complete = !cancelled;
@@ -65,6 +71,7 @@ export function compoundOperation(mode: "all" | "race", operations: readonly Scr
                   if (!stopped && branches.every(branch => !branch.active)) {
                         endReason = "complete";
                         complete = true;
+                        result = Object.freeze([...results]);
                   }
             }
       }
@@ -95,7 +102,7 @@ export function compoundOperation(mode: "all" | "race", operations: readonly Scr
                               if (!operation || typeof operation.start !== "function" || typeof operation.advance !== "function") {
                                     throw new TypeError("Invalid concurrent operation");
                               }
-                              const branch = { operation, scope: new ScriptScope(), active: true };
+                              const branch = { index: branches.length, operation, scope: new ScriptScope(), active: true };
                               branches.push(branch);
                               const accepted = operation.start(branch.scope);
                               if (stopped) return false;
@@ -156,6 +163,10 @@ export function compoundOperation(mode: "all" | "race", operations: readonly Scr
                   catch (error) { return fail(error); }
             },
             get endReason() { return endReason; },
+            get result() {
+                  if (!complete) throw new Error("Cannot read a compound result before completion");
+                  return result;
+            },
             get rejectionReason() { return rejectionReason; },
             cancel(reason: CancellationReason): void { cancelled = true; closeAll(reason); },
       };

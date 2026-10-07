@@ -10,6 +10,7 @@ import { SIMULATION_STEP_MS, Simulation } from "../src/engine/simulation";
 import { createFighter } from "../src/gameplay/fighter-factory";
 import { Forms, SpriteAim } from "../src/gameplay/components";
 import { entityView } from "../src/presentation/view";
+import { createSaucer } from "../src/content/actors/saucer/definition";
 import type { FighterDefaults, FighterDefinition } from "../src/types/fighter";
 
 const ownerConfig = composeFighter(defaults as FighterDefaults, alienManData as FighterDefinition);
@@ -35,6 +36,23 @@ function setup(speed = .001, arenaWidth = 1200) {
 }
 
 describe("Alien Man and owned actors", () => {
+      it("records deployment before the actor's first tick and ignores repeated commands", () => {
+            const simulation = new Simulation({ arena: { minX: 0, maxX: 1200, minY: 0, maxY: 1000 }, seed: 11 });
+            const owner = createFighter(simulation, ownerConfig, { runtimeId: "owner", teamId: "A",
+                  position: { x: 300, y: 500 }, velocity: { x: 0, y: 0 } });
+            Body.setStatic(owner.body, true);
+            const control = createSaucer({ entity: owner, simulation, config: owner.config,
+                  roster: [ownerConfig, alienConfig] });
+            control.deploy();
+            advance(simulation, 60);
+            control.deploy();
+            advance(simulation, 59);
+            expect(simulation.entities.all().filter(entity => entity.configId === "alien")).toHaveLength(0);
+            advance(simulation, 1);
+            expect(simulation.entities.all().filter(entity => entity.configId === "alien")).toHaveLength(1);
+            simulation.dispose();
+      });
+
       it("sweeps between both edges while the beam visual follows the same world-space shape", () => {
             const { simulation, saucer } = setup(1000);
             let min = Infinity, max = -Infinity;
@@ -64,8 +82,9 @@ describe("Alien Man and owned actors", () => {
             advance(simulation, 241);
             const transformedX = saucer.body.position.x;
             expect(Math.abs(transformedX - initialX)).toBeCloseTo(100 * 240 * SIMULATION_STEP_MS / 1000);
+            advance(simulation, 1);
             expect(saucer.presentation.shapes).toHaveLength(0);
-            advance(simulation, 120);
+            advance(simulation, 119);
             expect(summons()).toHaveLength(1);
             expect(Math.abs(saucer.body.position.x - transformedX)).toBeCloseTo(100);
             enemy.takeDamage(enemy.health);
@@ -126,8 +145,10 @@ describe("Alien Man and owned actors", () => {
             advance(simulation, 239); expect(forms.is("transformed")).toBe(false);
             advance(simulation, 1); expect(forms.is("transformed")).toBe(true);
             const deployedAtMs = simulation.nowMs;
+            // Event-wait continuation cancels beams at the following simulation barrier.
+            advance(simulation, 1);
             expect(saucer.presentation.shapes).toHaveLength(0);
-            advance(simulation, 119); expect(summons()).toHaveLength(0);
+            advance(simulation, 118); expect(summons()).toHaveLength(0);
             advance(simulation, 1); expect(summons()).toHaveLength(1);
             expect(simulation.nowMs - deployedAtMs).toBeCloseTo(1000);
             expect(Math.hypot(summons()[0].body.velocity.x, summons()[0].body.velocity.y))

@@ -8,10 +8,11 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "npm run typecheck && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "typecheck": "tsc --noEmit && npm run typecheck:tests",
+    "typecheck:tests": "tsc --noEmit -p tsconfig.test-types.json",
+    "test": "npm run typecheck:tests && vitest run"
   },
   "keywords": [],
   "type": "module",

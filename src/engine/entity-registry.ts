@@ -1,5 +1,6 @@
 import { World, type Body, type World as MatterWorld } from "matter-js";
 import type { Entity } from "./entity";
+import { runAll } from "./cleanup";
 
 export type OwnerLifetime = "remove" | "persist";
 export interface EntityRegistration {
@@ -115,13 +116,7 @@ export class EntityRegistry {
 
       /** A failing cleanup must not strand sibling entities in the Matter world. */
       private cleanup(entries: readonly Entry[], release: (entry: Entry) => void): void {
-            let failure: unknown;
-            let failed = false;
-            for (const entry of entries) {
-                  try { release(entry); }
-                  catch (error) { if (!failed) failure = error; failed = true; }
-            }
-            if (failed) throw failure;
+            runAll(entries.map(entry => () => release(entry)));
       }
 
       private flush(): void {

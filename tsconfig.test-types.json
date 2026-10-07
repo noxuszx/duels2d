@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["tests/types/**/*.ts", "tests/script-events.test.ts", "tests/cleanup.test.ts"]
+}

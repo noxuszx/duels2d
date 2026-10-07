@@ -4,18 +4,9 @@ import type { ContactEvent } from "../../../../engine/contracts";
 import type { Entity } from "../../../../engine/entity";
 import type { ComponentContext } from "../../../../engine/component";
 import type { PresentationLease } from "../../../../presentation/state";
-import type { ProjectileEndEvent, ProjectileEvent, ProjectileEventHandlers } from "./events";
-
-/** Complete notification and cleanup even if a callback fails; preserve the first error. */
-function completeAll(actions: Array<() => void>): void {
-      let failed = false;
-      let failure: unknown;
-      for (const action of actions) {
-            try { action(); }
-            catch (error) { if (!failed) failure = error; failed = true; }
-      }
-      if (failed) throw failure;
-}
+import type { ProjectileEndEvent, ProjectileEvent, ProjectileEventMap } from "./events";
+import type { EventSource } from "../../../../engine/events/source";
+import { runAll } from "../../../../engine/cleanup";
 
 /** Per-projectile simulation lifetime and contact policy. */
 export class ProjectileFlight implements EntityComponent {
@@ -25,7 +16,7 @@ export class ProjectileFlight implements EntityComponent {
       private releaseContactPolicy: (() => void) | null = null;
       private releaseIgnoredOwner: (() => void) | null = null;
       private readonly hitTargets = new Set<string>();
-      private readonly listeners = new Set<ProjectileEventHandlers>();
+      readonly events: EventSource<ProjectileEventMap>;
       private processingContact = false;
       private detached = false;
       private pendingEnd: ProjectileEndEvent | null = null;
@@ -36,14 +27,9 @@ export class ProjectileFlight implements EntityComponent {
             private readonly settings: ProjectileSettings,
             private readonly hitSound: string | undefined,
             private readonly sourceId: string,
-      ) { }
-
-      subscribe(handlers: ProjectileEventHandlers): () => void {
-            if (this.detached || this.projectile.isRemoved)
-                  throw new Error("Cannot subscribe to a removed projectile");
-            const listener = { ...handlers };
-            this.listeners.add(listener);
-            return () => { this.listeners.delete(listener); };
+      ) {
+            // Flight closes after its terminal notification, including reentrant removal on impact.
+            this.events = context.simulation.createEventSource<ProjectileEventMap>();
       }
 
       private snapshot(): ProjectileEvent {
@@ -54,19 +40,11 @@ export class ProjectileFlight implements EntityComponent {
             };
       }
 
-      private notify<E>(select: (handlers: ProjectileEventHandlers) => ((event: E) => void) | undefined,
-            event: E): void {
-            completeAll([...this.listeners].map(listener => () => {
-                  if (this.listeners.has(listener)) select(listener)?.(event);
-            }));
-      }
-
       private flushEnd(): void {
             if (this.processingContact || !this.pendingEnd) return;
             const event = this.pendingEnd;
             this.pendingEnd = null;
-            try { this.notify(handlers => handlers.onEnd, event); }
-            finally { this.listeners.clear(); }
+            runAll([() => this.events.emit("end", event), () => this.events.close()]);
       }
 
       attach(): void {
@@ -99,7 +77,7 @@ export class ProjectileFlight implements EntityComponent {
             if (this.detached || this.processingContact || !this.projectile.isAlive) return;
             event.policy.allowImpactDamage = false;
             this.processingContact = true;
-            completeAll([
+            runAll([
                   () => {
                         if (event.kind === "wall") this.handleWallContact(event);
                         else this.handleEntityContact(event.other);
@@ -112,7 +90,7 @@ export class ProjectileFlight implements EntityComponent {
             if (this.settings.flight.collision.walls === "ignore") {
                   event.policy.defaultBounce = false;
             }
-            this.notify(handlers => handlers.onWall,
+            this.events.emit("wall",
                   Object.freeze({ ...this.snapshot(), wall: event.wall }));
       }
 
@@ -134,7 +112,7 @@ export class ProjectileFlight implements EntityComponent {
             this.hitTargets.add(other.runtimeId);
 
             const snapshot = this.snapshot();
-            completeAll([() => {
+            runAll([() => {
                   const result = context.simulation.hit(
                         projectile,
                         other,
@@ -148,7 +126,7 @@ export class ProjectileFlight implements EntityComponent {
                   if (result.connected && this.hitSound && context.simulation.entities.isLive(context.entity)) {
                         context.entity.presentation.emit("sound", { cue: this.hitSound });
                   }
-                  this.notify(handlers => handlers.onImpact, Object.freeze({
+                  this.events.emit("impact", Object.freeze({
                         ...snapshot, other,
                         result: Object.freeze({ ...result, statusesApplied: Object.freeze([...result.statusesApplied]) }),
                   }));
@@ -162,14 +140,14 @@ export class ProjectileFlight implements EntityComponent {
             this.detached = true;
             const reason = this.projectile.removalReason;
             if (reason) this.pendingEnd = Object.freeze({ ...this.snapshot(), reason });
-            completeAll([
+            runAll([
                   () => { this.rotationLease?.release(); this.rotationLease = null; },
                   () => { this.releaseIgnoredOwner?.(); this.releaseIgnoredOwner = null; },
                   () => { this.releaseContactPolicy?.(); this.releaseContactPolicy = null; },
                   () => {
                         this.hitTargets.clear();
                         if (reason) this.flushEnd();
-                        else this.listeners.clear();
+                        else this.events.close();
                   },
             ]);
       }

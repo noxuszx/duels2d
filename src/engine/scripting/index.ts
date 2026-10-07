@@ -1,8 +1,14 @@
-export type { ScriptOperation, OperationEndReason } from "./operation";
+export type { ScriptOperation, AnyScriptOperation, ScriptGenerator, OperationResult, OperationEndReason } from "./operation";
+export { perform } from "./perform";
+export { waitForEvent } from "./events/wait-for-event";
+export type { EventWaitResult, EventWaitOptions } from "./events/wait-for-event";
 export { ScriptScope } from "./scope";
 export { scoped } from "./scoped";
 export { all } from "./combinators/all";
 export { race } from "./combinators/race";
+export type { RaceResult } from "./combinators/race";
+export { EventSource } from "../events/source";
+export type { EventStamp } from "../events/source";
 export { sequence } from "./combinators/sequence";
 export { wait } from "./time/wait";
 export { during } from "./time/during";

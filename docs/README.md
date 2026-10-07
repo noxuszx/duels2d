@@ -1,41 +1,47 @@
-# Project documentation
+# Documentation index
 
-Duels2D runs generic physics bodies with sprites. Equipped components provide
-capabilities; TypeScript behavior scripts decide when and how to use them.
-These guides describe the current source, with implemented features separated
-from planned work.
+Pages are grouped by purpose:
 
-| Guide | Use it for |
-| --- | --- |
-| [Behavior scripting guide](behavior-scripting-guide.md) | Practical cheat sheet, yieldable primitives, common patterns, and authoring checklist |
-| [Fighter architecture](fighter-architecture.md) | Ownership, simulation lifecycle, scripting contracts, and the source tree |
-| [Scripting primitives](scripting-primitives.md) | Timing, scoped acquisition, presentation leases, steering, projectile emission, operation composition, and content helpers |
-| [Fighter authoring](fighter-authoring.md) | Creating fighters, composing mechanics, and implementing reusable components |
-| [Status effects](status-effects-architecture.md) | Applying and extending timed effects through shared combat |
-| [Migration checklist](fighter-migration-checklist.md) | Current roster status, remaining work, and gameplay acceptance |
-| [Configuration](../config/README.md) | Editable JSON, defaults, forms, assets, and validation |
-| [Character Studio](../tools/character-studio/README.md) | Editor ownership, previews, serialization, and browser verification |
+- `architecture/`: ownership, boundaries, runtime, simulation, spatial queries, and statuses.
+- `scripting/`: operation APIs, events, resources, helpers, projectiles, and actors.
+- `authoring/`: fighter setup, examples, forms, components, and verification.
+- `migration/`: current migration work and historical checkpoints.
 
-For gameplay work, read the architecture and authoring guides, then inspect the
-actual component and fighter source you will use. For configuration or editor
-changes, also read the configuration and Studio guides.
+Start here and select the row matching the task. Read the linked page, then
+inspect the relevant source. Follow related links only when the change needs
+that contract; do not load every guide by default.
 
-Baby Man and Granny are active blueprint examples:
+For gameplay changes, read [engine and content boundaries](architecture/engine-boundaries.md)
+once. They define where mechanics belong and when engine/component changes
+require user permission.
 
-- [Definition](../src/content/fighters/babyman/definition.ts): component assembly
-  and behavior-to-move bindings.
-- [Behavior](../src/content/fighters/babyman/behavior.ts): wall contact, crawl,
-  then dash toward a freshly selected enemy.
-- [Configuration](../config/fighters/babyman.json): editable tuning and art.
-- [Granny definition](../src/content/fighters/granny/definition.ts): equipped
-  components and configured moves.
-- [Granny behavior](../src/content/fighters/granny/behavior.ts): ordered action
-  checks, interruption, attack timing, aiming, and transformation decisions.
-- [Granny configuration](../config/fighters/granny.json): base and transformed
-  component, move, and pose settings.
+| Task | Read first | Read when needed |
+| --- | --- | --- |
+| Add a fighter or action | [Fighter authoring](authoring/fighter-authoring.md) | [Quick start](authoring/behavior-scripting-guide.md), [patterns](authoring/behavior-patterns.md) |
+| Understand system ownership | [Architecture](architecture/fighter-architecture.md) | [Source map](architecture/source-map.md) |
+| Diagnose admission, cooldowns, interruption, or contacts | [Behavior runtime](architecture/behavior-runtime.md) | [Statuses](architecture/status-effects-architecture.md) |
+| Wait, tween, or account for partial ticks | [Timing](scripting/script-timing.md) | [Composition](scripting/script-composition.md) |
+| Hold movement/aim resources or presentation leases | [Scopes and leases](scripting/script-resources.md) | [Content helpers](scripting/content-helpers.md) |
+| Compose concurrent operations or generator branches | [Composition](scripting/script-composition.md) | [Results](scripting/script-results.md) |
+| Subscribe to damage or commands; await an event | [Typed events](scripting/script-events.md) | [Results](scripting/script-results.md) |
+| Return typed values or handle a race winner | [Operation results](scripting/script-results.md) | [Composition](scripting/script-composition.md) |
+| Author shake, steering, condition waits, or repeated hits | [Content helpers](scripting/content-helpers.md) | [Spatial queries](architecture/spatial-queries.md) |
+| Equip a projectile fighter | [Projectile assembly](authoring/projectile-authoring.md) | [Emission and lifecycle events](scripting/projectile-scripting.md) |
+| React to projectile impacts, walls, or removal | [Projectile scripting](scripting/projectile-scripting.md) | [Typed events](scripting/script-events.md) |
+| Spawn a trap, turret, summon, or actor | [Scripted actors](scripting/scripted-actors.md) | [Simulation lifecycle](architecture/simulation-lifecycle.md) |
+| Change tick order, ownership, retirement, or match behavior | [Simulation lifecycle](architecture/simulation-lifecycle.md) | [Engine boundaries](architecture/engine-boundaries.md) |
+| Query rays, areas, or overlap transitions | [Spatial queries](architecture/spatial-queries.md) | [Content helpers](scripting/content-helpers.md) |
+| Apply or extend a status effect | [Status effects](architecture/status-effects-architecture.md) | [Shared combat source](../src/gameplay/combat/effects.ts) |
+| Change entity config or named forms | [Entity configuration](architecture/entity-configuration.md) | [Forms](authoring/forms.md), [JSON configuration](../config/README.md) |
+| Implement an approved reusable component | [Component authoring](authoring/component-authoring.md) | Relevant [scripting contracts](scripting/scripting-primitives.md) |
+| Edit JSON, assets, defaults, or schema | [Configuration](../config/README.md) | [Character Studio](../tools/character-studio/README.md) |
+| Change editor UI, previews, or serialization | [Character Studio](../tools/character-studio/README.md) | [Configuration](../config/README.md) |
+| Validate a change | [Verification](authoring/verification.md) | [Current acceptance work](migration/fighter-migration-checklist.md) |
+| Check active roster or remaining migration | [Migration checklist](migration/fighter-migration-checklist.md) | [Fighter examples](authoring/fighter-examples.md) |
+| Evaluate a future capability | [Engine boundaries](architecture/engine-boundaries.md) | [Roadmap](scripting/scripting-roadmap.md) |
+| Investigate an earlier verification checkpoint | [Migration history](migration/fighter-migration-history.md) | Current contract for the feature |
 
-Alien Man, summoned aliens, and Angry Man also have active blueprints. Other
-roster entries remain passive opponents. Granny exercises reusable melee,
-aimed projectile shots, and scripted form entry. [Angry Man's behavior](../src/content/fighters/angryman/behavior.ts)
-shows content helpers composed with timing and resource primitives; see the
-architecture and authoring guides for their contracts.
+[Scripting primitives](scripting/scripting-primitives.md) is a compact API navigation index.
+[Migration history](migration/fighter-migration-history.md) records past work and is not a
+prerequisite for authoring. Keep contracts in their topic page and use links from
+overviews and examples instead of duplicating the contract.

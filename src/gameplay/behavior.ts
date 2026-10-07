@@ -2,7 +2,7 @@ import { BehaviorRuntime } from "../engine/behavior-runtime";
 import type { ComponentContext } from "../engine/component";
 import type { ArenaWall, ContactEvent, RuntimeTrace } from "../engine/contracts";
 import type { Entity } from "../engine/entity";
-import type { ScriptOperation } from "../engine/scripting";
+import type { ScriptGenerator } from "../engine/scripting";
 import type { MoveConfig } from "../config/component-settings";
 import type { EntityConfig } from "../types/entity";
 
@@ -10,7 +10,7 @@ export type BehaviorContact = { kind: "wall"; wall: ArenaWall } | { kind: "entit
 
 export interface BehaviorAction {
       when(): boolean;
-      run(): Generator<ScriptOperation, void, unknown>;
+      run(): ScriptGenerator;
       /** A ready high-priority action can replace the current foreground task. */
       interrupt?: boolean;
 }
@@ -18,10 +18,10 @@ export interface BehaviorAction {
 export interface BehaviorHandlers {
       /** Configured move IDs, checked in declaration order each simulation step. */
       actions?: Record<string, BehaviorAction>;
-      onSpawn?: () => Generator<ScriptOperation, void, unknown>;
-      onUpdate?: () => Generator<ScriptOperation, void, unknown>;
-      onContact?: (event: BehaviorContact) => Generator<ScriptOperation, void, unknown>;
-      onWallContact?: (event: { wall: ArenaWall }) => Generator<ScriptOperation, void, unknown>;
+      onSpawn?: () => ScriptGenerator;
+      onUpdate?: () => ScriptGenerator;
+      onContact?: (event: BehaviorContact) => ScriptGenerator;
+      onWallContact?: (event: { wall: ArenaWall }) => ScriptGenerator;
 }
 
 export type BehaviorTask = Exclude<keyof BehaviorHandlers, "actions">;
@@ -60,7 +60,7 @@ export function installBehavior<C extends EntityConfig>(
       });
       entity.setBehavior(runtime);
       const run = (name: BehaviorTask,
-            script: () => Generator<ScriptOperation, void, unknown>) => {
+            script: () => ScriptGenerator) => {
             if (runtime.isRunning) return;
             const id = tasks[name]!;
             const move = getMove(id);

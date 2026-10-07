@@ -32,7 +32,7 @@ describe("generator operation composition", () => {
                   }
             });
             const winner = wait(6);
-            const operation = race(...(reverse ? [loser, winner] : [winner, loser]));
+            const operation = reverse ? race(loser, winner) : race(winner, loser);
             const scope = new ScriptScope();
             expect(operation.start(scope)).toBe(true);
             expect(operation.advance(20)).toBe(6);
@@ -55,11 +55,11 @@ describe("generator operation composition", () => {
             expect(result.started && result.handle.state).toBe("completed");
       });
 
-      it("drains immediate starts and rejects an empty branch without committing cooldown", () => {
+      it("accepts an immediately completed branch and drains immediate starts", () => {
             const runtime = runtimeFixture();
-            expect(runtime.start(move, null, function* () { yield sequence(function* () {}); }).started).toBe(false);
+            expect(runtime.start(move, null, function* () { yield sequence(function* () {}); }).started).toBe(true);
             const calls: number[] = [];
-            expect(runtime.start(move, null, function* () {
+            expect(runtime.start({ ...move, id: "immediate" }, null, function* () {
                   yield sequence(function* () { yield during(0, () => calls.push(1)); yield during(0, () => calls.push(2)); });
             }).started).toBe(true);
             expect(calls).toEqual([1, 2]);

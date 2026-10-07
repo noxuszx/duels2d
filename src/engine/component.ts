@@ -2,6 +2,7 @@ import type { ContactEvent, ContactPolicy, CancellationReason } from "./contract
 import type { Entity } from "./entity";
 import type { EntityConfig, RuntimeEntityConfig } from "../types/entity";
 import type { Simulation } from "./simulation";
+import { runAll } from "./cleanup";
 
 /** Mechanics can be attached to any entity; fighter assembly narrows its config. */
 export interface ComponentContext<C extends EntityConfig = EntityConfig> {
@@ -70,13 +71,7 @@ export class ComponentContainer {
 
       cancel(reason: CancellationReason): void {
             if (this.detached) return;
-            let failed = false;
-            let firstError: unknown;
-            for (const component of [...this.entries.values()]) {
-                  try { component.cancel?.(reason); }
-                  catch (error) { if (!failed) firstError = error; failed = true; }
-            }
-            if (failed) throw firstError;
+            runAll([...this.entries.values()].map(component => () => component.cancel?.(reason)));
       }
 
       detach(reason: CancellationReason = "removed"): void {
@@ -84,15 +79,9 @@ export class ComponentContainer {
             this.detached = true;
             const components = [...this.entries.values()].reverse();
             this.entries.clear();
-            let failed = false;
-            let firstError: unknown;
-            for (const component of components) {
-                  try { component.cancel?.(reason); }
-                  catch (error) { if (!failed) firstError = error; failed = true; }
-                  try { component.detach?.(reason); }
-                  catch (error) { if (!failed) firstError = error; failed = true; }
-            }
-            if (failed) throw firstError;
+            runAll(components.flatMap(component => [
+                  () => component.cancel?.(reason), () => component.detach?.(reason),
+            ]));
       }
 }
 

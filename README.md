@@ -6,13 +6,11 @@ to fight until one team remains. It was built for recording
 vertical video content.
 
 Gameplay uses a headless 120 Hz Matter.js simulation, reusable components, and
-TypeScript behavior scripts. Baby Man and Granny have active scripted
-blueprints; the other roster entries use the passive setup while awaiting
-behavior migration.
+TypeScript behavior scripts. See [the migration checklist](docs/migration/fighter-migration-checklist.md)
+for active blueprints and remaining roster work.
 
-Start with the [documentation index](docs/README.md), then the
-[architecture](docs/fighter-architecture.md) and
-[fighter authoring guide](docs/fighter-authoring.md). Editable data and editor
+Start with the [documentation index](docs/README.md) and select the guide
+for your task. Read related contracts only as needed. Editable data and editor
 work are covered by [configuration](config/README.md) and
 [Character Studio](tools/character-studio/README.md).
 

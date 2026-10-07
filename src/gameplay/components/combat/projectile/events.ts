@@ -27,3 +27,9 @@ export interface ProjectileEventHandlers {
       onWall?(event: ProjectileWallEvent): void;
       onEnd?(event: ProjectileEndEvent): void;
 }
+
+export interface ProjectileEventMap {
+      impact: ProjectileImpactEvent;
+      wall: ProjectileWallEvent;
+      end: ProjectileEndEvent;
+}

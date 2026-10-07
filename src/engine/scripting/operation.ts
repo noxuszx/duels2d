@@ -1,10 +1,10 @@
 import type { CancellationReason, ContactEvent } from "../contracts";
 import type { ScriptScope } from "./scope";
 
-export type OperationEndReason = "complete" | "collision" | "timeout";
+export type OperationEndReason = "complete" | "collision" | "timeout" | "source-closed";
 
 /** One inert use of a mechanic. Cancellation is never successful completion. */
-export interface ScriptOperation {
+interface OperationLifecycle {
       start(scope: ScriptScope): boolean;
       advance(deltaMs: number): number;
       readonly isComplete: boolean;
@@ -19,3 +19,15 @@ export interface ScriptOperation {
       cancel(reason: CancellationReason): void;
       contact?(event: ContactEvent): void;
 }
+
+/** Value operations must provide a result; only void effects may omit it. Read after completion. */
+export type ScriptOperation<TResult = void> = OperationLifecycle & (
+      [TResult] extends [void]
+            ? [void] extends [TResult] ? { readonly result?: TResult } : { readonly result: TResult }
+            : { readonly result: TResult }
+);
+
+/** Heterogeneous execution/collection boundary; individual operations retain their result contracts. */
+export type AnyScriptOperation = OperationLifecycle & { readonly result?: unknown };
+export type ScriptGenerator<TResult = void> = Generator<AnyScriptOperation, TResult, unknown>;
+export type OperationResult<T> = T extends { readonly result?: infer R } ? R : void;

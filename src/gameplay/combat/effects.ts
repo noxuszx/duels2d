@@ -109,11 +109,10 @@ export class CombatResolver {
             if (!Number.isFinite(cooldown) || cooldown < 0) return 0;
             const last = this.lastDamageAt.get(target.runtimeId) ?? -Infinity;
             if (!options.independentCooldown && nowMs - last < cooldown) return 0;
-            const actual = target.takeDamage(amount);
-            if (actual <= 0) return 0;
+            // Observers may synchronously attempt another hit; commit the cooldown before publishing damage.
             if (!options.independentCooldown) this.lastDamageAt.set(target.runtimeId, nowMs);
-            this.emit({ kind: "damage", sourceId: options.sourceId ?? null,
-                  targetId: target.runtimeId, amount: actual, killed: target.isDead });
+            const actual = target.takeDamage(amount, options.sourceId ?? null);
+            if (actual <= 0) return 0;
             return actual;
       }
 

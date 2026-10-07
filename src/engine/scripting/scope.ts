@@ -1,16 +1,21 @@
+import { runAll } from "../cleanup";
+
 export type ScriptResource = (() => void) | { release(): void };
 
 /** Resources released once in reverse acquisition order. */
 export class ScriptScope {
-      private releases: Array<() => void> = [];
-      private readonly resources = new Set<ScriptResource>();
+      private releases = new Map<object, () => void>();
+      private readonly resources = new WeakSet<ScriptResource>();
       private closed = false;
 
       get isClosed(): boolean { return this.closed; }
 
-      add(release: () => void): void {
-            if (this.closed) release();
-            else this.releases.push(release);
+      /** Register cleanup; the returned function detaches it without executing it. */
+      add(release: () => void): () => void {
+            if (this.closed) { release(); return () => {}; }
+            const token = {};
+            this.releases.set(token, release);
+            return () => { this.releases.delete(token); };
       }
 
       use<T extends ScriptResource>(resource: T): T {
@@ -24,17 +29,13 @@ export class ScriptScope {
       release(): void {
             if (this.closed) return;
             this.closed = true;
-            const releases = this.releases;
-            this.releases = [];
-            let failed = false;
-            let firstError: unknown;
-            for (let index = releases.length - 1; index >= 0; index--) {
-                  try { releases[index](); }
-                  catch (error) {
-                        if (!failed) firstError = error;
-                        failed = true;
-                  }
-            }
-            if (failed) throw firstError;
+            const releases = [...this.releases.entries()].reverse();
+            try {
+                  runAll(releases.map(([token, release]) => () => {
+                        // Earlier cleanup can detach a later registration.
+                        if (!this.releases.delete(token)) return;
+                        release();
+                  }));
+            } finally { this.releases.clear(); }
       }
 }

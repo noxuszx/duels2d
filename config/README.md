@@ -127,8 +127,8 @@ and summon IDs.
 5. Open the fighter in Character Studio for visual and JSON tuning.
 
 The simulation foundation and config model are described in
-[`docs/fighter-architecture.md`](../docs/fighter-architecture.md). The [authoring guide](../docs/fighter-authoring.md) covers component/behavior
-composition, and the [migration checklist](../docs/fighter-migration-checklist.md)
+[`docs/architecture/fighter-architecture.md`](../docs/architecture/fighter-architecture.md). The [authoring guide](../docs/authoring/fighter-authoring.md) covers component/behavior
+composition, and the [migration checklist](../docs/migration/fighter-migration-checklist.md)
 records remaining gameplay and manual acceptance work.
 
 ## Audio and rendering

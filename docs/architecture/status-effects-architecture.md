@@ -95,10 +95,10 @@ export const silence = {
 ```
 
 This is an authoring example, not a registered effect. For periodic hooks and
-rounding tolerance, inspect [burn](../src/gameplay/statuses/burn.ts).
+rounding tolerance, inspect [burn](../../src/gameplay/statuses/burn.ts).
 `StatusContext.damage` uses shared combat; hooks should not alter health directly
-or introduce browser timers. Inspect the [contracts](../src/gameplay/statuses/types.ts)
-and [controller](../src/gameplay/statuses/controller.ts) before extending them.
+or introduce browser timers. Inspect the [contracts](../../src/gameplay/statuses/types.ts)
+and [controller](../../src/gameplay/statuses/controller.ts) before extending them.
 
 See [architecture](fighter-architecture.md) for lifecycle ownership and
-[authoring](fighter-authoring.md) for composing mechanics into fighters.
+[authoring](../authoring/fighter-authoring.md) for composing mechanics into fighters.

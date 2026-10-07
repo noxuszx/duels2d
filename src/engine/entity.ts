@@ -5,6 +5,15 @@ import { StatusController } from "../gameplay/statuses";
 import { ComponentContainer, ResourceLeases } from "./component";
 import type { ContactEvent, CancellationReason } from "./contracts";
 import type { BehaviorRuntime } from "./behavior-runtime";
+import { EventSource } from "./events/source";
+import { ScriptScope } from "./scripting/scope";
+import { runAll } from "./cleanup";
+
+export interface EntityEventMap {
+      damaged: Readonly<{ targetId: string; sourceId: string | null; amount: number; killed: boolean }>;
+      death: Readonly<{ entity: Entity; sourceId: string | null }>;
+      removed: Readonly<{ entity: Entity; reason: EntityRemovalReason }>;
+}
 
 export type EntityRemovalReason =
       | "removed" | "owner-removed" | "owner-death" | "match-ended"
@@ -23,23 +32,6 @@ export interface EntityOptions<C extends EntityConfig = EntityConfig> {
       onPeriodicDamage?: (target: Entity, amount: number, sourceId: string | null) => void;
 }
 
-/** Executes each cleanup task and re-throws the first encountered failure after all finish. */
-function runAllAndThrowFirstError(actions: Array<() => void>): void {
-      let firstError: unknown;
-      let failed = false;
-      for (const action of actions) {
-            try {
-                  action();
-            } catch (error) {
-                  if (!failed) {
-                        firstError = error;
-                        failed = true;
-                  }
-            }
-      }
-      if (failed) throw firstError;
-}
-
 /** Headless entity identity and lifetime. World registration belongs to Simulation. */
 export class Entity<C extends EntityConfig = EntityConfig> {
       readonly id: string;
@@ -56,10 +48,14 @@ export class Entity<C extends EntityConfig = EntityConfig> {
       readonly resources = new ResourceLeases();
       readonly components = new ComponentContainer(this);
       readonly statuses: StatusController;
+      readonly events = new EventSource<EntityEventMap>();
+      readonly lifetime = new ScriptScope();
       behavior: BehaviorRuntime | null = null;
       health: number;
       facing: "left" | "right";
       private removal: EntityRemovalReason | null = null;
+      private damageDispatchDepth = 0;
+      private pendingRemovalEvent: EntityRemovalReason | null = null;
 
       constructor(options: EntityOptions<C>) {
             this.runtimeId = options.runtimeId;
@@ -84,7 +80,7 @@ export class Entity<C extends EntityConfig = EntityConfig> {
                   this,
                   (amount, sourceId) => {
                         if (options.onPeriodicDamage) options.onPeriodicDamage(this, amount, sourceId);
-                        else this.takeDamage(amount);
+                        else this.takeDamage(amount, sourceId);
                   },
                   (before, after) => {
                         if (before.canContinueCast && !after.canContinueCast) {
@@ -133,17 +129,33 @@ export class Entity<C extends EntityConfig = EntityConfig> {
       }
 
       /** Returns actual health lost; the first lethal hit cancels owned work now. */
-      takeDamage(amount: number): number {
+      takeDamage(amount: number, sourceId: string | null = null): number {
             if (!this.isAlive || !Number.isFinite(amount) || amount <= 0) return 0;
             const applied = Math.min(this.health, amount);
             this.health -= applied;
-            if (this.isDead) {
-                  runAllAndThrowFirstError([
+            const killed = this.isDead;
+            this.damageDispatchDepth++;
+            runAll([
+                  () => {
+                        if (this.events.isBound) this.events.emit("damaged",
+                              Object.freeze({ targetId: this.runtimeId, sourceId, amount: applied, killed }));
+                  },
+                  ...(killed ? [
+                        () => { if (this.events.isBound) this.events.emit("death", Object.freeze({ entity: this, sourceId })); },
                         () => this.behavior?.cancel("death"),
                         () => this.components.cancel("death"),
                         () => this.statuses.clear(),
-                  ]);
-            }
+                        () => this.lifetime.release(),
+                  ] : []),
+                  () => {
+                        this.damageDispatchDepth--;
+                        if (this.damageDispatchDepth === 0 && this.pendingRemovalEvent) {
+                              const reason = this.pendingRemovalEvent;
+                              this.pendingRemovalEvent = null;
+                              this.finishRemovalEvents(reason);
+                        }
+                  },
+            ]);
             return applied;
       }
 
@@ -179,7 +191,7 @@ export class Entity<C extends EntityConfig = EntityConfig> {
       }
 
       cancel(reason: CancellationReason): void {
-            runAllAndThrowFirstError([
+            runAll([
                   () => this.behavior?.cancel(reason),
                   () => this.components.cancel(reason),
             ]);
@@ -192,12 +204,25 @@ export class Entity<C extends EntityConfig = EntityConfig> {
             const cancellation: CancellationReason = reason === "match-ended" ? "match-ended"
                   : reason === "reset" ? "reset" : "removed";
 
-            runAllAndThrowFirstError([
+            runAll([
                   () => this.behavior?.cancel(cancellation),
                   () => this.components.detach(cancellation),
                   () => this.statuses.clear(),
                   () => this.resources.clear(),
                   () => this.presentation.clear(),
+                  () => {
+                        // Damage/death publication must finish even if a damage observer removes us.
+                        if (this.damageDispatchDepth > 0) this.pendingRemovalEvent = reason;
+                        else this.finishRemovalEvents(reason);
+                  },
+            ]);
+      }
+
+      private finishRemovalEvents(reason: EntityRemovalReason): void {
+            runAll([
+                  () => { if (this.events.isBound) this.events.emit("removed", Object.freeze({ entity: this, reason })); },
+                  () => this.lifetime.release(),
+                  () => this.events.close(),
             ]);
       }
 

@@ -1,4 +1,7 @@
 import { Engine } from "matter-js";
+import { EventScheduler } from "./events/scheduler";
+import { EventSource } from "./events/source";
+import { runAll } from "./cleanup";
 import type { ArenaBounds, ContactEvent, ContactPolicy, RuntimeTrace, Vector2 } from "./contracts";
 import type { Entity, EntityRemovalReason } from "./entity";
 import { EntityRegistry, type EntityRegistration } from "./entity-registry";
@@ -41,6 +44,18 @@ export class Simulation {
       state: "running" | "ended" | "disposed" = "running";
       nowMs = 0;
       tick = 0;
+      readonly eventScheduler = new EventScheduler(this);
+
+      createEventSource<Events extends object>(owner?: Entity): EventSource<Events> {
+            if (this.state === "disposed") throw new Error("Cannot create an event source in a disposed simulation");
+            if (owner?.events.isBound && owner.events.scheduler !== this.eventScheduler)
+                  throw new Error("Event source owner belongs to another simulation");
+            const source = new EventSource<Events>();
+            source.bind(this.eventScheduler);
+            owner?.lifetime.add(() => source.close());
+            if (owner && !owner.isAlive) source.close();
+            return source;
+      }
 
       constructor(options: SimulationOptions) {
             if (![options.arena.minX, options.arena.maxX, options.arena.minY, options.arena.maxY]
@@ -74,7 +89,12 @@ export class Simulation {
 
       add(entity: Entity, registration: EntityRegistration = {}): void {
             if (this.state === "disposed") throw new Error("Cannot spawn in a disposed simulation");
+            if (entity.events.isClosed) throw new Error("Cannot register an entity with a closed event source");
+            if (entity.events.isBound && entity.events.scheduler !== this.eventScheduler)
+                  throw new Error("Entity already belongs to another simulation");
             this.entities.add(entity, registration);
+            entity.events.bind(this.eventScheduler);
+            entity.events.on("damaged", event => this.events.push({ kind: "damage", ...event }), entity.lifetime);
             this.rules.observeSpawn(entity);
             const initialSpeed = Math.hypot(entity.body.velocity.x, entity.body.velocity.y);
             this.baseSpeeds.set(entity.runtimeId, initialSpeed > 0
@@ -108,6 +128,7 @@ export class Simulation {
             try {
                   this.nowMs += SIMULATION_STEP_MS;
                   this.tick++;
+                  this.eventScheduler.flush();
                   for (const entity of this.entities.all()) if (entity.isAlive) entity.beforeStep(SIMULATION_STEP_MS);
                   this.entities.retireDeadOwners();
                   this.entities.commitRemovals();
@@ -133,7 +154,11 @@ export class Simulation {
       }
 
       reset(seed = this.seed): void {
-            this.entities.clear("reset");
+            try { this.retireAll("reset"); }
+            finally { this.resetState(seed); }
+      }
+
+      private resetState(seed: number): void {
             this.contacts.clear();
             Engine.clear(this.engine);
             this.engine.timing.timestamp = 0;
@@ -152,8 +177,13 @@ export class Simulation {
 
       dispose(): void {
             this.state = "disposed";
-            this.contacts.dispose();
-            this.entities.clear("removed");
+            try { this.contacts.dispose(); }
+            finally { this.retireAll("removed"); }
+      }
+
+      /** Observer failures must not leave custom sources or staged delivery in a retired world. */
+      private retireAll(reason: EntityRemovalReason): void {
+            runAll([() => this.entities.clear(reason), () => this.eventScheduler.clear()]);
       }
 
       private resolveWall(contact: WallContactSnapshot): void {

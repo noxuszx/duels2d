@@ -1,11 +1,11 @@
-import type { ScriptOperation } from "./operation";
+import type { ScriptOperation, ScriptGenerator } from "./operation";
 import { ScriptScope, type ScriptResource } from "./scope";
 
 /** Hold resources across a sequence; the shared runner executes its inner operations. */
-export function* scoped<T>(
+export function* scoped<T, R>(
       acquire: (scope: ScriptScope) => T | null,
-      script: (resource: T, scope: ScriptScope) => Generator<ScriptOperation, void, unknown>,
-): Generator<ScriptOperation, void, unknown> {
+      script: (resource: T, scope: ScriptScope) => ScriptGenerator<R>,
+): ScriptGenerator<R> {
       const scope = new ScriptScope();
       let resource: T | null = null;
       let started = false;
@@ -36,7 +36,8 @@ export function* scoped<T>(
       };
       try {
             yield acquisition;
-            if (accepted && !scope.isClosed) yield* script(resource as T, scope);
+            if (accepted && !scope.isClosed) return yield* script(resource as T, scope);
+            throw new Error("Scoped script resumed without an active resource");
       } finally {
             scope.release();
       }

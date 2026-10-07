@@ -1,9 +1,8 @@
-# Fighter migration checklist
+# Recorded migration checkpoints
 
-See [fighter-architecture.md](fighter-architecture.md) for the current runtime
-and ownership contracts. The simulation foundation has been implemented, and
-Baby Man, Granny, Alien Man, summoned aliens, Angry Man, Depressed Man, and Muscle Man have active blueprints. Other roster entries use the
-passive setup until they receive a blueprint and behavior.
+Historical implementation and verification notes. These are records of checks
+at their original checkpoint, not current API contracts or new approval grants.
+For current work, use [the migration checklist](fighter-migration-checklist.md).
 
 ## Approved scripting phases
 
@@ -50,51 +49,6 @@ passive setup until they receive a blueprint and behavior.
 - [x] Registered timed statuses include stun, ability-lock, and burn.
 - [x] Legacy JSON action execution and the previous behavior/runtime modules
   have been removed. There is no compatibility interpreter.
-
-## Remaining work
-
-- [ ] Manually review Baby Man and Granny gameplay on the new runtime and
-  Character Studio save/reload/undo behavior after the overhaul.
-- [ ] Continue migrating fighters one at a time: inspect authored data and assets,
-  compose needed components, write readable behavior decisions, then add each
-  blueprint to `src/content/manifest.ts` only when ready.
-- [ ] Implement remaining mechanics only as upcoming fighters require them.
-  Authored JSON or Studio editing support alone does not make a runtime mechanic.
-- [ ] Continue checking ownership, contact order, cancellation, and safe cleanup
-  as new components and mechanics are added.
-
-## Per-fighter migration
-
-- [ ] Read the fighter JSON, assets, and current Studio serialization before
-  changing its authored data.
-- [ ] Record its decisions, targets, action order, cooldowns, and interruption
-  behavior; preserve tuning unless balance changes are requested.
-- [ ] Put reusable capabilities in components and character-specific choices in
-  behavior code. Keep component tuning in JSON `components`, and move admission
-  cooldowns in JSON `moves`.
-- [ ] Route damage, statuses, and contact effects through shared services.
-  Scope movement/presentation overrides and release them on completion,
-  interruption, death, removal, reset, and disposal as applicable. Announcing
-  the result preserves live actions and their resources until their normal end.
-- [ ] Keep each fighter passive until its behavior is ready and registered.
-- [ ] Manually check ordinary use, collisions, target validity, cooldown,
-  interruption, cleanup, and Studio round trips for the migrated fighter.
-
-## Manual acceptance still needed
-
-- [ ] Baby wall contacts on all four sides start at most one crawl and apply the
-  expected contact policy.
-- [ ] Crawl follows each wall and uses configured poses, sound, duration, and
-  speed; dash then chooses a current live enemy and ends under configured rules.
-- [ ] No target, status restriction, interruption, death, removal, reset, or
-  disposal leaves a stale task or movement/presentation lease. Match completion
-  must preserve ongoing live tasks rather than freeze the world.
-- [ ] Fighter JSON opens, edits, saves, reloads, and undoes in Character Studio
-  without losing component, move, pose, or named-form fields.
-- [ ] Representative passive opponents remain usable in matches.
-- [ ] Granny swings toward enemies, shows realization and rage for one second
-  each at 40% health, and then fires aimed shots with backward recoil. Review
-  sprite placement, muzzle alignment, both facings, and restart in the browser.
 
 ## Scripting phase 2/3 scope
 
@@ -156,7 +110,7 @@ normalizes generic configuration defaults, and retains typed fighter contexts.
 TypeScript and arena/Studio builds pass; existing tests were reused, with no new
 fixtures added for that completion.
 
-For verification commands see [the project README](../README.md). Record what
+For verification commands see [the project README](../../README.md). Record what
 ran and what remains for manual review; do not equate automated checks with
 browser acceptance.
 
@@ -257,3 +211,5 @@ inlined execution path was removed. Nested rejection and cancellation stop all
 branches and release their scopes. There is no compatibility scheduler. The
 verification results above include this cleanup; browser gameplay, visual,
 audio, and Studio review remain outstanding.
+
+Related: [current scripting contracts](../scripting/scripting-primitives.md).

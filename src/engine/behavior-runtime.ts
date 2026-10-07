@@ -1,9 +1,9 @@
 import type { Entity } from "./entity";
 import type { CancellationReason, ContactEvent, RuntimeTrace } from "./contracts";
-import { OperationRejected, OperationRunner, type ScriptOperation } from "./scripting";
+import { OperationRejected, OperationRunner, type ScriptGenerator } from "./scripting";
 
 export interface MoveDefinition { id: string; cooldownMs: number; }
-export type TaskGenerator = Generator<ScriptOperation, void, unknown>;
+export type TaskGenerator = ScriptGenerator;
 
 export type TaskRejectionReason =
       | "busy" | "cooldown" | "status-blocked" | "invalid-target"

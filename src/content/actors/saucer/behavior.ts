@@ -1,14 +1,15 @@
 import type { ComponentContext } from "../../../engine/component";
 import type { RectangleShape } from "../../../engine/spatial/shapes";
 import { SIMULATION_STEP_MS } from "../../../engine/simulation";
-import { all, race, scoped, sequence, wait, type ScriptOperation } from "../../../engine/scripting";
+import { all, perform, race, scoped, sequence, wait, waitForEvent, type ScriptGenerator } from "../../../engine/scripting";
+import type { EventSource } from "../../../engine/events/source";
 import type { TaskGenerator } from "../../../engine/behavior-runtime";
 import type { SaucerSettings } from "../../../config/component-settings";
 import { hitEnemies, moveTo, until } from "../../script-helpers";
 
 /** The sweep's direction and reversal points are decisions owned by this actor. */
 function* patrol({ entity, simulation }: ComponentContext,
-      settings: SaucerSettings, direction: number): Generator<ScriptOperation, void, unknown> {
+      settings: SaucerSettings, direction: number): ScriptGenerator {
       const left = Math.min(simulation.arena.maxX, simulation.arena.minX + settings.width / 2);
       const right = Math.max(left, simulation.arena.maxX - settings.width / 2);
       while (true) {
@@ -21,16 +22,19 @@ function* patrol({ entity, simulation }: ComponentContext,
       }
 }
 
+export interface SaucerCommands { deploy: Readonly<{ atMs: number }>; }
+
 interface SaucerScriptOptions {
       settings: SaucerSettings;
-      signal: { deploymentAtMs: number | null };
+      commands: EventSource<SaucerCommands>;
+      deployment: { atMs: number | null };
       spawnAlly(): void;
       sourceId: string;
       initialDirection: number;
 }
 
 export function* saucerBehavior(context: ComponentContext,
-      { settings, signal, spawnAlly, sourceId, initialDirection }: SaucerScriptOptions): TaskGenerator {
+      { settings, commands, deployment, spawnAlly, sourceId, initialDirection }: SaucerScriptOptions): TaskGenerator {
       const { entity, simulation } = context;
       const beam = (): RectangleShape => {
             const top = entity.body.position.y + settings.height / 2;
@@ -38,8 +42,8 @@ export function* saucerBehavior(context: ComponentContext,
             return { type: "rectangle", center: { x: entity.body.position.x, y: (top + bottom) / 2 },
                   width: settings.beamWidth, height: bottom - top };
       };
-      function* beams(): Generator<ScriptOperation, void, unknown> {
-            while (signal.deploymentAtMs === null) {
+      function* beams(): ScriptGenerator {
+            while (true) {
                   yield* scoped(() => entity.presentation.acquireShape(beam, settings.beamColor, .25), function* () {
                         for (let elapsed = 0; elapsed < settings.beamDurationMs;) {
                               hitEnemies(context, beam(),
@@ -53,9 +57,14 @@ export function* saucerBehavior(context: ComponentContext,
                   yield wait(Math.max(0, settings.beamIntervalMs - settings.beamDurationMs));
             }
       }
-      function* lifecycle(): Generator<ScriptOperation, void, unknown> {
-            yield race(until(() => signal.deploymentAtMs !== null), sequence(beams));
-            const deploymentAtMs = signal.deploymentAtMs!;
+      function* lifecycle(): ScriptGenerator {
+            // Assembly observes commands immediately; this state records deployments before the first tick.
+            let deploymentAtMs = deployment.atMs;
+            if (deploymentAtMs === null) {
+                  const winner = yield* perform(race(waitForEvent(commands, "deploy"), sequence(beams)));
+                  if (winner.index !== 0 || winner.result.kind !== "event") return;
+                  deploymentAtMs = winner.result.payload.atMs;
+            }
             for (let count = 0; count < settings.maxSpawns; count++) {
                   const dueAtMs = deploymentAtMs + settings.firstSpawnDelayMs + count * settings.spawnIntervalMs;
                   yield until(() => simulation.nowMs + 1e-9 >= dueAtMs);

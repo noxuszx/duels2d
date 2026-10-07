@@ -71,8 +71,8 @@ Before shipping interaction changes, check fighter/pose/form selection, crop and
 ## Related guides
 
 See [configuration](../../config/README.md) for JSON/defaults/forms and shared
-validation, [architecture](../../docs/fighter-architecture.md) for runtime
-ownership, and [fighter authoring](../../docs/fighter-authoring.md) for equipping
+validation, [architecture](../../docs/architecture/fighter-architecture.md) for runtime
+ownership, and [fighter authoring](../../docs/authoring/fighter-authoring.md) for equipping
 capabilities. Component data/editor controls can exist before their runtime
-mechanic is implemented; check the [migration checklist](../../docs/fighter-migration-checklist.md)
+mechanic is implemented; check the [migration checklist](../../docs/migration/fighter-migration-checklist.md)
 for current capability status.

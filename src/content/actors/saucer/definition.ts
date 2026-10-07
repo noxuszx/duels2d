@@ -1,7 +1,8 @@
 import { Bodies } from "matter-js";
 import { spawnActor } from "../../../gameplay/actor-factory";
 import type { FighterContext } from "../../../gameplay/fighter-factory";
-import { saucerBehavior } from "./behavior";
+import { saucerBehavior, type SaucerCommands } from "./behavior";
+import type { EventSource } from "../../../engine/events/source";
 import { createFighter } from "../../../gameplay/fighter-factory";
 import { alien } from "../../fighters/alien/definition";
 
@@ -20,17 +21,22 @@ export function createSaucer(context: FighterContext): SaucerControl {
       const fromLeft = simulation.rng.next() < 0.5;
       const body = Bodies.rectangle(fromLeft ? left : right, minY - settings.altitude - settings.height / 2,
             settings.width, settings.height, { isStatic: true, isSensor: true, collisionFilter: { mask: 0 } });
-      const signal: { deploymentAtMs: number | null } = { deploymentAtMs: null };
+      const deployment: { atMs: number | null } = { atMs: null };
+      let commands: EventSource<SaucerCommands>;
       spawnActor(context, {
             body, containWithinArena: false,
             lifetime: { matchEnd: "persist" },
+            install(actor) {
+                  commands = simulation.createEventSource<SaucerCommands>(actor.entity);
+                  commands.on("deploy", ({ atMs }) => { deployment.atMs ??= atMs; }, actor.entity.lifetime);
+            },
             config: {
                   id: "saucer", radius: settings.width / 2,
                   hitbox: { type: "box", width: settings.width, height: settings.height },
                   speed: settings.speed, maxHealth: 1, image: settings.image, imageCrop: settings.imageCrop
             },
       }, actor => saucerBehavior(actor, {
-            settings, signal, sourceId: owner.runtimeId, initialDirection: fromLeft ? 1 : -1,
+            settings, commands, deployment, sourceId: owner.runtimeId, initialDirection: fromLeft ? 1 : -1,
             spawnAlly: () => {
                   const speed = summon.speed * simulation.globalSpeedMultiplier;
                   createFighter(simulation, summon, {
@@ -42,5 +48,7 @@ export function createSaucer(context: FighterContext): SaucerControl {
                   }, alien);
             },
       }));
-      return { deploy: () => { signal.deploymentAtMs ??= simulation.nowMs; } };
+      return { deploy: () => {
+            if (deployment.atMs === null) commands.emit("deploy", Object.freeze({ atMs: simulation.nowMs }));
+      } };
 }

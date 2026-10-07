@@ -92,7 +92,7 @@ describe("concurrent simulation operations", () => {
             const loser = resourceOperation(during(20, loserTicks), loserRelease);
             const winner = wait(5);
             runtime.start(move, null, function* () {
-                  yield race(...(reverse ? [loser, winner] : [winner, loser]));
+                  yield reverse ? race(loser, winner) : race(winner, loser);
                   yield during(10, after);
             });
             runtime.update(10);
@@ -231,8 +231,8 @@ describe("concurrent simulation operations", () => {
             expect(() => all(repeated, repeated).start(new ScriptScope())).toThrow("distinct");
       });
 
-      it("completes empty and immediate compositions without consuming time", () => {
-            for (const operation of [all(), race(), all(wait(0), wait(0)), race(wait(0), wait(10))]) {
+      it("completes empty all and immediate compositions without consuming time", () => {
+            for (const operation of [all(), all(wait(0), wait(0)), race(wait(0), wait(10))]) {
                   expect(operation.start(new ScriptScope())).toBe(true);
                   expect(operation.isComplete).toBe(true);
                   expect(operation.advance(10)).toBe(0);
@@ -266,7 +266,7 @@ describe("concurrent simulation operations", () => {
       });
 
       it("does not turn a reentrant cancellation during race cleanup into completion", () => {
-            let op: ScriptOperation;
+            let op: ScriptOperation<unknown>;
             const release = vi.fn(() => op.cancel("interrupted"));
             op = race(resourceOperation(wait(2), release), wait(10));
             op.start(new ScriptScope());

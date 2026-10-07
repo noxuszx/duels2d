@@ -1,8 +1,7 @@
 import type { CancellationReason, ContactEvent } from "../contracts";
-import type { ScriptOperation } from "./operation";
+import type { AnyScriptOperation, ScriptGenerator } from "./operation";
 import { ScriptScope } from "./scope";
 
-export type OperationGenerator = Generator<ScriptOperation, void, unknown>;
 type Rejection = "rejected" | "resource-conflict";
 
 /** Carries a nested branch rejection through concurrent cleanup to its foreground move. */
@@ -20,8 +19,8 @@ interface RunnerHooks {
 }
 
 /** The single generator execution path, shared by foreground moves and composed sequences. */
-export class OperationRunner {
-      private operation: ScriptOperation | null = null;
+export class OperationRunner<TResult = void> {
+      private operation: AnyScriptOperation | null = null;
       private scope: ScriptScope | null = null;
       private generatorExecuting = false;
       private closePending = false;
@@ -30,8 +29,15 @@ export class OperationRunner {
       accepted = false;
       isComplete = false;
       rejectionReason: Rejection | undefined;
+      private resultValue: TResult | undefined;
+      private nextValue: unknown;
 
-      constructor(private readonly generator: OperationGenerator, private readonly hooks: RunnerHooks = {}) { }
+      constructor(private readonly generator: ScriptGenerator<TResult>, private readonly hooks: RunnerHooks = {}) { }
+
+      get result(): TResult {
+            if (!this.isComplete) throw new Error("Cannot read a script result before completion");
+            return this.resultValue as TResult;
+      }
 
       get isClosing(): boolean { return this.closePending; }
       get nextBoundaryMs(): number { return this.isComplete ? 0 : this.operation?.nextBoundaryMs ?? Infinity; }
@@ -47,6 +53,7 @@ export class OperationRunner {
                         if (this.operation?.isComplete) {
                               const operation = this.operation;
                               const scope = this.scope;
+                              this.nextValue = operation.result;
                               this.operation = null;
                               this.scope = null;
                               scope?.release();
@@ -59,6 +66,7 @@ export class OperationRunner {
                               if (next.done) {
                                     this.running = false;
                                     this.isComplete = true;
+                                    this.resultValue = next.value;
                                     this.hooks.completed?.();
                                     break;
                               }
@@ -133,13 +141,17 @@ export class OperationRunner {
       }
 
       private close(): void {
-            try { this.generator.return(undefined); }
+            try { this.generator.return(undefined as TResult); }
             finally { this.hooks.closed?.(); }
       }
 
-      private next(): IteratorResult<ScriptOperation, void> {
+      private next(): IteratorResult<AnyScriptOperation, TResult> {
             this.generatorExecuting = true;
-            try { return this.generator.next(); }
+            try {
+                  const value = this.nextValue;
+                  this.nextValue = undefined;
+                  return this.generator.next(value);
+            }
             finally {
                   this.generatorExecuting = false;
                   if (this.closePending) {

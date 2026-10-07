@@ -1,4 +1,5 @@
 import type { Entity } from "../../engine/entity";
+import { runAll } from "../../engine/cleanup";
 import { statusDefinitions, type StatusId } from "./registry";
 import type {
       StatusApplication, StatusApplyResult, StatusCapabilities,
@@ -119,17 +120,14 @@ export class StatusController {
             const before = this.capabilities;
             const statuses = [...this.active.values()];
             this.active.clear();
-            let failed = false;
-            let firstError: unknown;
-            for (const status of statuses) {
-                  try {
+            runAll([
+                  ...statuses.map(status => () => {
                         (statusDefinitions[status.id] as StatusDefinition).onExpire?.(
                               this.context(status), status.state,
                         );
-                  } catch (error) { if (!failed) firstError = error; failed = true; }
-            }
-            this.onCapabilitiesChanged(before, this.capabilities);
-            if (failed) throw firstError;
+                  }),
+                  () => this.onCapabilitiesChanged(before, this.capabilities),
+            ]);
       }
 
       list(): readonly Readonly<ActiveStatus>[] {

@@ -2,11 +2,12 @@ import { Body } from "matter-js";
 import type { Entity } from "../../../engine/entity";
 import type { ComponentContext } from "../../../engine/component";
 import { SIMULATION_STEP_MS } from "../../../engine/simulation";
-import { during, type ScriptOperation } from "../../../engine/scripting";
+import { during, perform, waitForEvent, type ScriptGenerator } from "../../../engine/scripting";
 import { installBehavior, type BehaviorHandlers } from "../../../gameplay/behavior";
 import type { FighterContext } from "../../../gameplay/fighter-factory";
 import { ProjectileEmitter, type Targeting } from "../../../gameplay/components";
-import { onProjectileEvents, steer, until } from "../../script-helpers";
+import { ProjectileFlight } from "../../../gameplay/components/combat/projectile/flight";
+import { onProjectileEvents, steer } from "../../script-helpers";
 
 interface MuscleManComponents { targeting: Targeting; }
 
@@ -25,8 +26,8 @@ export function muscleManBehavior({ targeting }: MuscleManComponents, context: F
       let heldMs = 0;
       let nextIncreaseMs = 1000 / ramp.ratesPerSecond[0];
       let dumbbell: Entity | null = null;
-      let eventCursor = simulation.events.length;
-      let lastHealth = entity.health;
+      let hurtSinceUpdate = false;
+      entity.events.on("damaged", () => { hurtSinceUpdate = true; }, entity.lifetime);
       let releasePose: (() => void) | null = null;
       let poseUntilMs = 0;
       const pose = (name: string) => {
@@ -78,8 +79,13 @@ export function muscleManBehavior({ targeting }: MuscleManComponents, context: F
                   },
             });
             const actor: ComponentContext = { entity: projectile, simulation, get config() { return projectile.config; } };
+            const flight = projectile.components.get("flight");
+            if (!(flight instanceof ProjectileFlight)) throw new Error("Dumbbell requires projectile flight");
             installBehavior(actor, { *onSpawn() {
-                  yield until(() => returning);
+                  if (!returning) {
+                        const outcome = yield* perform(waitForEvent(flight.events, "wall"));
+                        if (outcome.kind !== "event") return;
+                  }
                   while (projectile.isAlive) yield steer(projectile, SIMULATION_STEP_MS, velocityHome);
             } }, { onSpawn: "return" }, () => ({ cooldownMs: 0 }),
             { onTaskError: () => { simulation.remove(projectile.runtimeId); } });
@@ -87,12 +93,8 @@ export function muscleManBehavior({ targeting }: MuscleManComponents, context: F
       }
 
       function tick(deltaMs: number): void {
-            let hurt = entity.health < lastHealth;
-            lastHealth = entity.health;
-            for (; eventCursor < simulation.events.length; eventCursor++) {
-                  const event = simulation.events[eventCursor];
-                  if (event.kind === "damage" && event.targetId === entity.runtimeId) hurt = true;
-            }
+            const hurt = hurtSinceUpdate;
+            hurtSinceUpdate = false;
             if (dumbbell) return;
             if (hurt && damage >= (ramp.hurtThrowThreshold ?? ramp.amountPerIncrease) && throwDumbbell()) return;
             if (poseUntilMs && simulation.nowMs + 1e-9 >= poseUntilMs) { pose("idle"); poseUntilMs = 0; }
@@ -107,7 +109,7 @@ export function muscleManBehavior({ targeting }: MuscleManComponents, context: F
             }
       }
 
-      return { *onUpdate(): Generator<ScriptOperation, void, unknown> {
+      return { *onUpdate(): ScriptGenerator {
             pose(dumbbell ? "attackActive" : "idle");
             try { while (entity.isAlive) yield during(SIMULATION_STEP_MS, tick); }
             finally { releasePose?.(); releasePose = null; }

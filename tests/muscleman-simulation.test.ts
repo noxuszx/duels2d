@@ -113,11 +113,13 @@ describe("Muscle Man", () => {
             simulation.dispose();
       });
 
-      it("uses combat damage events even when healing hides the health decrease", () => {
+      it.each(["direct", "combat"])("uses %s damage events even after healing and presentation-buffer draining", source => {
             const { simulation, owner, dumbbells } = setup();
             advance(simulation, 121);
-            simulation.combat.damage(owner, 1, { independentCooldown: true });
+            if (source === "combat") simulation.combat.damage(owner, 1, { independentCooldown: true });
+            else owner.takeDamage(1);
             owner.heal(1);
+            simulation.events.splice(0);
             simulation.step();
             expect(dumbbells()).toHaveLength(1);
             simulation.dispose();

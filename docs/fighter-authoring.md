@@ -85,9 +85,7 @@ to fire. A new fighter could equip an emitter with targeting in `definition.ts`:
 
 ```ts
 import { defineFighter } from "../../../gameplay/fighter-factory";
-import { Targeting } from "../../../gameplay/components/targeting";
-import { ProjectileEmitter } from "../../../gameplay/components/projectile";
-import { SpriteAim } from "../../../gameplay/components/aim";
+import { Targeting, ProjectileEmitter, SpriteAim } from "../../../gameplay/components";
 import { shooterBehavior } from "./behavior";
 
 export const shooter = defineFighter({
@@ -114,9 +112,7 @@ The companion `behavior.ts` names its typed handles:
 
 ```ts
 import type { BehaviorHandlers } from "../../../gameplay/fighter-factory";
-import type { Targeting } from "../../../gameplay/components/targeting";
-import type { ProjectileEmitter } from "../../../gameplay/components/projectile";
-import type { SpriteAim } from "../../../gameplay/components/aim";
+import type { Targeting, ProjectileEmitter, SpriteAim } from "../../../gameplay/components";
 import { scoped } from "../../../engine/scripting/scoped";
 
 interface ShooterComponents { targeting: Targeting; gun: ProjectileEmitter; aim: SpriteAim; }
@@ -159,6 +155,10 @@ Use content helpers for movement sequences: `steer` commands velocity on
 dynamic bodies, while `moveTo` moves static actors along a timed linear path.
 Use `all` and `race` to compose concurrent operations within one behavior task.
 Projectile groups and content-level `burst` handle multi-emission attacks.
+Use `onProjectileEvents(projectile, { onImpact, onWall, onEnd })` for projectile
+responses. Choose gameplay end reasons explicitly; reset and owner/match cleanup
+must not accidentally produce attack effects. Depressed Man's cluster tear is
+the working example, with one burst from `onEnd` and no custom contact component.
 To run a multi-step generator alongside another effect, compose it with
 `sequence(factory)`:
 

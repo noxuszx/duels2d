@@ -147,4 +147,27 @@ describe("Depressed Man's exploding tear", () => {
             );
             expect(miniTears).toHaveLength(4);
       });
+
+      it.each(["owner-death", "owner-removed", "match-ended", "reset"] as const)(
+            "does not split a tear removed for %s", reason => {
+                  const { simulation, fighter } = setup({ x: 1000, y: 500 });
+                  advance(simulation, 5);
+                  const mainTear = simulation.entities.all().find(entity => entity.ownerId === fighter.runtimeId)!;
+                  expect(mainTear).toBeDefined();
+                  simulation.remove(mainTear.runtimeId, reason);
+                  expect(mainTear.removalReason).toBe(reason);
+                  expect(simulation.entities.all().filter(entity => entity.config.radius === 15)).toHaveLength(0);
+                  simulation.dispose();
+            },
+      );
+
+      it("keeps the authored owner-removal persistence without creating a cleanup burst", () => {
+            const { simulation, fighter } = setup({ x: 1000, y: 500 });
+            advance(simulation, 5);
+            const mainTear = simulation.entities.all().find(entity => entity.ownerId === fighter.runtimeId)!;
+            simulation.remove(fighter.runtimeId);
+            expect(mainTear.isRemoved).toBe(false);
+            expect(simulation.entities.all().filter(entity => entity.config.radius === 15)).toHaveLength(0);
+            simulation.dispose();
+      });
 });

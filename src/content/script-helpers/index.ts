@@ -10,6 +10,7 @@ export * from "./animation/pose-sequence";
 // Combat
 export * from "./combat/burst";
 export * from "./combat/query-hit";
+export * from "./combat/projectile-events";
 
 // Flow
 export * from "./flow/until";

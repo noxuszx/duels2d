@@ -101,6 +101,13 @@ whole and share one sound and recoil response. Content-level `burst` can build
 each group from current geometry. Granny equips the emitter with `SpriteAim`
 and emits using live `aim.current` geometry after its windup.
 
+Flight also owns typed impact, wall, and end subscriptions. The content helper
+`onProjectileEvents` observes those decisions without attaching a second contact
+component. Contact notifications finish before an end notification caused by
+that contact, and end events carry the actual removal reason and a copied position.
+Depressed Man's cluster split selects hit/expiry reasons in content and keeps
+its diagonal geometry out of flight.
+
 ## Authoring and data
 
 `Entity<C>` uses common physical/visual configuration, with optional fields

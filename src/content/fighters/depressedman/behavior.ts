@@ -1,8 +1,7 @@
 import type { BehaviorHandlers, FighterContext } from "../../../gameplay/fighter-factory";
 import type { ProjectileEmitter, Targeting, Visuals } from "../../../gameplay/components";
-import type { ContactEvent, Vector2 } from "../../../engine/contracts";
-import type { Entity } from "../../../engine/entity";
-import type { Simulation } from "../../../engine/simulation";
+import type { Vector2 } from "../../../engine/contracts";
+import { onProjectileEvents } from "../../script-helpers";
 
 const DIAGONALS: readonly Vector2[] = [
       { x: Math.SQRT1_2, y: -Math.SQRT1_2 },
@@ -10,30 +9,6 @@ const DIAGONALS: readonly Vector2[] = [
       { x: -Math.SQRT1_2, y: Math.SQRT1_2 },
       { x: -Math.SQRT1_2, y: -Math.SQRT1_2 },
 ];
-
-function attachClusterBurst(tear: Entity, simulation: Simulation, miniTear: ProjectileEmitter): void {
-      let exploded = false;
-      const explode = () => {
-            if (exploded) return;
-            exploded = true;
-            const pos = { x: tear.body.position.x, y: tear.body.position.y };
-            miniTear.spawn(DIAGONALS.map(direction => ({ position: pos, direction })));
-      };
-
-      tear.components.use("cluster-burst", {
-            contact(event: ContactEvent) {
-                  if (event.kind === "wall") {
-                        explode();
-                        simulation.remove(tear.runtimeId, "hit");
-                  }
-            },
-            detach() {
-                  if (tear.removalReason === "hit" || tear.removalReason === "expired") {
-                        explode();
-                  }
-            },
-      });
-}
 
 interface DepressedManComponents {
       targeting: Targeting;
@@ -75,7 +50,13 @@ export function depressedManBehavior(
                               const spawned = tear.spawn({ position: origin, direction });
                               if (spawned) {
                                     for (const projectile of spawned) {
-                                          attachClusterBurst(projectile, simulation, miniTear);
+                                          onProjectileEvents(projectile, {
+                                                onWall: () => { simulation.remove(projectile.runtimeId, "hit"); },
+                                                onEnd: ({ position, reason }) => {
+                                                      if (reason === "hit" || reason === "expired")
+                                                            miniTear.spawn(DIAGONALS.map(direction => ({ position, direction })));
+                                                },
+                                          });
                                     }
                               }
 

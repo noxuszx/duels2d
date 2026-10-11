@@ -1,6 +1,6 @@
-import schema from "../../config/fighters/fighter.schema.json";
+import schema from "../../config/fighters/fighter.schema.json" with { type: "json" };
 import { validateSchema } from "./schema-validator.js";
-import type { FighterDefinition, FighterDefaults } from "../types/fighter";
+import type { FighterDefinition, FighterDefaults } from "../types/fighter.ts";
 
 export function assertFighterDefinition(value: unknown): asserts value is FighterDefinition {
       const errors = validateSchema(value, schema);

@@ -1,6 +1,7 @@
 import { cpSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
+import { studioDevSave } from "./tools/character-studio/persistence/dev-save-plugin.ts";
 
 const SPRITE_FILE_PATTERN = /\.(?:png|jpe?g|webp|gif)$/i;
 
@@ -51,7 +52,7 @@ export default defineConfig({
   define: {
     __SPRITE_CATALOG__: JSON.stringify(listSpriteFiles()),
   },
-  plugins: [copyRuntimeFiles()],
+  plugins: [copyRuntimeFiles(), studioDevSave()],
   build: {
     outDir: "dist",
     emptyOutDir: true,

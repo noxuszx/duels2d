@@ -51,6 +51,24 @@ Drawing resolves missing presentation fields on a copy and clamps only the crop 
 
 Persistence receives serialized content captured before asynchronous file access. Autosave serializes writes per handle and publishes save/failure status. Browser file access remains separate from fighter serialization.
 
+## Saving project files
+
+Run `npm run dev` and open `/tools/character-studio/`. Studio automatically
+connects to the existing roster files in `config/fighters/index.json`. Committed
+edits, including undo and redo, save directly to `config/fighters/<id>.json`.
+Refresh reconnects automatically. Crop and hitbox drafts save when Apply is
+clicked. Wait for the “Saved” status before closing; click Save to retry a failure.
+
+The development server validates fighter JSON and its matching ID before
+replacing an existing roster file using a completed temporary file. Saving
+requires a same origin request and a session token. Studio writes do not reload
+the editor.
+
+Built sites and `npm run preview` use the browser Save dialog. Select the
+original fighter JSON once per fighter per page session to enable autosave.
+Browsers without that API download JSON for manual replacement. Direct project
+saving requires `npm run dev`.
+
 `styles/studio.css` imports `layout.css`, `canvas.css`, `controls.css`, and `workspace.css` in that order. The workspace stylesheet retains the existing later overrides. Keep this order to preserve the cascade.
 
 ## Verification

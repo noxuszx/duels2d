@@ -217,10 +217,11 @@ export class CharacterStudio {
             private readonly fighterDefinitions: FighterDefinition[],
             readonly indicatorConfig: IndicatorConfig,
             readonly defaults?: FighterDefaults,
+            fileHandles: Map<string, StudioFileHandle> = new Map(),
       ) {
             Object.assign(this, new StudioElements());
             this.session = new EditorSession(configs as StudioConfig[]);
-            this.fileHandles = new Map();
+            this.fileHandles = fileHandles;
             this.pendingBodyImageRequest = 0;
             this.autosave.subscribe(updateSaveStatus);
             this.formTool = new FormTool(this);

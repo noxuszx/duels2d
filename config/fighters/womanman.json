@@ -3,39 +3,21 @@
   "id": "womanman",
   "name": "Woman Man",
   "color": "#00d4ff",
-  "combat": {},
   "presentation": {
     "image": "assets/fighters/womanman/sprites/womanman.out.png",
-    "imageScale": 2.6,
-    "imageOffset": {
-      "x": 0,
-      "y": -4
-    },
-    "imageCrop": {
-      "x": 216,
-      "y": 39,
-      "width": 585,
-      "height": 768
-    },
+    "imageScale": 2.5,
+    "imageOffset": { "x": 0, "y": -4 },
+    "imageCrop": { "x": 216, "y": 39, "width": 585, "height": 768 },
     "weaponIdle": "assets/fighters/womanman/weapons/handbag.png",
     "weaponScale": 1.9,
-    "weaponOffset": {
-      "x": 28,
-      "y": 28
-    },
-    "weaponPivot": {
-      "x": 30,
-      "y": -18
-    }
+    "weaponOffset": { "x": 28, "y": 28 },
+    "weaponPivot": { "x": 30, "y": -18 }
   },
   "components": {
     "melee": {
       "damage": 50,
       "knockback": 0.12,
-      "swing": {
-        "startDegrees": -177,
-        "endDegrees": -48
-      },
+      "swing": { "startDegrees": -177, "endDegrees": -48 },
       "sound": "attackActive",
       "hitSound": "weaponSlap"
     }

@@ -30,7 +30,7 @@
   "components": {
     "weaponAim": {
       "muzzle": { "x": -72.5, "y": 8 },
-      "pivot": { "x": -19.4, "y": 6.2 },
+      "pivot": { "x": -9.1, "y": 28.8 },
       "forwardDegrees": 180
     },
     "instantLaser": {

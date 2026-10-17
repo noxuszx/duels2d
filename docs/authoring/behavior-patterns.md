@@ -3,7 +3,7 @@
 These snippets assume equipped handles and configured move settings.
 Read only the matching pattern; exact signatures live in source.
 
-## 3. Common Component Patterns
+## Common component patterns
 
 ### Pattern A: Aimed Weapon Firing (Gun / Shotgun)
 Equip: `targeting: Targeting`, `aim: SpriteAim`, `gun: ProjectileEmitter`, `visuals: Visuals`.
@@ -72,12 +72,17 @@ Equip: `targeting: Targeting`, `wallCrawl: WallCrawl`, `dash: Dash`.
 }
 ```
 
-### Pattern D: Emergency Transformation / Stun Break (`interrupt: true`)
+### Pattern D: Interrupting transformation (`interrupt: true`)
 Equip: `forms: Forms`, `visuals: Visuals`.
+
+Interruption replaces an active task only when admission and status restrictions
+allow it; it does not bypass stun. If a status cancels the sequence, a still-true
+condition can trigger a fresh attempt after the restriction ends. See
+[fighter authoring](fighter-authoring.md) for the admission behavior.
 
 ```typescript
 transformation: {
-      interrupt: true, // Immediately aborts ongoing actions when triggered
+      interrupt: true, // Replaces an active task when admission allows
       when: () => !forms.is("transformed") && forms.healthRatio <= 0.5,
       *run() {
             // Play cinematic transformation pose sequence

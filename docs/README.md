@@ -15,6 +15,21 @@ For gameplay changes, read [engine and content boundaries](architecture/engine-b
 once. They define where mechanics belong and when engine/component changes
 require user permission.
 
+## Minimum reading paths
+
+| Task | Start with | Then inspect |
+| --- | --- | --- |
+| Add a fighter | Boundaries above → [fighter authoring](authoring/fighter-authoring.md) | The closest [fighter example](authoring/fighter-examples.md), its definition and config |
+| Change a move or effect | Boundaries above → [capability lookup](scripting/scripting-primitives.md#capability-lookup) | The existing behavior and selected tool's source |
+| Fix gameplay behavior | [Behavior runtime](architecture/behavior-runtime.md) | The failing behavior and relevant contract below |
+| Edit data or Studio | [Configuration](../config/README.md) or [Studio](../tools/character-studio/README.md) | The affected schema, data, or editor code |
+
+Open a topic contract only when the task depends on its semantics. Finish with
+[verification](authoring/verification.md). Architecture overviews, roadmap, and
+migration history are optional unless the task concerns them.
+
+## Topic contracts
+
 | Task | Read first | Read when needed |
 | --- | --- | --- |
 | Add a fighter or action | [Fighter authoring](authoring/fighter-authoring.md) | [Quick start](authoring/behavior-scripting-guide.md), [patterns](authoring/behavior-patterns.md) |

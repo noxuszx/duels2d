@@ -23,6 +23,12 @@ repeat timing, and visual lifetime remain independently script-controlled.
 
 ### Steering and movement helpers
 
+`aimedProjectile(owner, targetPosition, projectileRadius, gap?)` builds a trajectory
+for a projectile emitter. It aims toward the target (falling back to the owner's
+facing for a missing or coincident target) and spawns beyond the owner's hitbox
+plus the projectile radius and an optional gap (default 1). Box hitboxes use
+their half-diagonal for conservative clearance. It does not spawn or steer the projectile.
+
 The content helper `steer(entity, durationMs, velocityAt)` commands velocity in
 Matter units on dynamic bodies. It acquires a locomotion lease, updates body
 velocity at timed callbacks, and stops its commanded motion on cleanup. Use it

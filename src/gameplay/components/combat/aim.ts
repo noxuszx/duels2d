@@ -39,12 +39,15 @@ export class AimGeometry {
                   x: frame.offset.x + mirror * localPivot.x,
                   y: frame.offset.y + localPivot.y,
             };
+
             const offset = {
                   x: mirror * (options.muzzle.x - localPivot.x),
                   y: options.muzzle.y - localPivot.y,
             };
+
             const forward = (options.forwardDegrees ??
                   (frame.defaultFacing === "left" ? 180 : 0)) * Math.PI / 180;
+
             const localDirection = { x: mirror * Math.cos(forward), y: Math.sin(forward) };
             const localTarget = inversePoint(frame.root, target);
             const dx = localTarget.x - pivot.x;
@@ -84,9 +87,9 @@ export class SpriteAim implements EntityComponent {
             private readonly context: ComponentContext,
             private readonly options: AimSkillOptions,
             private readonly visualTarget: "sprite" | "weapon" = "sprite",
-      ) {}
+      ) { }
 
-      attach(): void {}
+      attach(): void { }
 
       /** Resolve again at firing time, including a pose changed during this same step. */
       get current(): AimSolution | null {

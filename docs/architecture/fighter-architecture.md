@@ -46,6 +46,15 @@ to be idempotent. `acquireIgnoredContact(runtimeId)` leases suppress both native
 Matter response and gameplay dispatch for that pair; components choose the
 policy, and the physics adapter applies it before Matter resolves impulses.
 
+## Cleanup internals
+
+Resource deduplication in [ScriptScope](../../src/engine/scripting/scope.ts)
+uses weak references so closed scopes do not retain released resources.
+Engine cleanup and event dispatch use `runAll` from
+[cleanup.ts](../../src/engine/cleanup.ts) to finish every remaining action and
+then propagate the first failure. Content authors should use the
+[scopes and leases contract](../scripting/script-resources.md).
+
 Related: [engine boundaries](engine-boundaries.md), [source map](source-map.md).
 
 Read only the detail relevant to the change:

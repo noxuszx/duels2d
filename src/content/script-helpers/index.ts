@@ -8,6 +8,7 @@ export * from "./animation/shake";
 export * from "./animation/pose-sequence";
 
 // Combat
+export * from "./combat/aimed-projectile";
 export * from "./combat/burst";
 export * from "./combat/query-hit";
 export * from "./combat/projectile-events";

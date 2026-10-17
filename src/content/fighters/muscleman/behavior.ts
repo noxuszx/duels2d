@@ -7,7 +7,7 @@ import { installBehavior, type BehaviorHandlers } from "../../../gameplay/behavi
 import type { FighterContext } from "../../../gameplay/fighter-factory";
 import { ProjectileEmitter, type Targeting } from "../../../gameplay/components";
 import { ProjectileFlight } from "../../../gameplay/components/combat/projectile/flight";
-import { onProjectileEvents, steer } from "../../script-helpers";
+import { aimedProjectile, onProjectileEvents, steer } from "../../script-helpers";
 
 interface MuscleManComponents { targeting: Targeting; }
 
@@ -38,19 +38,9 @@ export function muscleManBehavior({ targeting }: MuscleManComponents, context: F
 
       function throwDumbbell(): boolean {
             const target = targeting.nearestEnemy();
-            const dx = target ? target.body.position.x - entity.body.position.x : (entity.facing === "left" ? -1 : 1);
-            const dy = target ? target.body.position.y - entity.body.position.y : 0;
-            const length = Math.hypot(dx, dy);
-            const direction = length > 1e-9 ? { x: dx / length, y: dy / length } : { x: 1, y: 0 };
-            const box = config.hitbox;
-            const clearance = (box.type === "box" ? Math.hypot(box.width / 2, box.height / 2) : box.radius)
-                  + gun.projectile.radius + 1;
-            // Each throw owns a damage snapshot; authored settings are never mutated.
+
             const emitter = new ProjectileEmitter(context, { ...gun, projectile: { ...gun.projectile, damage } });
-            const spawned = emitter.spawn({
-                  position: { x: entity.body.position.x + direction.x * clearance,
-                        y: entity.body.position.y + direction.y * clearance }, direction,
-            });
+            const spawned = emitter.spawn(aimedProjectile(entity, target?.body.position, gun.projectile.radius));
             if (!spawned) return false;
             const projectile = spawned[0];
             dumbbell = projectile;
@@ -67,6 +57,7 @@ export function muscleManBehavior({ targeting }: MuscleManComponents, context: F
                         ? { x: x / distance * gun.projectile.speed, y: y / distance * gun.projectile.speed }
                         : { x: 0, y: 0 };
             };
+
             // Content supplies the wall response; containment and catch remain flight primitives.
             projectile.resources.acquireContactPolicy({ defaultBounce: false });
             onProjectileEvents(projectile, {
@@ -78,17 +69,20 @@ export function muscleManBehavior({ targeting }: MuscleManComponents, context: F
                         if (entity.isAlive && releasePose) pose("idle");
                   },
             });
+            
             const actor: ComponentContext = { entity: projectile, simulation, get config() { return projectile.config; } };
             const flight = projectile.components.get("flight");
             if (!(flight instanceof ProjectileFlight)) throw new Error("Dumbbell requires projectile flight");
-            installBehavior(actor, { *onSpawn() {
-                  if (!returning) {
-                        const outcome = yield* perform(waitForEvent(flight.events, "wall"));
-                        if (outcome.kind !== "event") return;
+            installBehavior(actor, {
+                  *onSpawn() {
+                        if (!returning) {
+                              const outcome = yield* perform(waitForEvent(flight.events, "wall"));
+                              if (outcome.kind !== "event") return;
+                        }
+                        while (projectile.isAlive) yield steer(projectile, SIMULATION_STEP_MS, velocityHome);
                   }
-                  while (projectile.isAlive) yield steer(projectile, SIMULATION_STEP_MS, velocityHome);
-            } }, { onSpawn: "return" }, () => ({ cooldownMs: 0 }),
-            { onTaskError: () => { simulation.remove(projectile.runtimeId); } });
+            }, { onSpawn: "return" }, () => ({ cooldownMs: 0 }),
+                  { onTaskError: () => { simulation.remove(projectile.runtimeId); } });
             return true;
       }
 
@@ -109,9 +103,11 @@ export function muscleManBehavior({ targeting }: MuscleManComponents, context: F
             }
       }
 
-      return { *onUpdate(): ScriptGenerator {
-            pose(dumbbell ? "attackActive" : "idle");
-            try { while (entity.isAlive) yield during(SIMULATION_STEP_MS, tick); }
-            finally { releasePose?.(); releasePose = null; }
-      } };
+      return {
+            *onUpdate(): ScriptGenerator {
+                  pose(dumbbell ? "attackActive" : "idle");
+                  try { while (entity.isAlive) yield during(SIMULATION_STEP_MS, tick); }
+                  finally { releasePose?.(); releasePose = null; }
+            }
+      };
 }

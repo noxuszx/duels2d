@@ -60,6 +60,7 @@ function attackBody(entity: Entity, settings: MeleeSettings, padding = 0): Body 
             y: entity.body.position.y - entity.config.hitboxOffset.y + offset.y,
       }, entity.body.angle + entity.presentation.rotation), { x: 0, y: 0 },
             entity.facing === "left" ? -1 : 1, entity.presentation.orientation("sprite") ?? { angle: 0 });
+
       const center = transformPoint(transform, box.offset);
       const angle = Math.atan2(transform.b, transform.a);
       return Bodies.rectangle(

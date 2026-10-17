@@ -45,7 +45,7 @@ export class CombatResolver {
             private readonly now: () => number,
             private readonly emit: (event: CombatEvent) => void,
             private readonly defaultCooldownMs: number,
-      ) {}
+      ) { }
 
       hit(source: Entity, target: Entity, effects: HitEffects, options: HitOptions = {}): HitResult {
             const miss: HitResult = {
@@ -71,13 +71,17 @@ export class CombatResolver {
                         const result = target.statuses.apply({ ...status, sourceId: options.sourceId ?? source.runtimeId });
                         if (result.applied) {
                               statusesApplied.push(status.id);
-                              this.emit({ kind: "status", sourceId: options.sourceId ?? source.runtimeId,
-                                    targetId: target.runtimeId, status: status.id });
+                              this.emit({
+                                    kind: "status", sourceId: options.sourceId ?? source.runtimeId,
+                                    targetId: target.runtimeId, status: status.id
+                              });
                         }
                   }
             }
-            return { connected: actualDamage > 0 || knockbackApplied || statusesApplied.length > 0,
-                  actualDamage, knockbackApplied, statusesApplied, killed: target.isDead };
+            return {
+                  connected: actualDamage > 0 || knockbackApplied || statusesApplied.length > 0,
+                  actualDamage, knockbackApplied, statusesApplied, killed: target.isDead
+            };
       }
 
       /** Shared force scaling for attacks and self-directed recoil. */

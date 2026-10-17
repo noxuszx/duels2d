@@ -1,7 +1,7 @@
 import type { BehaviorHandlers, FighterContext } from "../../../gameplay/fighter-factory";
 import type { ProjectileEmitter, Targeting, Visuals } from "../../../gameplay/components";
 import type { Vector2 } from "../../../engine/contracts";
-import { onProjectileEvents } from "../../script-helpers";
+import { aimedProjectile, onProjectileEvents } from "../../script-helpers";
 
 const DIAGONALS: readonly Vector2[] = [
       { x: Math.SQRT1_2, y: -Math.SQRT1_2 },
@@ -35,19 +35,9 @@ export function depressedManBehavior(
 
                               const currentTarget = target.isAlive ? target : targeting.nearestEnemy();
                               const targetPos = currentTarget?.body.position ?? target.body.position;
-                              const dx = targetPos.x - entity.body.position.x;
-                              const dy = targetPos.y - entity.body.position.y;
-                              const dist = Math.hypot(dx, dy);
-                              const direction = dist > 1e-6
-                                    ? { x: dx / dist, y: dy / dist }
-                                    : { x: entity.facing === "left" ? -1 : 1, y: 0 };
-
-                              const origin = {
-                                    x: entity.body.position.x + direction.x * (config.radius + 5),
-                                    y: entity.body.position.y + direction.y * (config.radius + 5),
-                              };
-
-                              const spawned = tear.spawn({ position: origin, direction });
+                              const spawned = tear.spawn(aimedProjectile(
+                                    entity, targetPos, config.components.projectile!.projectile.radius,
+                              ));
                               if (spawned) {
                                     for (const projectile of spawned) {
                                           onProjectileEvents(projectile, {

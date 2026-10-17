@@ -43,11 +43,13 @@ root. `acquireOrientation("sprite" | "weapon", { angle, pivot? })` controls a
 child's local orientation separately; the newest held child lease wins. Aiming
 and wall crawl use child orientation while root effects remain additive.
 
-`scope.add(cleanup)` returns a function that detaches the registration without
-running cleanup. Active cleanup runs in reverse acquisition order; callbacks can
-detach registrations still awaiting release. Resource deduplication uses weak
-references so closed scopes do not retain released resources. Engine cleanup
-and event dispatch use `runAll` from `src/engine/cleanup.ts` to finish every
-remaining action and then propagate the first failure.
+### Cleanup callbacks
+
+`scope.add(cleanup)` registers cleanup and returns a function that detaches the
+registration without running it. Active cleanup runs in reverse acquisition
+order; callbacks can detach registrations still awaiting release.
+
+For scope implementation and shared cleanup dispatch, see the
+[engine internals](../architecture/fighter-architecture.md#cleanup-internals).
 
 Related: [timing](script-timing.md), [content helpers](content-helpers.md).

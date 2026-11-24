@@ -1,6 +1,6 @@
 {
   "combat": {
-    "maxHealth": 1000,
+    "maxHealth": 750,
     "speed": 11,
     "baseDamage": 50,
     "impactDamageMultiplier": 1,

@@ -25,7 +25,7 @@ export class CanvasRenderer {
       render(width: number, height: number, arena: Arena, views: readonly EntityView[], now: number): void {
             const { ctx } = this;
             ctx.clearRect(0, 0, width, height);
-            this.drawWatermark(arena);
+            if (this.settings.game.arena.showWatermark) this.drawWatermark(arena);
             ctx.font = "bold 20px sans-serif";
             ctx.textAlign = "center";
             ctx.fillStyle = "rgba(255,255,255,0.3)";
@@ -40,17 +40,22 @@ export class CanvasRenderer {
             }
             ctx.restore();
             ctx.strokeStyle = this.settings.game.arena.borderColor;
-            ctx.lineWidth = this.settings.game.arena.borderWidth * 2;
-            ctx.strokeRect(arena.ax, arena.ay, arena.aw, arena.ah);
+            // Draw the border outside the arena rect so thickness never eats into play space.
+            const borderWidth = this.settings.game.arena.borderWidth;
+            ctx.lineWidth = borderWidth;
+            ctx.strokeRect(arena.ax - borderWidth / 2, arena.ay - borderWidth / 2,
+                  arena.aw + borderWidth, arena.ah + borderWidth);
             for (const view of views) if (!view.dead) this.drawEntity(view, now);
             for (const text of this.texts) {
                   const elapsed = now - text.born;
                   if (elapsed >= 700) continue;
                   ctx.save();
                   ctx.globalAlpha = 1 - elapsed / 700;
-                  ctx.font = `${this.settings.indicators.damage.minFontSize}px ${this.settings.indicators.text.family}`;
-                  ctx.fillStyle = this.settings.indicators.damage.fillColor;
-                  ctx.fillText(text.text, text.x, text.y - elapsed * 0.04);
+                  const damage = this.settings.indicators.damage;
+                  const y = text.y - elapsed * 0.04;
+                  ctx.font = `500 ${damage.minFontSize}px ${this.settings.indicators.text.family}`;
+                  ctx.fillStyle = damage.fillColor;
+                  ctx.fillText(text.text, text.x, y);
                   ctx.restore();
             }
       }

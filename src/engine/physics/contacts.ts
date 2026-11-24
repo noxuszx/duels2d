@@ -13,6 +13,7 @@ export interface EntityContactSnapshot {
       readonly kind: "entity";
       readonly first: ContactSideSnapshot;
       readonly second: ContactSideSnapshot;
+      readonly isSensor: boolean;
       /** Separation normal applied to first. */
       readonly normal: Readonly<Vector2>;
       readonly incomingSpeed: number;
@@ -76,6 +77,7 @@ export class MatterContactCollector {
                   const incomingSpeed = Math.abs(relative.x * normalA.x + relative.y * normalA.y);
                   const snapshot: EntityContactSnapshot = Object.freeze({
                         kind: "entity",
+                        isSensor: pair.isSensor,
                         first: Object.freeze({
                               id: first.runtimeId,
                               policy: snapshotPolicy(first.resources.contactPolicy),

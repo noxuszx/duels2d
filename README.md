@@ -5,7 +5,6 @@ fighters bounce around a mobile-friendly 9:16 arena and use equipped mechanics
 to fight until one team remains. It was built for recording
 vertical video content.
 
-Gameplay uses a headless 120 Hz Matter.js simulation, reusable components, and
 TypeScript behavior scripts. See [the migration checklist](docs/migration/fighter-migration-checklist.md)
 for active blueprints and remaining roster work.
 

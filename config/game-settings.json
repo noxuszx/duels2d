@@ -26,10 +26,11 @@
             }
       },
       "arena": {
-            "borderWidth": 5,
-            "borderColor": "#ffd000",
-            "backgroundColor": "#0b2546",
-            "visualOverflow": 160
+            "borderWidth": 10,
+            "borderColor": "#ffb703",
+            "backgroundColor": "#0f1522",
+            "visualOverflow": 160,
+            "showWatermark": false
       },
       "text": {
             "statusFight": "",

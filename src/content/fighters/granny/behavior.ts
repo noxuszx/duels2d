@@ -8,6 +8,9 @@ interface GrannyComponents {
       aim: SpriteAim; forms: Forms; visuals: Visuals;
 }
 
+/** Length of the shotgunShoot clip; the reload cue starts as soon as it ends. */
+const SHOT_CLIP_MS = 970;
+
 /** Granny chooses the sequence; equipped mechanics own its execution and cleanup. */
 export function grannyBehavior({ targeting, melee, shotgun, aim, forms, visuals }: GrannyComponents): BehaviorHandlers {
       const strike = forms.baseMove("rolling-pin-strike");
@@ -19,7 +22,7 @@ export function grannyBehavior({ targeting, melee, shotgun, aim, forms, visuals 
                         interrupt: true,
                         when: () => !forms.is("transformed") && forms.healthRatio <= transformed.healthRatio!,
                         *run() {
-                              yield* poseSequence(visuals, transformed.poses!, transformed.sequence ?? []);
+                              yield* poseSequence(visuals, transformed.poses!, transformed.sequence ?? [], "transform");
                               forms.enter("transformed");
                         },
                   },
@@ -47,7 +50,11 @@ export function grannyBehavior({ targeting, melee, shotgun, aim, forms, visuals 
                                     if (!solution) return;
                                     yield shotgun.emit({ position: solution.origin, direction: solution.direction });
                                     yield visuals.pose("attackActive", blast.attackDurationMs ?? 0);
-                                    yield visuals.pose("recovery", blast.recoveryMs ?? 0);
+                                    const recoveryMs = blast.recoveryMs ?? 0;
+                                    yield visuals.pose("recovery", recoveryMs);
+                                    const gapMs = Math.max(0, SHOT_CLIP_MS - (blast.attackDurationMs ?? 0) - recoveryMs);
+                                    if (gapMs) yield visuals.pose("idle", gapMs);
+                                    yield visuals.pose("idle", 50, "shotgunReload");
                               });
                         },
                   },

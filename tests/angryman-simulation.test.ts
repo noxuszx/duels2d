@@ -11,6 +11,8 @@ import { entityView } from "../src/presentation/view";
 import type { FighterDefaults, FighterDefinition } from "../src/types/fighter";
 
 const config = composeFighter(defaults as FighterDefaults, data as FighterDefinition);
+// The timing test pins a short dash bound; the shipped value is tuned in config/fighters/angryman.json.
+config.moves.charge.attackDurationMs = 183;
 function setup() {
       const simulation = new Simulation({ arena: { minX: 0, maxX: 2000, minY: 0, maxY: 1200 },
             seed: 4, impact: { minSpeed: 100_000 }, globalSpeedMultiplier: .25 });

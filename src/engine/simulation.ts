@@ -2,7 +2,7 @@ import { Engine } from "matter-js";
 import { EventScheduler } from "./events/scheduler";
 import { EventSource } from "./events/source";
 import { runAll } from "./cleanup";
-import type { ArenaBounds, ContactEvent, ContactPolicy, RuntimeTrace, Vector2 } from "./contracts";
+import type { ArenaBounds, ArenaWall, ContactEvent, ContactPolicy, RuntimeTrace, Vector2 } from "./contracts";
 import type { Entity, EntityRemovalReason } from "./entity";
 import { EntityRegistry, type EntityRegistration } from "./entity-registry";
 import { SeededRandom } from "./random";
@@ -22,7 +22,11 @@ export interface SimulationOptions {
       globalSpeedMultiplier?: number;
 }
 
-export type SimulationEvent = CombatEvent | { kind: "match-ended"; outcome: MatchOutcome };
+type CollisionEvent =
+      | { kind: "collision"; contact: "wall"; entityId: string; wall: ArenaWall; incomingSpeed: number }
+      | { kind: "collision"; contact: "entity"; entityId: string; otherId: string; incomingSpeed: number };
+
+export type SimulationEvent = CombatEvent | CollisionEvent | { kind: "match-ended"; outcome: MatchOutcome };
 
 /** Headless, fixed-step lifetime and contact owner. The browser only drives step/render. */
 export class Simulation {
@@ -197,7 +201,11 @@ export class Simulation {
             entity.contact(event);
             if (!this.entities.isLive(entity)) return;
             const policy = this.mergePolicy(contact.policy, event.policy, entity.resources.contactPolicy);
-            if (policy.defaultBounce) bounceFromWall(entity, contact);
+            if (policy.defaultBounce) {
+                  bounceFromWall(entity, contact);
+                  this.events.push({ kind: "collision", contact: "wall", entityId: contact.id,
+                        wall: contact.wall, incomingSpeed: contact.incomingSpeed });
+            }
             if (policy.allowImpactDamage) this.impact(entity, contact.incomingSpeed);
       }
 
@@ -205,6 +213,9 @@ export class Simulation {
             const first = this.entities.get(contact.first.id);
             const second = this.entities.get(contact.second.id);
             if (!first || !second || first.isDead || second.isDead) return;
+            if (!contact.isSensor)
+                  this.events.push({ kind: "collision", contact: "entity", entityId: first.runtimeId,
+                        otherId: second.runtimeId, incomingSpeed: contact.incomingSpeed });
             const firstEvent = this.entityEvent(first, second, contact.normal, contact.incomingSpeed,
                   contact.first.policy, contact.first.hadForegroundTask);
             const secondEvent = this.entityEvent(second, first,

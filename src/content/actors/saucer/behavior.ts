@@ -9,6 +9,7 @@ import { hitEnemies, moveTo, until } from "../../script-helpers";
 
 /** The sweep's direction and reversal points are decisions owned by this actor. */
 function* patrol({ entity, simulation }: ComponentContext,
+      
       settings: SaucerSettings, direction: number): ScriptGenerator {
       const left = Math.min(simulation.arena.maxX, simulation.arena.minX + settings.width / 2);
       const right = Math.max(left, simulation.arena.maxX - settings.width / 2);
@@ -25,6 +26,7 @@ function* patrol({ entity, simulation }: ComponentContext,
 export interface SaucerCommands { deploy: Readonly<{ atMs: number }>; }
 
 interface SaucerScriptOptions {
+
       settings: SaucerSettings;
       commands: EventSource<SaucerCommands>;
       deployment: { atMs: number | null };
@@ -34,6 +36,7 @@ interface SaucerScriptOptions {
 }
 
 export function* saucerBehavior(context: ComponentContext,
+
       { settings, commands, deployment, spawnAlly, sourceId, initialDirection }: SaucerScriptOptions): TaskGenerator {
       const { entity, simulation } = context;
       const beam = (): RectangleShape => {
@@ -42,6 +45,7 @@ export function* saucerBehavior(context: ComponentContext,
             return { type: "rectangle", center: { x: entity.body.position.x, y: (top + bottom) / 2 },
                   width: settings.beamWidth, height: bottom - top };
       };
+
       function* beams(): ScriptGenerator {
             while (true) {
                   yield* scoped(() => entity.presentation.acquireShape(beam, settings.beamColor, .25), function* () {
@@ -57,6 +61,7 @@ export function* saucerBehavior(context: ComponentContext,
                   yield wait(Math.max(0, settings.beamIntervalMs - settings.beamDurationMs));
             }
       }
+
       function* lifecycle(): ScriptGenerator {
             // Assembly observes commands immediately; this state records deployments before the first tick.
             let deploymentAtMs = deployment.atMs;
@@ -71,6 +76,7 @@ export function* saucerBehavior(context: ComponentContext,
                   spawnAlly();
             }
       }
+
       yield all(sequence(() => patrol(context, settings, initialDirection)),
             sequence(lifecycle));
 }

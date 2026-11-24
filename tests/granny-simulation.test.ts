@@ -37,24 +37,24 @@ describe("Granny in the simulation", () => {
             simulation.step();
             expect(fighter.presentation.pose).toBe("attackWindup");
             advance(simulation, 29);
-            expect(enemy.health).toBe(1000);
+            expect(enemy.health).toBe(750);
             advance(simulation, 1);
-            expect(enemy.health).toBe(955);
+            expect(enemy.health).toBe(705);
             expect(fighter.presentation.pose).toBe("attackActive");
             advance(simulation, 48);
             expect(fighter.behavior?.isRunning).toBe(false);
-            expect(enemy.health).toBe(955);
+            expect(enemy.health).toBe(705);
             advance(simulation, 52);
-            expect(enemy.health).toBe(955);
+            expect(enemy.health).toBe(705);
             advance(simulation, 32);
-            expect(enemy.health).toBe(910);
+            expect(enemy.health).toBe(660);
             simulation.dispose();
       });
 
       it("interrupts a swing at exactly 40%, shows both sprites, then commits the form without healing", () => {
             const { simulation, fighter, enemy, forms } = setup();
             simulation.step();
-            fighter.takeDamage(600);
+            fighter.takeDamage(450);
             simulation.step();
             expect(fighter.behavior?.currentMove?.id).toBe("transformation");
             expect(entityView(fighter).pose.image).toContain("granny-pre-trans.png");
@@ -67,8 +67,8 @@ describe("Granny in the simulation", () => {
             expect(forms.is("transformed")).toBe(false);
             advance(simulation, 1);
             expect(forms.is("transformed")).toBe(true);
-            expect(fighter.health).toBe(400);
-            expect(enemy.health).toBe(1000);
+            expect(fighter.health).toBe(300);
+            expect(enemy.health).toBe(750);
             expect(fighter.config.moves["rolling-pin-strike"]).toBeUndefined();
             expect(fighter.config.moves["shotgun-blast"]).toBeDefined();
             expect(config.moves["rolling-pin-strike"]).toBeDefined();
@@ -94,13 +94,15 @@ describe("Granny in the simulation", () => {
             expect(projectile.body.velocity.y).toBeCloseTo(solution.direction.y * 12);
             expect(simulation.events).toContainEqual({ kind: "knockback", sourceId: "granny", targetId: "granny", force: .12 });
             advance(simulation, 85);
-            expect(enemy.health).toBe(910);
+            expect(enemy.health).toBe(660);
+            expect(aim.current).not.toBeNull(); // still tracking through the reload tail
+            advance(simulation, 40);
             expect(aim.current).toBeNull();
             expect(fighter.presentation.orientation("sprite")).toBeNull();
             const shots = simulation.trace.filter(event => event.entityId === "granny" &&
                   event.kind === "admitted" && event.moveId === "shotgun-blast");
             expect(shots).toHaveLength(1);
-            advance(simulation, 60);
+            advance(simulation, 20);
             expect(simulation.trace.filter(event => event.entityId === "granny" &&
                   event.kind === "admitted" && event.moveId === "shotgun-blast")).toHaveLength(2);
             simulation.dispose();
@@ -108,7 +110,7 @@ describe("Granny in the simulation", () => {
 
       it("does not transform above the threshold or spend attack cooldown with no enemy in range", () => {
             const { simulation, fighter, forms } = setup({ x: 850, y: 800 });
-            fighter.takeDamage(599);
+            fighter.takeDamage(449);
             advance(simulation, 300);
             expect(forms.is("transformed")).toBe(false);
             expect(fighter.behavior?.isRunning).toBe(false);
@@ -121,7 +123,7 @@ describe("Granny in the simulation", () => {
             const second = createFighter(simulation, config, { runtimeId: "second-granny", teamId: "A",
                   position: { x: 500, y: 500 }, velocity: { x: 0, y: 0 } }, granny);
             Body.setStatic(second.body, true);
-            fighter.takeDamage(600);
+            fighter.takeDamage(450);
             advance(simulation, 241);
             expect(forms.is("transformed")).toBe(true);
             expect(second.components.get<Forms>("forms")!.is("transformed")).toBe(false);

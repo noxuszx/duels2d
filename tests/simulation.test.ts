@@ -52,6 +52,7 @@ describe("headless simulation", () => {
             expect(baby.body.velocity.x).toBe(0);
             expect(baby.body.velocity.y).toBe(2);
             expect(baby.health).toBe(100);
+            expect(sim.events.some(event => event.kind === "collision")).toBe(false);
             sim.dispose();
       });
 
@@ -95,6 +96,28 @@ describe("headless simulation", () => {
             sim.dispose();
       });
 
+      it.each([false, true])("routes a body contact with sensor=%s and reports only solid collisions", isSensor => {
+            const sim = simulation();
+            const first = fighter("first", "A", 100);
+            const second = fighter("second", "B", 121);
+            second.body.isSensor = isSensor;
+            Body.setVelocity(first.body, { x: 4, y: 0 });
+            let contacts = 0;
+            first.components.use("count-contacts", {
+                  contact(event) { if (event.kind === "entity") contacts++; },
+            });
+            sim.add(second);
+            sim.add(first);
+            sim.step();
+            sim.step();
+
+            expect(contacts).toBe(1);
+            expect(sim.events.filter(event => event.kind === "collision")).toEqual(isSensor ? [] : [
+                  { kind: "collision", contact: "entity", entityId: "first", otherId: "second", incomingSpeed: 2 },
+            ]);
+            sim.dispose();
+      });
+
       it("retires an owned body when its owner is removed", () => {
             const sim = simulation();
             const owner = fighter("owner", "A", 100);
@@ -135,6 +158,10 @@ describe("headless simulation", () => {
             sim.step();
             expect(box.body.velocity.x).toBeGreaterThan(0);
             expect(box.body.velocity.y).toBeGreaterThan(0);
+            expect(sim.events.filter(event => event.kind === "collision")).toMatchObject([
+                  { contact: "wall", entityId: "corner", wall: "left", incomingSpeed: expect.any(Number) },
+                  { contact: "wall", entityId: "corner", wall: "top", incomingSpeed: expect.any(Number) },
+            ]);
             sim.dispose();
       });
 

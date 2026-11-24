@@ -6,17 +6,17 @@
             "baseline": "middle"
       },
       "damage": {
-            "fillColor": "#e61b00",
+            "fillColor": "#ff4d4d",
             "strokeColor": "rgba(0, 0, 0, 0.45)",
             "strokeWidth": 1,
-            "minFontSize": 13,
+            "minFontSize": 20,
             "sizeMultiplier": 0.5,
             "driftY": -1.15,
             "velocityDamping": 0.98,
             "fadeRate": 0.008
       },
       "dialogue": {
-            "fillColor": "#33ff00",
+            "fillColor": "#7bf1a8",
             "strokeColor": "rgba(0, 0, 0, 0.55)",
             "strokeWidth": 2,
             "minFontSize": 14,

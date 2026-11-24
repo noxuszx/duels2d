@@ -24,6 +24,8 @@ export interface GameConfig {
             borderColor: string;
             backgroundColor: string;
             visualOverflow: number;
+            /** Toggles the centered "duels-2d" watermark; hidden when omitted. */
+            showWatermark?: boolean;
       };
       text: { statusFight: string; footer: string };
 }

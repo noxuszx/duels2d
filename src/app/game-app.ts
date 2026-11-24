@@ -150,12 +150,21 @@ export class GameApp {
       }
       private consumeEffects(): void {
             const world = this.simulation;
+            const bumps = new Set<string>();
             for (const event of world.events.splice(0)) {
                   if (event.kind === "damage") {
                         const entity = world.entities.get(event.targetId);
                         if (entity) {
                               this.renderer.hit(event.targetId, event.amount, entityView(entity), world.nowMs);
                               this.voices.get(event.targetId)?.play("hurt");
+                        }
+                  } else if (event.kind === "collision" && event.incomingSpeed > 0) {
+                        const entity = world.entities.get(event.entityId);
+                        if (entity?.tags.has("contestant")) {
+                              bumps.add(entity.runtimeId);
+                        } else if (event.contact === "entity") {
+                              const other = world.entities.get(event.otherId);
+                              if (other?.tags.has("contestant")) bumps.add(other.runtimeId);
                         }
                   } else if (event.kind === "match-ended") {
                         this.updateHudStatus("");
@@ -176,6 +185,7 @@ export class GameApp {
                         voice = new EntityAudio(entity.configId, this.config.game, this.config.sounds, () => world.nowMs);
                         this.voices.set(entity.runtimeId, voice);
                   }
+                  if (bumps.has(entity.runtimeId)) voice.play("body-bounce");
                   for (const event of entity.presentation.drainEvents()) {
                         const payload = event.payload as { cue?: string; token?: string } | undefined;
                         if (event.type === "sound" && payload?.cue) {
@@ -211,13 +221,13 @@ export class GameApp {
             this.boundSounds.clear();
             this.renderer.reset();
 
-            const border = this.config.game.arena.borderWidth;
+            // The border is drawn outside the arena, so walls sit exactly on the arena edge.
             this.simulation = new Simulation({
                   arena: {
-                        minX: this.overflow + border,
-                        minY: this.overflow + border,
-                        maxX: this.overflow + this.arenaWidth - border,
-                        maxY: this.overflow + this.arenaHeight - border,
+                        minX: this.overflow,
+                        minY: this.overflow,
+                        maxX: this.overflow + this.arenaWidth,
+                        maxY: this.overflow + this.arenaHeight,
                   },
                   seed: this.seed,
                   impact: this.config.game.physics.impactDamage,

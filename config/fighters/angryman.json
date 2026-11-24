@@ -85,9 +85,9 @@
   },
   "moves": {
     "charge": {
-      "cooldownMs": 6000,
+      "cooldownMs": 3000,
       "windupMs": 875,
-      "attackDurationMs": 183,
+      "attackDurationMs": 1500,
       "recoveryMs": 150,
       "windupSound": "attackWindup"
     }

@@ -2,7 +2,7 @@
   "shared": {
     "body-bounce": {
       "category": "impact",
-      "volume": 1.5,
+      "volume": 0.7,
       "pitchVariation": true,
       "clips": [
         {
@@ -26,7 +26,7 @@
     "hurt": {
       "category": "voice",
       "volume": 0.8,
-      "pitchVariation": true,
+      "pitchVariation": false,
       "clips": [
         {
           "id": "hurt-medium-01",
@@ -51,7 +51,7 @@
       "cues": {
         "attackWindup": {
           "category": "movement",
-          "volume": 0.7,
+          "volume": 0.4,
           "pitchVariation": true,
           "clips": [
             {
@@ -134,6 +134,41 @@
             {
               "id": "depressedman-sigh-01",
               "path": "assets/sfx/characters/depressedman/ambient/depressedman-sigh-01.mp3"
+            }
+          ]
+        }
+      }
+    },
+    "granny": {
+      "volume": 1,
+      "cues": {
+        "transform": {
+          "category": "voice",
+          "volume": 0.3,
+          "clips": [
+            {
+              "id": "granny-transform-01",
+              "path": "assets/sfx/characters/granny/transform/granny-transform-01.mp3"
+            }
+          ]
+        },
+        "shotgunShoot": {
+          "category": "weapon",
+          "volume": 0.8,
+          "clips": [
+            {
+              "id": "granny-shotgun-shoot-01",
+              "path": "assets/sfx/characters/granny/weapon-fire/granny-shotgun-shoot-01.mp3"
+            }
+          ]
+        },
+        "shotgunReload": {
+          "category": "weapon",
+          "volume": 0.8,
+          "clips": [
+            {
+              "id": "granny-shotgun-reload-01",
+              "path": "assets/sfx/characters/granny/weapon-reload/granny-shotgun-reload-01.mp3"
             }
           ]
         }

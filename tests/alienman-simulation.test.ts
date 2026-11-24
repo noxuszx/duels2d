@@ -125,14 +125,14 @@ describe("Alien Man and owned actors", () => {
             Body.setPosition(enemy.body, { x: saucer.body.position.x, y: 500 });
             Body.setPosition(owner.body, { x: saucer.body.position.x, y: 750 });
             simulation.step();
-            expect(enemy.health).toBe(990); expect(owner.health).toBe(1000);
-            advance(simulation, 19); expect(enemy.health).toBe(990);
+            expect(enemy.health).toBe(740); expect(owner.health).toBe(750);
+            advance(simulation, 19); expect(enemy.health).toBe(740);
             // Rounded authored intervals can put the next pulse one tick after 1/6 second.
-            advance(simulation, 2); expect(enemy.health).toBe(980);
-            advance(simulation, 219); expect(enemy.health).toBe(880);
+            advance(simulation, 2); expect(enemy.health).toBe(730);
+            advance(simulation, 219); expect(enemy.health).toBe(630);
             expect(saucer.presentation.shapes).toHaveLength(0);
-            advance(simulation, 119); expect(enemy.health).toBe(880);
-            advance(simulation, 1); expect(enemy.health).toBe(870);
+            advance(simulation, 119); expect(enemy.health).toBe(630);
+            advance(simulation, 1); expect(enemy.health).toBe(620);
             simulation.dispose();
       });
 
@@ -188,15 +188,15 @@ describe("Alien Man and owned actors", () => {
                         position: { x: 400 + index * 200, y: 300 }, velocity: { x: 0, y: 0 } }));
             for (const entity of [shooter, ...targets]) Body.setStatic(entity.body, true);
             simulation.step();
-            expect(targets.map(entity => entity.health)).toEqual([1000, 970, 970]);
+            expect(targets.map(entity => entity.health)).toEqual([750, 720, 720]);
             expect(shooter.presentation.orientation("sprite")).toBeNull();
             expect(shooter.presentation.orientation("weapon")).not.toBeNull();
             expect(shooter.presentation.shapes).toHaveLength(1);
             advance(simulation, 8);
             expect(shooter.presentation.shapes).toHaveLength(0);
-            expect(targets.map(entity => entity.health)).toEqual([1000, 970, 970]);
+            expect(targets.map(entity => entity.health)).toEqual([750, 720, 720]);
             advance(simulation, 232);
-            expect(targets.map(entity => entity.health)).toEqual([1000, 940, 940]);
+            expect(targets.map(entity => entity.health)).toEqual([750, 690, 690]);
             Body.setPosition(targets[1].body, { x: 100, y: 500 });
             const solution = shooter.components.get<SpriteAim>("aim")!.current!;
             const dx = targets[1].body.position.x - solution.origin.x;
